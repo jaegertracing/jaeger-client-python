@@ -20,18 +20,36 @@
 
 from __future__ import absolute_import
 
-# This is because thrift for python doesn't have 'package_prefix'.
-# The thrift compiled libraries refer to each other relative to their subdir.
-import jaeger_client.thrift_gen as modpath
-import sys
-sys.path.append(modpath.__path__[0])
+import mock
+import unittest
 
-from .tracer import Tracer  # noqa
-from .config import Config  # noqa
-from .span import Span  # noqa
-from .sampler import ConstSampler  # noqa
-from .sampler import ProbabilisticSampler  # noqa
-from .sampler import RateLimitingSampler  # noqa
-from .sampler import RemoteControlledSampler  # noqa
-from .sampler import LocalAgentControlledSampler  # noqa
-from .version import __version__  # noqa
+from jaeger_client.TUDPTransport import TUDPTransport
+
+
+class TUDPTransportTests(unittest.TestCase):
+    def setUp(self):
+        self.t = TUDPTransport('127.0.0.1', 12345)
+
+    def test_constructor_blocking(self):
+        t = TUDPTransport('127.0.0.1', 12345, blocking=True)
+        assert t.transport_sock.gettimeout() == None
+
+    def test_constructor_nonblocking(self):
+        t = TUDPTransport('127.0.0.1', 12345, blocking=False)
+        assert t.transport_sock.gettimeout() == 0
+
+    def test_write(self):
+        self.t.write('hello')
+
+    def test_isopen_when_open(self):
+        assert self.t.isOpen() == True
+
+    def test_isopen_when_closed(self):
+        self.t.close()
+        assert self.t.isOpen() == False
+
+    def test_close(self):
+        self.t.close()
+        with self.assertRaises(Exception):
+            # Something bad should happen if we send on a closed socket..
+            self.t.write('hello')

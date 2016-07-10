@@ -20,18 +20,30 @@
 
 from __future__ import absolute_import
 
-# This is because thrift for python doesn't have 'package_prefix'.
-# The thrift compiled libraries refer to each other relative to their subdir.
-import jaeger_client.thrift_gen as modpath
-import sys
-sys.path.append(modpath.__path__[0])
+import mock
+import unittest
 
-from .tracer import Tracer  # noqa
-from .config import Config  # noqa
-from .span import Span  # noqa
-from .sampler import ConstSampler  # noqa
-from .sampler import ProbabilisticSampler  # noqa
-from .sampler import RateLimitingSampler  # noqa
-from .sampler import RemoteControlledSampler  # noqa
-from .sampler import LocalAgentControlledSampler  # noqa
-from .version import __version__  # noqa
+from jaeger_client.metrics import Metrics
+
+
+class MetricsTests(unittest.TestCase):
+
+    def test_count_func_called(self):
+        m = mock.MagicMock()
+        metrics = Metrics(count=m)
+        metrics.count('foo', 1)
+        assert m.called_with('foo', 1)
+
+    def test_gauge_func_called(self):
+        m = mock.MagicMock()
+        metrics = Metrics(gauge=m)
+        metrics.gauge('foo', 1)
+        assert m.call_args == (('foo', 1),)
+
+    def test_count_func_noops_if_given_uncallable_count_found(self):
+        metrics = Metrics(count=123)
+        metrics.count('foo', 1)
+
+    def test_gauge_func_noops_if_given_uncallable_gauge_found(self):
+        metrics = Metrics(gauge=123)
+        metrics.gauge('foo', 1)

@@ -19,19 +19,38 @@
 # THE SOFTWARE.
 
 from __future__ import absolute_import
+from opentracing import Tracer, Format
 
-# This is because thrift for python doesn't have 'package_prefix'.
-# The thrift compiled libraries refer to each other relative to their subdir.
-import jaeger_client.thrift_gen as modpath
-import sys
-sys.path.append(modpath.__path__[0])
 
-from .tracer import Tracer  # noqa
-from .config import Config  # noqa
-from .span import Span  # noqa
-from .sampler import ConstSampler  # noqa
-from .sampler import ProbabilisticSampler  # noqa
-from .sampler import RateLimitingSampler  # noqa
-from .sampler import RemoteControlledSampler  # noqa
-from .sampler import LocalAgentControlledSampler  # noqa
-from .version import __version__  # noqa
+def test_new_trace():
+    tracer = Tracer()
+
+    span = tracer.start_span(operation_name='test')
+    span.set_baggage_item('Fry', 'Leela')
+    span.set_tag('x', 'y')
+    span.log_event('z')
+
+    child = tracer.start_span(operation_name='child', parent=span)
+    child.log_event('w')
+    assert child.get_baggage_item('Fry') is None
+    carrier = {}
+    tracer.inject(span=child, format=Format.TEXT_MAP, carrier=carrier)
+    assert carrier == dict()
+    child.finish()
+
+    span.finish()
+
+
+def test_join_trace():
+    tracer = Tracer()
+
+    span = tracer.join(operation_name='test',
+                       format=Format.TEXT_MAP, carrier={})
+    span.set_tag('x', 'y')
+    span.log_event('z')
+
+    child = tracer.start_span('child', parent=span)
+    child.log_event('w')
+    child.finish()
+
+    span.finish()

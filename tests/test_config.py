@@ -18,11 +18,90 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+from __future__ import absolute_import
+import unittest
+from jaeger_client import Config, ConstSampler, ProbabilisticSampler, RateLimitingSampler
 
-from jaeger_client import Config
 
-def test_config():
-    cfg = Config(config={}, service_name='test')
-    assert cfg.config == {}
-    assert cfg._service_name == 'test'
+class ConfigTests(unittest.TestCase):
 
+    def fake_tcahnnel_factory(self):
+        return None
+
+    def test_tchannel_factory(self):
+        c = Config({}, service_name='x')
+        assert callable(c.tchannel_factory)
+        assert c.tchannel_factory() is None
+
+        c = Config(
+            {'tchannel_factory': 'tchannel.singleton.TChannel.get_instance'},
+            service_name='x')
+        assert callable(c.tchannel_factory)
+
+    def test_enabled(self):
+        c = Config({'enabled': True}, service_name='x')
+        assert c.enabled
+        c = Config({'enabled': False}, service_name='x')
+        assert not c.enabled
+
+    def test_reporter_batch_size(self):
+        c = Config({'reporter_batch_size': 12345}, service_name='x')
+        assert c.reporter_batch_size == 12345
+        c = Config({}, service_name='x')
+        assert c.reporter_batch_size == 10
+
+    def test_no_sampler(self):
+        c = Config({}, service_name='x')
+        assert c.sampler is None
+
+    def test_const_sampler(self):
+        c = Config({'sampler': {'type': 'const', 'param': True}},
+                   service_name='x')
+        assert type(c.sampler) is ConstSampler
+        assert c.sampler.decision
+        c = Config({'sampler': {'type': 'const', 'param': False}},
+                   service_name='x')
+        assert type(c.sampler) is ConstSampler
+        assert not c.sampler.decision
+
+    def test_probabilistic_sampler(self):
+        with self.assertRaises(Exception):
+            cfg = {'sampler': {'type': 'probabilistic', 'param': 'xx'}}
+            _ = Config(cfg, service_name='x').sampler
+        c = Config({'sampler': {'type': 'probabilistic', 'param': 0.5}},
+                   service_name='x')
+        assert type(c.sampler) is ProbabilisticSampler
+        assert c.sampler.rate == 0.5
+
+    def test_rate_limiting_sampler(self):
+        with self.assertRaises(Exception):
+            cfg = {'sampler': {'type': 'rate_limiting', 'param': 'xx'}}
+            _ = Config(cfg, service_name='x').sampler
+        c = Config({'sampler': {'type': 'rate_limiting', 'param': 1234}},
+                   service_name='x')
+        assert type(c.sampler) is RateLimitingSampler
+        assert c.sampler.credits_per_second == 1234
+
+    def test_bad_sampler(self):
+        c = Config({'sampler': {'type': 'bad-sampler'}}, service_name='x')
+        with self.assertRaises(ValueError):
+            c.sampler.is_sampled(0)
+
+    def test_factory(self):
+        c = Config({}, service_name='x')
+        assert callable(c.tchannel_factory)
+        assert c.tchannel_factory() is None
+
+        with self.assertRaises(ValueError):
+            c = Config({'tchannel_factory': 'opentracing.tracer'},
+                       service_name='x')
+            c.tchannel_factory()
+
+        cfg = {'tchannel_factory': 'tchannel.singleton.TChannel.get_instance'}
+        c = Config(cfg, service_name='x')
+        assert callable(c.tchannel_factory)
+
+        with self.assertRaises(ImportError):
+            cfg = {'tchannel_factory':
+                       'tchannel.singleton.WrongTChannel.get_instance'}
+            Config(cfg, service_name='x')
