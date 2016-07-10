@@ -1,6 +1,6 @@
 [![Build Status][ci-img]][ci] [![Coverage Status][cov-img]][cov] [![PyPI version][pypi-img]][pypi]
 
-# Jaeger OpenTracing Bindings
+# Jaeger Bindings for Python OpenTracing API 
 
 This is a client-side library that can be used to instrument Python apps 
 for distributed trace collection, and to send those traces to Jaeger.
