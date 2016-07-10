@@ -1,0 +1,57 @@
+*.py[cod]
+*.orig
+
+# C extensions
+*.so
+
+# OS X Junk
+.DS_Store
+
+# Packages
+*.egg
+*.egg-info
+
+bin
+build
+develop-eggs
+dist
+eggs
+parts
+sdist
+var
+
+__pycache__
+.cache/
+
+# Installer logs
+pip-log.txt
+
+# Unit test / coverage reports
+.coverage
+.tox
+.noseids
+
+# Ignore python virtual environments
+env*
+thrift_env
+
+# Ignore local logs
+*.log
+logs/*
+!logs/.gitkeep
+
+# Ignore docs
+docs/_build/*
+
+# Ignore coverage output
+*.xml
+coverage/
+
+# Ignore benchmarks output
+perf.log
+perf.svg
+
+# vim
+*.swp
+.idea/
+
