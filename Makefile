@@ -53,7 +53,7 @@ clean:
 	@find $(project) "(" -name "*.pyc" -o -name "coverage.xml" -o -name "junit.xml" ")" -delete
 	@find tests "(" -name "*.pyc" -o -name "coverage.xml" -o -name "junit.xml" -o -name __pycache__ ")" -delete
 	@find . "(" -name "*.pyc" -o -name "coverage.xml" -o -name "junit.xml" -o -name __pycache__ ")" -delete
-	@rm -rf jaeger_client_python.egg-info
+	@rm -rf jaeger_client.egg-info
 
 .PHONY: lint
 lint:

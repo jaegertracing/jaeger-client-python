@@ -33,7 +33,8 @@ setup(
         'thrift',  # in practice we want thrift>=0.9.2.post1,<0.9.3, but we let the users pin to that
         'tornado>=4.3,<5',
         'opentracing==1.0rc4',
-        'tchannel>=0.25,<1.0'  # TODO this should be removed
+        'tchannel>=0.25,<1.0',  # TODO this should be removed
+        'opentracing_instrumentation>=1.0.1,<1.1',  # TODO only used in tchannel patching, should be removed
     ],
     test_suite='tests',
     extras_require={

@@ -19,19 +19,43 @@
 # THE SOFTWARE.
 
 from __future__ import absolute_import
+import logging
 
-# This is because thrift for python doesn't have 'package_prefix'.
-# The thrift compiled libraries refer to each other relative to their subdir.
-import jaeger_client.thrift_gen as modpath
-import sys
-sys.path.append(modpath.__path__[0])
+from thrift.transport.TTransport import TTransportBase
+import socket
 
-from .tracer import Tracer  # noqa
-from .config import Config  # noqa
-from .span import Span  # noqa
-from .sampler import ConstSampler  # noqa
-from .sampler import ProbabilisticSampler  # noqa
-from .sampler import RateLimitingSampler  # noqa
-from .sampler import RemoteControlledSampler  # noqa
-from .sampler import LocalAgentControlledSampler  # noqa
-from .version import __version__  # noqa
+logger = logging.getLogger('jaeger_tracing')
+
+
+class TUDPTransport(TTransportBase, object):
+    """
+    TUDPTransport implements just enough of the tornado transport interface
+    to work for blindly sending UDP packets.
+    """
+    def __init__(self, host, port, blocking=False):
+        self.transport_host = host
+        self.transport_port = port
+        self.transport_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        if blocking:
+            blocking = 1
+        else:
+            blocking = 0
+        self.transport_sock.setblocking(blocking)
+
+    def write(self, buf):
+        """Raw write to the UDP socket."""
+        return self.transport_sock.sendto(
+            buf,
+            (self.transport_host, self.transport_port)
+        )
+
+    def isOpen(self):
+        """
+        isOpen for UDP is always true (there is no connection) as long
+        as we have a sock
+        """
+        return self.transport_sock is not None
+
+    def close(self):
+        self.transport_sock.close()
+        self.transport_sock = None

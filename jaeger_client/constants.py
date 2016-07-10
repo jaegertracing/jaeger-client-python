@@ -18,20 +18,20 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals, print_function
 
-# This is because thrift for python doesn't have 'package_prefix'.
-# The thrift compiled libraries refer to each other relative to their subdir.
-import jaeger_client.thrift_gen as modpath
-import sys
-sys.path.append(modpath.__path__[0])
 
-from .tracer import Tracer  # noqa
-from .config import Config  # noqa
-from .span import Span  # noqa
-from .sampler import ConstSampler  # noqa
-from .sampler import ProbabilisticSampler  # noqa
-from .sampler import RateLimitingSampler  # noqa
-from .sampler import RemoteControlledSampler  # noqa
-from .sampler import LocalAgentControlledSampler  # noqa
-from .version import __version__  # noqa
+# Max number of bits to use when generating random ID
+MAX_ID_BITS = 64
+
+# How often remotely controller sampler polls for sampling strategy
+DEFAULT_SAMPLING_INTERVAL = 60
+
+# How often remote reporter does a preemptive flush of its buffers
+DEFAULT_FLUSH_INTERVAL = 1
+
+# Name of the HTTP header used to encode trace ID
+TRACE_ID_HEADER = b'uber-trace-id'
+
+# Prefix for HTTP headers used to record baggage items
+BAGGAGE_HEADER_PREFIX = b'uberctx-'
