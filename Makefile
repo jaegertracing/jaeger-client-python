@@ -9,8 +9,7 @@ sources := $(shell find $(projects) tests -name '*.py' | grep -v version.py | gr
 html_report := --cov-report html
 test_args := --cov-report term-missing --cov-report xml --junitxml junit.xml
 
-# TODO re-enable once crossdock tests are added
-# include crossdock/rules.mk
+include crossdock/rules.mk
 
 PY_PATH = $(PYTHONPATH):$(PWD)
 
