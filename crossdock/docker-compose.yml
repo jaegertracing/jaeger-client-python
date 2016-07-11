@@ -20,6 +20,7 @@ services:
 
             - BEHAVIOR_TRACE=client,s1name,sampled,s2name,s2transport,s3name,s3transport
 
+            - REPORT=compact
     go:
         image: jaegertracing/jaeger-client-go
         ports:
