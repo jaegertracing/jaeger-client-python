@@ -22,7 +22,7 @@ services:
 
             - REPORT=compact
     go:
-        image: jaegertracing/jaeger-client-go
+        image: jaegertracing/xdock-go
         ports:
             - "8080-8082"
 
