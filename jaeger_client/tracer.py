@@ -80,6 +80,9 @@ class Tracer(opentracing.Tracer):
                 # TODO only the first reference is currently used
                 references = references[0]
             parent = references.referee
+            # allow Span to be passed as referee, not just SpanContext
+            if isinstance(parent, Span):
+                parent = parent.context
 
         rpc_server = tags and \
             tags.get(ext_tags.SPAN_KIND) == ext_tags.SPAN_KIND_RPC_SERVER
@@ -116,6 +119,12 @@ class Tracer(opentracing.Tracer):
         codec = self.codecs.get(format, None)
         if codec is None:
             raise UnsupportedFormatException(format)
+        if isinstance(span_context, Span):
+            # be flexible and allow Span as argument, not only SpanContext
+            span_context = span_context.context
+        if not isinstance(span_context, SpanContext):
+            raise ValueError(
+                'Expecting Jaeger SpanContext, not %s', type(span_context))
         codec.inject(span_context=span_context, carrier=carrier)
 
     def extract(self, format, carrier):
