@@ -31,7 +31,8 @@ class APITest(unittest.TestCase, APICompatibilityCheckMixin):
 
     reporter = NullReporter()
     sampler = ConstSampler(True)
-    _tracer = Tracer('test_service_1', reporter, sampler)
+    _tracer = Tracer(
+        service_name='test_service_1', reporter=reporter, sampler=sampler)
 
     def tracer(self):
         return APITest._tracer
