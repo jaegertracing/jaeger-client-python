@@ -33,6 +33,7 @@ setup(
         # we want thrift>=0.9.2.post1,<0.9.3, but we let the users pin to that
         'thrift',
         'tornado>=4.3,<5',
+        'threadloop>=1',
         'opentracing==2.0.0.dev1',
 <<<<<<< 50ec20e6f24e85d7c14e09a5d9ddfaf7d59e82b7
         'tchannel>=0.24,<1.0',  # TODO this should be removed
