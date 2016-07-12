@@ -19,13 +19,11 @@
 # THE SOFTWARE.
 
 from __future__ import absolute_import
-import threading
 import time
 
 import opentracing
 from opentracing.ext import tags as ext_tags
-from . import thrift
-from . import codecs
+from . import codecs, thrift
 
 SAMPLED_FLAG = 0x01
 DEBUG_FLAG = 0x02
@@ -33,26 +31,19 @@ DEBUG_FLAG = 0x02
 
 class Span(opentracing.Span):
     """Implements opentracing.Span with Zipkin semantics."""
-    def __init__(self, trace_id, span_id, parent_id, flags,
-                 operation_name, tracer, tags=None, baggage=None,
-                 start_time=None):
-        super(Span, self).__init__(tracer=tracer)
-        self.trace_id = trace_id
-        self.span_id = span_id
-        self.parent_id = parent_id
-        self.flags = flags
+    def __init__(self, context, tracer, operation_name,
+                 tags=None, start_time=None):
+        super(Span, self).__init__(context=context, tracer=tracer)
         self.operation_name = operation_name
         self.start_time = start_time or time.time()
         self.end_time = None
         self.kind = None  # default to local span, unless RPC kind is set
         self.peer = None
         self.component = None
-        self.update_lock = threading.Lock()
         # we store tags and logs as Zipkin native thrift BinaryAnnotation and
         # Annotation structures, to avoid creating intermediate objects
         self.tags = []
         self.logs = []
-        self.baggage = baggage
         if tags:
             for k, v in tags.iteritems():
                 self.set_tag(k, v)
@@ -64,7 +55,7 @@ class Span(opentracing.Span):
         :param operation_name: the new operation name
         :return: Returns the Span itself, for call chaining.
         """
-        with self.update_lock:
+        with self.context.update_lock:
             self.operation_name = operation_name
         return self
 
@@ -98,7 +89,7 @@ class Span(opentracing.Span):
                 handled = special(self, value)
             if not handled:
                 tag = thrift.make_string_tag(key, str(value))
-                with self.update_lock:
+                with self.context.update_lock:
                     self.tags.append(tag)
         return self
 
@@ -140,7 +131,7 @@ class Span(opentracing.Span):
                 err = thrift.make_string_tag('error', 'true')
             else:
                 err = None
-            with self.update_lock:
+            with self.context.update_lock:
                 self.logs.append(log)
                 if tag:
                     self.tags.append(tag)
@@ -148,25 +139,11 @@ class Span(opentracing.Span):
                     self.tags.append(err)
         return self
 
-    def set_baggage_item(self, key, value):
-        with self.update_lock:
-            if self.baggage is None:
-                self.baggage = {}
-            self.baggage[_normalize_baggage_key(key)] = str(value)
-        return self
-
-    def get_baggage_item(self, key):
-        with self.update_lock:
-            if self.baggage:
-                return self.baggage.get(_normalize_baggage_key(key), None)
-            else:
-                return None
-
     def is_sampled(self):
-        return self.flags & SAMPLED_FLAG == SAMPLED_FLAG
+        return self.context.flags & SAMPLED_FLAG == SAMPLED_FLAG
 
     def is_debug(self):
-        return self.flags & DEBUG_FLAG == DEBUG_FLAG
+        return self.context.flags & DEBUG_FLAG == DEBUG_FLAG
 
     def is_rpc(self):
         return self.kind == ext_tags.SPAN_KIND_RPC_CLIENT or \
@@ -175,24 +152,40 @@ class Span(opentracing.Span):
     def is_rpc_client(self):
         return self.kind == ext_tags.SPAN_KIND_RPC_CLIENT
 
+    @property
+    def trace_id(self):
+        return self.context.trace_id
+
+    @property
+    def span_id(self):
+        return self.context.span_id
+
+    @property
+    def parent_id(self):
+        return self.context.parent_id
+
+    @property
+    def flags(self):
+        return self.context.flags
+
     def __repr__(self):
-        c = codecs.trace_context_to_string(
-            trace_id=self.trace_id, span_id=self.span_id,
-            parent_id=self.parent_id, flags=self.flags)
-        return "%s %s.%s" % (c, self.tracer.service_name, self.operation_name)
+        c = codecs.span_context_to_string(
+            trace_id=self.context.trace_id, span_id=self.context.span_id,
+            parent_id=self.context.parent_id, flags=self.context.flags)
+        return '%s %s.%s' % (c, self.tracer.service_name, self.operation_name)
 
 
 def _set_sampling_priority(span, value):
-    with span.update_lock:
+    with span.context.update_lock:
         if value > 0:
-            span.flags |= SAMPLED_FLAG | DEBUG_FLAG
+            span.context.flags |= SAMPLED_FLAG | DEBUG_FLAG
         else:
-            span.flags &= ~SAMPLED_FLAG
+            span.context.flags &= ~SAMPLED_FLAG
     return True
 
 
 def _set_peer_service(span, value):
-    with span.update_lock:
+    with span.context.update_lock:
         if span.peer is None:
             span.peer = {'service_name': value}
         else:
@@ -201,7 +194,7 @@ def _set_peer_service(span, value):
 
 
 def _set_peer_host_ipv4(span, value):
-    with span.update_lock:
+    with span.context.update_lock:
         if span.peer is None:
             span.peer = {'ipv4': value}
         else:
@@ -210,7 +203,7 @@ def _set_peer_host_ipv4(span, value):
 
 
 def _set_peer_port(span, value):
-    with span.update_lock:
+    with span.context.update_lock:
         if span.peer is None:
             span.peer = {'port': value}
         else:
@@ -219,7 +212,7 @@ def _set_peer_port(span, value):
 
 
 def _set_span_kind(span, value):
-    with span.update_lock:
+    with span.context.update_lock:
         if value is None or value == ext_tags.SPAN_KIND_RPC_CLIENT or \
                 value == ext_tags.SPAN_KIND_RPC_SERVER:
             span.kind = value
@@ -228,13 +221,10 @@ def _set_span_kind(span, value):
 
 
 def _set_component(span, value):
-    with span.update_lock:
+    with span.context.update_lock:
         span.component = value
     return True
 
-
-def _normalize_baggage_key(key):
-    return str(key).lower().replace('_', '-')
 
 # Register handlers for special tags.
 # Handler returns True if special tag was processed.

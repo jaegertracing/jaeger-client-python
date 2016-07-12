@@ -19,18 +19,38 @@
 # THE SOFTWARE.
 
 from __future__ import absolute_import
+import threading
 
-# This is because thrift for python doesn't have 'package_prefix'.
-# The thrift compiled libraries refer to each other relative to their subdir.
-import jaeger_client.thrift_gen as modpath
-import sys
-sys.path.append(modpath.__path__[0])
+import opentracing
 
-from .tracer import Tracer  # noqa
-from .config import Config  # noqa
-from .span import Span  # noqa
-from .span_context import SpanContext  # noqa
-from .sampler import ConstSampler  # noqa
-from .sampler import ProbabilisticSampler  # noqa
-from .sampler import RateLimitingSampler  # noqa
-from .sampler import RemoteControlledSampler  # noqa
+
+class SpanContext(opentracing.SpanContext):
+    __slots__ = ['trace_id', 'span_id', 'parent_id', 'flags',
+                 'baggage', 'update_lock']
+
+    """Implements opentracing.SpanContext"""
+    def __init__(self, trace_id, span_id, parent_id, flags, baggage=None):
+        self.trace_id = trace_id
+        self.span_id = span_id
+        self.parent_id = parent_id
+        self.flags = flags
+        self.baggage = baggage
+        self.update_lock = threading.Lock()
+
+    def set_baggage_item(self, key, value):
+        with self.update_lock:
+            if self.baggage is None:
+                self.baggage = {}
+            self.baggage[_normalize_baggage_key(key)] = str(value)
+        return self
+
+    def get_baggage_item(self, key):
+        with self.update_lock:
+            if self.baggage:
+                return self.baggage.get(_normalize_baggage_key(key), None)
+            else:
+                return None
+
+
+def _normalize_baggage_key(key):
+    return str(key).lower().replace('_', '-')

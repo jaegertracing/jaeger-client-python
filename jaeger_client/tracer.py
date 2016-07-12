@@ -27,10 +27,12 @@ import logging
 import random
 import opentracing
 from opentracing import Format, UnsupportedFormatException
+from opentracing.ext import tags as ext_tags
 
 from .constants import MAX_ID_BITS
 from .codecs import TextCodec
 from .span import Span, SAMPLED_FLAG
+from .span_context import SpanContext
 from .version import __version__
 from .thrift import ipv4_to_int
 from .metrics import Metrics
@@ -53,7 +55,7 @@ class Tracer(opentracing.Tracer):
 
     def start_span(self,
                    operation_name=None,
-                   parent=None,
+                   references=None,
                    tags=None,
                    start_time=None):
         """
@@ -61,9 +63,9 @@ class Tracer(opentracing.Tracer):
 
         :param operation_name: name of the operation represented by the new
             span from the perspective of the current service.
-        :param parent: an optional parent Span. If specified, the returned Span
-            will be a child of `parent` in `parent`'s trace. If unspecified,
-            the returned Span will be the root of its own trace.
+        :param references: (optional) either a single Reference object or a
+            list of Reference objects that identify one or more parent
+            SpanContexts. (See the Reference documentation for detail)
         :param tags: optional dictionary of Span Tags. The caller gives up
             ownership of that dictionary, because the Tracer may use it as-is
             to avoid extra data copying.
@@ -72,6 +74,16 @@ class Tracer(opentracing.Tracer):
 
         :return: Returns an already-started Span instance.
         """
+        parent = None
+        if references:
+            if isinstance(references, list):
+                # TODO only the first reference is currently used
+                references = references[0]
+            parent = references.referee
+
+        rpc_server = tags and \
+            tags.get(ext_tags.SPAN_KIND) == ext_tags.SPAN_KIND_RPC_SERVER
+
         if parent is None:
             trace_id = self.random_id()
             span_id = trace_id
@@ -81,36 +93,36 @@ class Tracer(opentracing.Tracer):
         else:
             with parent.update_lock:
                 trace_id = parent.trace_id
-                span_id = self.random_id()
-                parent_id = parent.span_id
+                if rpc_server:
+                    # Zipkin-style one-span-per-RPC
+                    span_id = parent.span_id
+                    parent_id = parent.parent_id
+                else:
+                    span_id = self.random_id()
+                    parent_id = parent.span_id
                 flags = parent.flags
                 baggage = copy.deepcopy(parent.baggage)
 
-        span = Span(trace_id=trace_id, span_id=span_id,
-                    parent_id=parent_id, flags=flags,
-                    tracer=self, operation_name=operation_name,
-                    tags=tags, baggage=baggage, start_time=start_time)
+        span_ctx = SpanContext(trace_id=trace_id, span_id=span_id,
+                               parent_id=parent_id, flags=flags,
+                               baggage=baggage)
+        span = Span(context=span_ctx, tracer=self,
+                    operation_name=operation_name,
+                    tags=tags, start_time=start_time)
 
-        return self.start_span_internal(span=span, join=False)
+        return self.start_span_internal(span=span, join=rpc_server)
 
-    def inject(self, span, format, carrier):
+    def inject(self, span_context, format, carrier):
         codec = self.codecs.get(format, None)
         if codec is None:
             raise UnsupportedFormatException(format)
-        codec.inject(span=span, carrier=carrier)
+        codec.inject(span_context=span_context, carrier=carrier)
 
-    def join(self, operation_name, format, carrier):
+    def extract(self, format, carrier):
         codec = self.codecs.get(format, None)
         if codec is None:
             raise UnsupportedFormatException(format)
-        trace_id, span_id, parent_id, flags, baggage = codec.extract(carrier)
-        if trace_id is None:
-            return None
-        span = Span(trace_id=trace_id, span_id=span_id,
-                    parent_id=parent_id, flags=flags,
-                    tracer=self, operation_name=operation_name,
-                    baggage=baggage)
-        return self.start_span_internal(span=span, join=True)
+        return codec.extract(carrier)
 
     def close(self):
         """
@@ -125,7 +137,7 @@ class Tracer(opentracing.Tracer):
 
     def start_span_internal(self, span, join=False):
         span.set_tag(key='jaegerClient', value='Python-%s' % __version__)
-        if not span.parent_id:
+        if not span.context.parent_id:
             if span.is_sampled():
                 if join:
                     self.metrics.count(Metrics.TRACES_JOINED_SAMPLED, 1)

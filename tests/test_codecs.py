@@ -22,12 +22,12 @@ from __future__ import absolute_import
 
 import unittest
 
-from jaeger_client import Span
+from jaeger_client.span_context import SpanContext
 from jaeger_client.codecs import TextCodec, Codec
-from jaeger_client.codecs import trace_context_from_string
-from jaeger_client.codecs import trace_context_to_string
+from jaeger_client.codecs import span_context_from_string
+from jaeger_client.codecs import span_context_to_string
 from opentracing.propagation import InvalidCarrierException
-from opentracing.propagation import TraceCorruptedException
+from opentracing.propagation import SpanContextCorruptedException
 
 
 class TestCodecs(unittest.TestCase):
@@ -41,7 +41,7 @@ class TestCodecs(unittest.TestCase):
     def test_wrong_carrier(self):
         codec = TextCodec()
         with self.assertRaises(InvalidCarrierException):
-            codec.inject(span={}, carrier=[])  # array is no good
+            codec.inject(span_context={}, carrier=[])  # array is no good
         with self.assertRaises(InvalidCarrierException):
             codec.extract(carrier=[])
 
@@ -64,14 +64,14 @@ class TestCodecs(unittest.TestCase):
 
         for test in tests:
             try:
-                val = trace_context_from_string(test[0])
-            except TraceCorruptedException:
+                val = span_context_from_string(test[0])
+            except SpanContextCorruptedException:
                 val = None
             self.assertEqual(val, None, test[1])
 
     def test_trace_context_from_to_string(self):
-        to_string = trace_context_to_string
-        from_string = trace_context_from_string
+        to_string = span_context_to_string
+        from_string = span_context_from_string
 
         tests = [
             [(256L, 127L, None, 1), '100:7f:0:1'],
@@ -87,7 +87,7 @@ class TestCodecs(unittest.TestCase):
         ctx_rev = from_string(['100:7f:100:0'])
         assert ctx_rev == (256L, 127L, 256L, 0), 'Array is acceptable'
 
-        with self.assertRaises(TraceCorruptedException):
+        with self.assertRaises(SpanContextCorruptedException):
             from_string(['100:7f:100:0', 'garbage'])
 
         ctx_rev = from_string(u'100:7f:100:0')
@@ -96,16 +96,15 @@ class TestCodecs(unittest.TestCase):
     def test_context_to_readable_headers(self):
         codec = TextCodec(trace_id_header='Trace_ID',
                           baggage_header_prefix='Trace-Attr-')
-        span = Span(trace_id=256, span_id=127, parent_id=None, flags=1,
-                    operation_name='x', tracer=None, start_time=1)
+        ctx = SpanContext(trace_id=256, span_id=127, parent_id=None, flags=1)
         carrier = {}
-        codec.inject(span, carrier)
+        codec.inject(ctx, carrier)
         assert carrier == {'trace-id': '100:7f:0:1'}
 
-        span.set_baggage_item('Fry', 'Leela')
-        span.set_baggage_item('Bender', 'Countess de la Roca')
+        ctx.set_baggage_item('Fry', 'Leela')
+        ctx.set_baggage_item('Bender', 'Countess de la Roca')
         carrier = {}
-        codec.inject(span, carrier)
+        codec.inject(ctx, carrier)
         assert carrier == {
             'trace-id': '100:7f:0:1',
             'trace-attr-bender': 'Countess de la Roca',
@@ -116,14 +115,14 @@ class TestCodecs(unittest.TestCase):
                           baggage_header_prefix='Trace-Attr-')
 
         ctx = codec.extract(dict())
-        assert ctx[0] is None, 'No headers'
+        assert ctx is None, 'No headers'
 
         bad_headers = {
             '_Trace_ID': '100:7f:0:1',
             '_trace-attr-Kiff': 'Amy'
         }
         ctx = codec.extract(bad_headers)
-        assert ctx[0] is None, 'Bad header names'
+        assert ctx is None, 'Bad header names'
 
         with self.assertRaises(InvalidCarrierException):
             codec.extract(carrier=[])  # not a dict
@@ -132,7 +131,7 @@ class TestCodecs(unittest.TestCase):
             'Trace-ID': '100:7f:0:1xxx',
             'trace-attr-Kiff': 'Amy'
         }
-        with self.assertRaises(TraceCorruptedException):
+        with self.assertRaises(SpanContextCorruptedException):
             codec.extract(good_headers_bad_values)
 
         headers = {
@@ -140,12 +139,12 @@ class TestCodecs(unittest.TestCase):
             'trace-attr-Kiff': 'Amy',
             'trace-atTR-HERMES': 'LaBarbara'
         }
-        trace_id, span_id, parent_id, flags, baggage = codec.extract(headers)
-        assert trace_id == 256
-        assert span_id == 127
-        assert parent_id is None
-        assert flags == 1
-        assert baggage == {'kiff': 'Amy', 'hermes': 'LaBarbara'}
+        ctx = codec.extract(headers)
+        assert ctx.trace_id == 256
+        assert ctx.span_id == 127
+        assert ctx.parent_id is None
+        assert ctx.flags == 1
+        assert ctx.baggage == {'kiff': 'Amy', 'hermes': 'LaBarbara'}
 
     def test_context_from_large_ids(self):
         codec = TextCodec(trace_id_header='Trace_ID',
@@ -153,13 +152,13 @@ class TestCodecs(unittest.TestCase):
         headers = {
             'Trace-ID': 'FFFFFFFFFFFFFFFF:FFFFFFFFFFFFFFFF:FFFFFFFFFFFFFFFF:1',
         }
-        trace_id, span_id, parent_id, flags, baggage = codec.extract(headers)
-        assert trace_id == 0xFFFFFFFFFFFFFFFFL
-        assert trace_id == (1L << 64) - 1
-        assert trace_id > 0
-        assert span_id == 0xFFFFFFFFFFFFFFFFL
-        assert span_id == (1L << 64) - 1
-        assert span_id > 0
-        assert parent_id == 0xFFFFFFFFFFFFFFFFL
-        assert parent_id == (1L << 64) - 1
-        assert parent_id > 0
+        context = codec.extract(headers)
+        assert context.trace_id == 0xFFFFFFFFFFFFFFFFL
+        assert context.trace_id == (1L << 64) - 1
+        assert context.trace_id > 0
+        assert context.span_id == 0xFFFFFFFFFFFFFFFFL
+        assert context.span_id == (1L << 64) - 1
+        assert context.span_id > 0
+        assert context.parent_id == 0xFFFFFFFFFFFFFFFFL
+        assert context.parent_id == (1L << 64) - 1
+        assert context.parent_id > 0

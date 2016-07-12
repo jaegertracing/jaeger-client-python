@@ -22,7 +22,7 @@ import mock
 import random
 import tornado.httputil
 
-from opentracing import Format
+from opentracing import Format, child_of
 from opentracing.ext import tags as ext_tags
 from jaeger_client import ConstSampler, Tracer
 from jaeger_client.thrift_gen.zipkincore import constants as g
@@ -69,7 +69,7 @@ def test_start_trace(tracer):
 
 def test_start_child(tracer):
     root = tracer.start_span("test")
-    span = tracer.start_span("test", parent=root)
+    span = tracer.start_span("test", references=child_of(root.context))
     span.set_tag(ext_tags.SPAN_KIND, ext_tags.SPAN_KIND_RPC_SERVER)
     assert span.is_sampled(), "Must be sampled"
     assert span.trace_id == root.trace_id, "Must have the same trace id"
@@ -86,7 +86,7 @@ def test_start_child(tracer):
 
 def test_child_span(tracer):
     span = tracer.start_span("test")
-    child = tracer.start_span("child", parent=span)
+    child = tracer.start_span("child", references=child_of(span.context))
     child.set_tag(ext_tags.SPAN_KIND, ext_tags.SPAN_KIND_RPC_CLIENT)
     child.set_tag('bender', 'is great')
     child.log_event('kiss-my-shiny-metal-...')
@@ -104,7 +104,7 @@ def test_child_span(tracer):
 
     tracer.sampler = ConstSampler(False)
     span = tracer.start_span("test")
-    child = tracer.start_span("child", parent=span)
+    child = tracer.start_span("child", references=child_of(span.context))
     child.set_tag('bender', 'is great')
     child.log_event('kiss-my-shiny-metal-...')
     child.finish()
@@ -128,11 +128,13 @@ def test_sampler_effects(tracer):
 def test_serialization(tracer):
     span = tracer.start_span('help')
     carrier = {}
-    tracer.inject(span=span, format=Format.TEXT_MAP, carrier=carrier)
+    tracer.inject(
+        span_context=span.context, format=Format.TEXT_MAP, carrier=carrier
+    )
     assert len(carrier) > 0
     h_ctx = tornado.httputil.HTTPHeaders(carrier)
     assert 'UBER-TRACE-ID' in h_ctx
-    span2 = tracer.join('x', Format.TEXT_MAP, carrier)
+    span2 = tracer.extract(Format.TEXT_MAP, carrier)
     assert span2 is not None
     assert span2.trace_id == span.trace_id
     assert span2.span_id == span.span_id
