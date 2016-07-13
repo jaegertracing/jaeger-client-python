@@ -67,7 +67,10 @@ def get_boolean(string, default):
 
 def local_ip():
     """Get the local network IP of this machine"""
-    ip = socket.gethostbyname(socket.gethostname())
+    try:
+        ip = socket.gethostbyname(socket.gethostname())
+    except IOError:
+        ip = socket.gethostbyname('localhost')
     if ip.startswith('127.'):
         # Check eth0, eth1, eth2, en0, ...
         interfaces = [

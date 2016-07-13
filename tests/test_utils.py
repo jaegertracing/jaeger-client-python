@@ -73,3 +73,12 @@ class ConfigTests(unittest.TestCase):
         er._last_error_reported_at=0
         er.error('foo', 1, 'error args')
         assert mock_logger.error.call_args == (('error args',),)
+
+
+def test_local_ip_does_not_blow_up():
+    import socket
+    import jaeger_client.utils
+    socket.gethostname()
+    with mock.patch('socket.gethostbyname',
+                    side_effect=[IOError(), '127.0.0.1']):
+        jaeger_client.utils.local_ip()
