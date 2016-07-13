@@ -112,7 +112,7 @@ class Server(object):
         sstr = serializer.start_trace_request_from_json(request.body)
 
         def update_span(span):
-            span.set_baggage_item(constants.baggage_key, sstr.baggage)
+            span.context.set_baggage_item(constants.baggage_key, sstr.baggage)
             span.set_tag(ext_tags.SAMPLING_PRIORITY, sstr.sampled)
 
         self.handle_trace_request(request, sstr, update_span, response_writer)
@@ -130,9 +130,10 @@ class Server(object):
         if span_handler:
             span_handler(span)
 
-        traceId = "%x" % span.trace_id
-        observed_span = ObservedSpan(traceId, span.is_sampled(),
-                                     span.get_baggage_item(constants.baggage_key))
+        trace_id = "%x" % span.trace_id
+        observed_span = ObservedSpan(
+            trace_id, span.is_sampled(),
+            span.context.get_baggage_item(constants.baggage_key))
 
         tr = TraceResponse(span=observed_span)
 
