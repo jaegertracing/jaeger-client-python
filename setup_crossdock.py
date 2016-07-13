@@ -19,4 +19,7 @@ setup(
             'crossdock = crossdock.server.server:serve',
         ]
     },
+    install_requires=[
+        'tchannel<0.25',
+    ],
 )

@@ -125,27 +125,6 @@ def test_sampler_effects(tracer):
     tracer.close()
 
 
-def test_default_tracer():
-    class Sender(object):
-        def __init__(self):
-            self._channel = mock.MagicMock()
-            self.io_loop = mock.MagicMock()
-
-    channel = Sender()
-    sampler = ConstSampler(False)
-    tracer = Tracer.default_tracer(channel=channel, service_name='service')
-    assert tracer.reporter._channel == channel
-
-    reporter = 'reporter'
-    tracer = Tracer.default_tracer(channel=channel, service_name='service',
-                                   reporter=reporter)
-    assert tracer.reporter == reporter
-
-    tracer = Tracer.default_tracer(channel=channel, service_name='service',
-                                   sampler=sampler)
-    assert tracer.sampler == sampler
-
-
 def test_serialization(tracer):
     span = tracer.start_span('help')
     carrier = {}

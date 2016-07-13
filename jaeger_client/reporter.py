@@ -76,12 +76,12 @@ class LoggingReporter(NullReporter):
 
 
 class Reporter(NullReporter):
-    """Receives completed spans from Tracer and submits them to Collector."""
+    """Receives completed spans from Tracer and submits them out of process."""
     def __init__(self, channel, queue_capacity=100, batch_size=10,
                  flush_interval=DEFAULT_FLUSH_INTERVAL, io_loop=None,
                  error_reporter=None, metrics=None, **kwargs):
         """
-        :param channel: TChannel instance
+        :param channel: a communication channel to jaeger-agent
         :param queue_capacity: how many spans we can hold in memory before
             starting to drop spans
         :param batch_size: how many spans we can submit at once to Collector
@@ -102,11 +102,12 @@ class Reporter(NullReporter):
         self.metrics = metrics or Metrics()
         self.error_reporter = error_reporter or ErrorReporter(self.metrics)
         self.logger = kwargs.get('logger', default_logger)
+        self.agent = Agent.Client(self._channel, self)
 
         if queue_capacity < batch_size:
             raise ValueError('Queue capacity cannot be less than batch size')
 
-        self.io_loop = io_loop or ioloop_util.get_io_loop(channel)
+        self.io_loop = io_loop or channel.io_loop
         if self.io_loop is None:
             self.logger.error('Jaeger Reporter has no IOLoop')
         else:
@@ -165,54 +166,15 @@ class Reporter(NullReporter):
                 spans = spans[:0]
         self.logger.info('Span publisher exists')
 
-    @tornado.gen.coroutine
-    def _submit(self, spans):
-        if not spans:
-            return
-        try:
-            tr, ts = thrift.make_submit_batch_request(spans)
-            yield self._send(tr, ts)
-            self.metrics.count(Metrics.REPORTER_SUCCESS, len(spans))
-        except Exception as e:
-            self.error_reporter.error(
-                Metrics.REPORTER_FAILURE, len(spans),
-                'Failed to submit trace to tcollector: %s', e)
-
-    def _send(self, tr, ts):
-        return self._channel.thrift(tr.submitZipkinBatch(ts), timeout=2)
-
-    def close(self):
-        """
-        Ensure that all spans from the queue are submitted.
-        Returns Future that will be completed once the queue is empty.
-        """
-        with self.stop_lock:
-            self.stopped = True
-
-        return ioloop_util.submit(self._flush, io_loop=self.io_loop)
-
-    @tornado.gen.coroutine
-    def _flush(self):
-        yield self.queue.put(self.stop)
-        yield self.queue.join()
-
-
-class LocalAgentReporter(Reporter):
-    """Reports spans to local-agent."""
-    def __init__(self, channel, queue_capacity=100, batch_size=10,
-                 flush_interval=DEFAULT_FLUSH_INTERVAL, io_loop=None,
-                 error_reporter=None, metrics=None, **kwargs):
-
-        super(LocalAgentReporter, self).__init__(channel, queue_capacity, batch_size,
-                                                 flush_interval, io_loop, error_reporter,
-                                                 metrics, **kwargs)
-        self.agent = Agent.Client(self._channel, self)
-
     # method for protocol factory
     def getProtocol(self, transport):
+        """
+        Implements Thrift ProtocolFactory interface
+        :param: transport:
+        :return: Thrift compact protocol
+        """
         return TCompactProtocol.TCompactProtocol(transport)
 
-    # overrides for Reporter
     @tornado.gen.coroutine
     def _submit(self, spans):
         if not spans:
@@ -242,6 +204,21 @@ class LocalAgentReporter(Reporter):
         :return:
         """
         return self.agent.emitZipkinBatch(spans)
+
+    def close(self):
+        """
+        Ensure that all spans from the queue are submitted.
+        Returns Future that will be completed once the queue is empty.
+        """
+        with self.stop_lock:
+            self.stopped = True
+
+        return ioloop_util.submit(self._flush, io_loop=self.io_loop)
+
+    @tornado.gen.coroutine
+    def _flush(self):
+        yield self.queue.put(self.stop)
+        yield self.queue.join()
 
 
 class CompositeReporter(NullReporter):

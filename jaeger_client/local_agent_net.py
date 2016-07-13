@@ -21,12 +21,13 @@
 from __future__ import absolute_import
 from threadloop import ThreadLoop
 import tornado
+import tornado.httpclient
 from tornado.httputil import url_concat
 import json
-from . import ioloop_util
 from .TUDPTransport import TUDPTransport
-from jaeger_client.thrift_gen.sampling import SamplingManager as \
-    sampling_manager
+from jaeger_client.thrift_gen.sampling import (
+    SamplingManager as sampling_manager  # TODO why need to rename
+)
 from concurrent.futures import Future
 from thrift.transport.TTransport import TBufferedTransport
 
@@ -42,28 +43,27 @@ class LocalAgentHTTP(object):
             defaults=dict(request_timeout=timeout))
         # Properly url encode the params
         url = url_concat(
-            "http://%s:%d/" % (self.agent_http_host, self.agent_http_port),
-            [("service", service_name)])
+            'http://%s:%d/' % (self.agent_http_host, self.agent_http_port),
+            [('service', service_name)])
         return http_client.fetch(url)
 
 
 class LocalAgentSender(TBufferedTransport):
     """
-    LocalAgentSender implements a everything necessary to communicate with local jaeger-agent. This
-    class is designed to work in tornado and non-tornado environments. If in torndado, pass in
-    the ioloop, if not then LocalAgentSender will create one for itself.
+    LocalAgentSender implements a everything necessary to communicate with
+    local jaeger-agent. This class is designed to work in tornado and
+    non-tornado environments. If in torndado, pass in the ioloop, if not
+    then LocalAgentSender will create one for itself.
 
-    NOTE: LocalAgentSender derives from TBufferedTransport. This will buffer up all written
-    data until flush() is called. Flush gets called at the end of the batch span submission
-    call.
+    NOTE: LocalAgentSender derives from TBufferedTransport. This will buffer
+    up all written data until flush() is called. Flush gets called at the
+    end of the batch span submission call.
     """
 
     def __init__(self, host, sampling_port, reporting_port, ioloop=None):
         # ioloop
-        if ioloop is None:
-            self.create_new_threadloop()
-        else:
-            self.io_loop = ioloop
+        self._thread_loop = None
+        self.io_loop = ioloop or self.create_new_thread_loop()
 
         # http sampling
         self.local_agent_http = LocalAgentHTTP(host, sampling_port)
@@ -73,19 +73,24 @@ class LocalAgentSender(TBufferedTransport):
         udp = TUDPTransport(host, reporting_port)
         TBufferedTransport.__init__(self, udp)
 
-    def create_new_threadloop(self):
-        self._threadloop = ThreadLoop()
-        if not self._threadloop.is_ready():
-            self._threadloop.start()
-        self.io_loop = ioloop_util.get_io_loop(self)
+    def create_new_thread_loop(self):
+        """
+        Create a daemonized thread that will run Tornado IOLoop.
+        :return: the IOLoop backed by the new thread.
+        """
+        self._thread_loop = ThreadLoop()
+        if not self._thread_loop.is_ready():
+            self._thread_loop.start()
+        return self._thread_loop._io_loop
 
     def readFrame(self):
         """Empty read frame that is never ready"""
         return Future()
 
-    # Passthroughs for the http
+    # Pass-through for the http
     def request_sampling_strategy(self, service_name, timeout):
-        return self.local_agent_http.request_sampling_strategy(service_name, timeout)
+        return self.local_agent_http.request_sampling_strategy(
+            service_name, timeout)
 
 
 def parse_sampling_strategy(body):
@@ -97,13 +102,16 @@ def parse_sampling_strategy(body):
             from jaeger_client.sampler import ProbabilisticSampler
             return ProbabilisticSampler(rate=sampling_rate)
         else:
-            raise Exception('Probabilistic sampling rate not in [0, 1] range: %s' % sampling_rate)
+            raise ValueError(
+                'Probabilistic sampling rate not in [0, 1] range: %s' %
+                sampling_rate)
     elif s_type == sampling_manager.SamplingStrategyType.RATE_LIMITING:
         mtps = response['rateLimitingSampling']['maxTracesPerSecond']
         if 0 <= mtps < 500:
             from jaeger_client.sampler import RateLimitingSampler
             return RateLimitingSampler(max_traces_per_second=mtps)
         else:
-            raise Exception('Rate limiting parameter not in [0, 500] range: %s' % mtps)
+            raise ValueError(
+                'Rate limiting parameter not in [0, 500] range: %s' % mtps)
     else:
-        raise Exception('Unsupported sampling strategy type: %s' % s_type)
+        raise ValueError('Unsupported sampling strategy type: %s' % s_type)
