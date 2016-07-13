@@ -35,12 +35,8 @@ setup(
         'tornado>=4.3,<5',
         'threadloop>=1',
         'opentracing==2.0.0.dev1',
-<<<<<<< 50ec20e6f24e85d7c14e09a5d9ddfaf7d59e82b7
-        'tchannel>=0.24,<1.0',  # TODO this should be removed
-        'opentracing_instrumentation==2.0.0.dev1',  # TODO only used to init headers config, should be removed
-=======
-        'opentracing_instrumentation==2.0.0.dev1',  # TODO should be removed and used from setup libs
->>>>>>> Remove tchannel
+        # TODO only used to init headers config, should be removed
+        'opentracing_instrumentation==2.0.0.dev1',
     ],
     test_suite='tests',
     extras_require={
