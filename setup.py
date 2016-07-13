@@ -34,7 +34,7 @@ setup(
         'tornado>=4.3,<5',
         'opentracing==1.0rc4',
         'tchannel>=0.24,<1.0',  # TODO this should be removed
-        'opentracing_instrumentation>=1.0.1,<1.1',  # TODO only used in tchannel patching, should be removed
+        'opentracing_instrumentation>=1.0.1,<2',  # TODO only used in tchannel patching, should be removed
     ],
     test_suite='tests',
     extras_require={

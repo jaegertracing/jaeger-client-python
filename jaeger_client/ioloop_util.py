@@ -22,20 +22,7 @@ from __future__ import absolute_import
 
 import sys
 from concurrent.futures import Future
-from tornado import gen, ioloop
-
-
-def get_io_loop(channel):
-    """
-    Extract IOLoop from TChannel instance, or get the current one.
-    Does not start a new one.
-    :param channel:
-    :return:
-    """
-    if hasattr(channel, '_threadloop') and \
-            hasattr(channel._threadloop, '_io_loop'):
-        return channel._threadloop._io_loop
-    return ioloop.IOLoop.current(instance=False)
+from tornado import gen
 
 
 def submit(fn, io_loop, *args, **kwargs):

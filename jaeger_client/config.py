@@ -67,11 +67,6 @@ class Config(object):
         else:
             # if metrics are explicitly disabled, use a dummy
             self._metrics = Metrics()
-        channel_factory = self.config.get('tchannel_factory', None)
-        if channel_factory is None:
-            self._channel_factory = lambda: None
-        else:
-            self._channel_factory = Config.load_symbol(channel_factory)
         self._service_name = config.get('service_name', service_name)
         if self._service_name is None:
             raise ValueError('service_name required in the config or param')
@@ -99,10 +94,6 @@ class Config(object):
     @property
     def logging(self):
         return get_boolean(self.config.get('logging', False), False)
-
-    @property
-    def tchannel_factory(self):
-        return self._channel_factory
 
     @property
     def sampler(self):

@@ -1,4 +1,6 @@
 import json
+import logging
+
 from crossdock.thrift_gen.tracetest.ttypes import JoinTraceRequest, StartTraceRequest, \
     Downstream, Transport, TraceResponse, ObservedSpan
 
@@ -56,7 +58,10 @@ def traceresponse_from_struct(i):
 
 
 def traceresponse_from_json(j):
-    return traceresponse_from_struct(json.loads(j))
+    try:
+        return traceresponse_from_struct(json.loads(j))
+    except:
+        logging.exception('Failed to parse JSON')
 
 # Generic
 

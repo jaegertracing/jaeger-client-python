@@ -1,3 +1,5 @@
+import logging
+
 import tornado.web
 import opentracing
 import tornado.ioloop
@@ -38,8 +40,9 @@ tchannel.hooks.register(OpenTracingHook())
 
 
 def serve():
-    '''main entry point'''
-    print "Python Tornado Crossdock Server Running ..."
+    """main entry point"""
+    logging.getLogger().setLevel(logging.DEBUG)
+    logging.info('Python Tornado Crossdock Server Running ...')
     tchannel.listen()
     app = make_app(Server())
     app.listen(DefaultClientPortHTTP)
