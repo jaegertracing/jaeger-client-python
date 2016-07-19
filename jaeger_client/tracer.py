@@ -27,16 +27,14 @@ import logging
 import random
 import opentracing
 from opentracing import Format, UnsupportedFormatException
-from tchannel.net import local_ip
 
 from .constants import MAX_ID_BITS
 from .codecs import TextCodec
 from .span import Span, SAMPLED_FLAG
-from .reporter import LocalAgentReporter
-from .sampler import LocalAgentControlledSampler
 from .version import __version__
 from .thrift import ipv4_to_int
 from .metrics import Metrics
+from .utils import local_ip
 
 logger = logging.getLogger('jaeger_tracing')
 
@@ -52,35 +50,6 @@ class Tracer(opentracing.Tracer):
         self.codecs = {
             Format.TEXT_MAP: TextCodec(),
         }
-
-    @staticmethod
-    def default_tracer(channel, service_name, reporter=None, sampler=None,
-                       metrics=None):
-        """Instantiate Tracer with default reporter and sampler, unless
-        alternatives are provided.
-
-        Default reporter submits traces over UDP to local agent.
-        Default sampler polls local agent for sampling strategy.
-
-        Normal clients (i.e. production code) should not be overriding reporter
-        and sampler.
-
-        :param channel: either TChannel or LocalAgentSender
-        :param service_name: canonical name of this service, unique but low
-            cardinality, i.e. do not include PID or host name or port
-            number, just the string name.
-        :param reporter: Jaeger Reporter, normally should be left to default
-        :param sampler: Jaeger Reporter, normally should be left to default
-        :param metrics:
-        :return: Jaeger Tracer
-        """
-        if reporter is None:
-            reporter = LocalAgentReporter(channel=channel)
-        if sampler is None:
-            sampler = LocalAgentControlledSampler(channel=channel,
-                                                  service_name=service_name)
-        return Tracer(service_name=service_name, reporter=reporter,
-                      sampler=sampler, metrics=metrics)
 
     def start_span(self,
                    operation_name=None,

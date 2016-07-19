@@ -21,7 +21,6 @@
 import socket
 import struct
 
-from tchannel import thrift_request_builder
 import jaeger_client.thrift_gen.zipkincore.ZipkinCollector as zipkin_collector
 import jaeger_client.thrift_gen.sampling.SamplingManager as sampling_manager
 from .thrift_gen.zipkincore.constants import SERVER_SEND, SERVER_RECV
@@ -132,17 +131,17 @@ def make_zipkin_spans(spans):
             event.host = endpoint
         with span.update_lock:
             add_zipkin_annotations(span=span, endpoint=endpoint)
-        zipkin_span = zipkin_collector.Span(
-            trace_id=id_to_int(span.trace_id),
-            name=span.operation_name,
-            id=id_to_int(span.span_id),
-            parent_id=id_to_int(span.parent_id),
-            annotations=span.logs,
-            binary_annotations=span.tags,
-            debug=span.is_debug(),
-            timestamp=timestamp_micros(span.start_time),
-            duration=timestamp_micros(span.end_time - span.start_time)
-        )
+            zipkin_span = zipkin_collector.Span(
+                trace_id=id_to_int(span.trace_id),
+                name=span.operation_name,
+                id=id_to_int(span.span_id),
+                parent_id=id_to_int(span.parent_id),
+                annotations=span.logs,
+                binary_annotations=span.tags,
+                debug=span.is_debug(),
+                timestamp=timestamp_micros(span.start_time),
+                duration=timestamp_micros(span.end_time - span.start_time)
+            )
         zipkin_spans.append(zipkin_span)
     return zipkin_spans
 
@@ -174,21 +173,6 @@ def add_zipkin_annotations(span, endpoint):
             component_name=span.component or span.tracer.service_name,
             endpoint=endpoint)
         span.tags.append(lc)
-
-
-def make_submit_batch_request(spans):
-    ts = make_zipkin_spans(spans)
-    tr = thrift_request_builder(service='tcollector',
-                                thrift_module=zipkin_collector,
-                                thrift_class_name='ZipkinCollector')
-    return tr, ts
-
-
-def make_get_sampling_strategy_request():
-    tr = thrift_request_builder(service="tcollector",
-                                thrift_module=sampling_manager,
-                                thrift_class_name='SamplingManager')
-    return tr
 
 
 def parse_sampling_strategy(response):

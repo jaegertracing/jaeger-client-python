@@ -61,18 +61,14 @@ def test_submit_batch(tracer):
     span = tracer.start_span("test-span")
     # add both types of annotations
     span.set_tag('bender', 'is great')
+    span.set_tag('peer.ipv4', 123123)
     span.log_event('kiss-my-shiny-metal-...')
     span.finish()  # to get the duration defined
     # verify that we can serialize the span
-    thrift.make_submit_batch_request([span])
+    _marshall_span(span)
 
 
-def test_make_get_sampling_strategy_request():
-    thrift.make_get_sampling_strategy_request()
-
-
-def test_large_ids(tracer):
-
+def _marshall_span(span):
     class TestTrans(TMemoryBuffer):
         def now_reading(self):
             """
@@ -82,21 +78,26 @@ def test_large_ids(tracer):
             """
             self._buffer = StringIO(self.getvalue())
 
+    spans = thrift.make_zipkin_spans([span])
+
+    # write and read them to test encoding
+    args = Agent.emitZipkinBatch_args(spans)
+    t = TestTrans()
+    prot = TCompactProtocol(t)
+    args.write(prot)
+    t.now_reading()
+    args.read(prot)
+
+
+def test_large_ids(tracer):
+
     def serialize(span_id):
         parent = Span(trace_id=span_id, span_id=span_id,
-                      parent_id=0, flags=1, operation_name='x',
-                      tracer=tracer)
+                      parent_id=0, flags=1,
+                      operation_name='x', tracer=tracer)
         span = tracer.start_span(operation_name='x', parent=parent)
         span.finish()
-        spans = thrift.make_zipkin_spans([span])
-
-        # write and read them to test encoding
-        args = Agent.emitZipkinBatch_args(spans)
-        t = TestTrans()
-        prot = TCompactProtocol(t)
-        args.write(prot)
-        t.now_reading()
-        args.read(prot)
+        _marshall_span(span)
 
     trace_id = 0
     serialize(trace_id)

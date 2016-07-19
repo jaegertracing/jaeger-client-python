@@ -22,16 +22,16 @@ from __future__ import absolute_import
 
 import unittest
 
-import mock
 from jaeger_client import ConstSampler, Tracer
+from jaeger_client.reporter import NullReporter
 from opentracing.harness.api_check import APICompatibilityCheckMixin
 
 
 class APITest(unittest.TestCase, APICompatibilityCheckMixin):
 
-    reporter = mock.MagicMock()
+    reporter = NullReporter()
     sampler = ConstSampler(True)
-    _tracer = Tracer.default_tracer(None, 'test_service_1', reporter, sampler)
+    _tracer = Tracer('test_service_1', reporter, sampler)
 
     def tracer(self):
         return APITest._tracer

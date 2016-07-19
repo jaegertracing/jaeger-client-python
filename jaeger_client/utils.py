@@ -17,7 +17,9 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-
+import fcntl
+import socket
+import struct
 import time
 
 from .metrics import Metrics
@@ -61,3 +63,36 @@ def get_boolean(string, default):
         return True
     else:
         return default
+
+
+def local_ip():
+    """Get the local network IP of this machine"""
+    try:
+        ip = socket.gethostbyname(socket.gethostname())
+    except IOError:
+        ip = socket.gethostbyname('localhost')
+    if ip.startswith('127.'):
+        # Check eth0, eth1, eth2, en0, ...
+        interfaces = [
+            i + str(n) for i in ("eth", "en", "wlan") for n in xrange(3)
+        ]  # :(
+        for interface in interfaces:
+            try:
+                ip = interface_ip(interface)
+                break
+            except IOError:
+                pass
+    return ip
+
+
+def interface_ip(interface):
+    """Determine the IP assigned to us by the given network interface."""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    return socket.inet_ntoa(
+        fcntl.ioctl(
+            sock.fileno(), 0x8915, struct.pack('256s', interface[:15])
+        )[20:24]
+    )
+    # Explanation:
+    # http://stackoverflow.com/questions/11735821/python-get-localhost-ip
+    # http://stackoverflow.com/questions/24196932/how-can-i-get-the-ip-address-of-eth0-in-python

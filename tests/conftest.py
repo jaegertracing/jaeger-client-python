@@ -27,4 +27,5 @@ from jaeger_client import ConstSampler, Tracer
 def tracer():
     reporter = mock.MagicMock()
     sampler = ConstSampler(True)
-    return Tracer.default_tracer(None, 'test_service_1', reporter, sampler)
+    return Tracer(
+        service_name='test_service_1', reporter=reporter, sampler=sampler)

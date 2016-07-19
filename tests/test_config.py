@@ -25,19 +25,6 @@ from jaeger_client import Config, ConstSampler, ProbabilisticSampler, RateLimiti
 
 class ConfigTests(unittest.TestCase):
 
-    def fake_tcahnnel_factory(self):
-        return None
-
-    def test_tchannel_factory(self):
-        c = Config({}, service_name='x')
-        assert callable(c.tchannel_factory)
-        assert c.tchannel_factory() is None
-
-        c = Config(
-            {'tchannel_factory': 'tchannel.singleton.TChannel.get_instance'},
-            service_name='x')
-        assert callable(c.tchannel_factory)
-
     def test_enabled(self):
         c = Config({'enabled': True}, service_name='x')
         assert c.enabled
@@ -86,22 +73,3 @@ class ConfigTests(unittest.TestCase):
         c = Config({'sampler': {'type': 'bad-sampler'}}, service_name='x')
         with self.assertRaises(ValueError):
             c.sampler.is_sampled(0)
-
-    def test_factory(self):
-        c = Config({}, service_name='x')
-        assert callable(c.tchannel_factory)
-        assert c.tchannel_factory() is None
-
-        with self.assertRaises(ValueError):
-            c = Config({'tchannel_factory': 'opentracing.tracer'},
-                       service_name='x')
-            c.tchannel_factory()
-
-        cfg = {'tchannel_factory': 'tchannel.singleton.TChannel.get_instance'}
-        c = Config(cfg, service_name='x')
-        assert callable(c.tchannel_factory)
-
-        with self.assertRaises(ImportError):
-            cfg = {'tchannel_factory':
-                       'tchannel.singleton.WrongTChannel.get_instance'}
-            Config(cfg, service_name='x')

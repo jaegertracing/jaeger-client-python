@@ -26,11 +26,9 @@ import time
 from threading import Lock
 from tornado.ioloop import PeriodicCallback
 from .constants import MAX_ID_BITS, DEFAULT_SAMPLING_INTERVAL
-from . import ioloop_util
 from .metrics import Metrics
 from .utils import ErrorReporter
 from .local_agent_net import parse_sampling_strategy
-from . import thrift
 
 default_logger = logging.getLogger('jaeger_tracing')
 
@@ -83,7 +81,7 @@ class ProbabilisticSampler(Sampler):
     """
 
     def __init__(self, rate):
-        assert 0.0 <= rate <= 1.0, "Sampling rate must be between 0.0 and 1.0"
+        assert 0.0 <= rate <= 1.0, 'Sampling rate must be between 0.0 and 1.0'
         self.rate = rate
         self.max_number = 1 << MAX_ID_BITS
         self.boundary = rate * self.max_number
@@ -152,13 +150,13 @@ class RemoteControlledSampler(Sampler):
     """Periodically loads the sampling strategy from a remote server."""
     def __init__(self, channel, service_name, **kwargs):
         """
-        :param channel: initialized and advertised TChannel
+        :param channel: channel for communicating with jaeger-agent
         :param service_name: name of this application
         :param kwargs: optional parameters
             - init_sampler: initial value of the sampler,
                 else ProbabilisticSampler(0.01)
             - sampling_refresh_interval: interval in seconds for polling
-              TCollector for new strategy
+              for new strategy
             - logger:
             - metrics: metrics facade, used to emit metrics on errors
             - error_reporter: ErrorReporter instance
@@ -184,7 +182,7 @@ class RemoteControlledSampler(Sampler):
         self.running = True
         self.periodic = None
 
-        self.io_loop = ioloop_util.get_io_loop(channel)
+        self.io_loop = channel.io_loop
         if not self.io_loop:
             self.logger.error(
                 'Cannot acquire IOLoop, sampler will not be updated')
@@ -235,51 +233,6 @@ class RemoteControlledSampler(Sampler):
             if exception:
                 self.error_reporter.error(
                     Metrics.SAMPLER_ERRORS, 1,
-                    'Fail to get sampling strategy from tcollector: %s',
-                    exception)
-                return
-
-            response = future.result()
-            sampler, err = thrift.parse_sampling_strategy(response.body)
-            if sampler is None:
-                self.error_reporter.error(
-                    Metrics.SAMPLER_ERRORS, 1,
-                    'Fail to parse sampling strategy from tcollector: %s [%s]',
-                    err, response.body)
-                return
-
-            with self.lock:
-                if self.sampler == sampler:
-                    return
-                self.sampler = sampler
-            self.logger.debug('Tracing sampler set to %s', sampler)
-
-        self.logger.debug('Requesting tracing sampler refresh')
-        tr = thrift.make_get_sampling_strategy_request()
-        fut = self._channel.thrift(tr.getSamplingStrategy(self.service_name),
-                                   timeout=15, retry_limit=0)
-        fut.add_done_callback(submit_callback)
-
-    def close(self):
-        with self.lock:
-            self.running = False
-            if self.periodic is not None:
-                self.periodic.stop()
-
-
-class LocalAgentControlledSampler(RemoteControlledSampler):
-    """Periodically loads the sampling strategy from the local jaeger-agent."""
-
-    def __init__(self, *args, **kwargs):
-        super(LocalAgentControlledSampler, self).__init__(*args, **kwargs)
-
-    def poll_sampling_manager(self):
-
-        def submit_callback(future):
-            exception = future.exception()
-            if exception:
-                self.error_reporter.error(
-                    Metrics.SAMPLER_ERRORS, 1,
                     'Fail to get sampling strategy from jaeger-agent: %s',
                     exception)
                 return
@@ -304,3 +257,9 @@ class LocalAgentControlledSampler(RemoteControlledSampler):
         fut = self._channel.request_sampling_strategy(
             self.service_name, timeout=15)
         fut.add_done_callback(submit_callback)
+
+    def close(self):
+        with self.lock:
+            self.running = False
+            if self.periodic is not None:
+                self.periodic.stop()
