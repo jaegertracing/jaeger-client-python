@@ -7,6 +7,7 @@ History
 ------------------
 
 - Remove TChannel dependency
+- Remove dependency on opentracing_instrumentation
 
 
 1.0.1 (2016-07-11)
