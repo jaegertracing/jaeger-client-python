@@ -19,13 +19,28 @@
 # THE SOFTWARE.
 
 from __future__ import absolute_import
-import importlib
+
 import logging
-from .sampler import ConstSampler, ProbabilisticSampler, RateLimitingSampler
+import threading
+
+import opentracing
+from . import Tracer
+from .local_agent_net import LocalAgentSender
+from .reporter import (
+    Reporter,
+    CompositeReporter,
+    LoggingReporter,
+)
+from .sampler import (
+    ConstSampler,
+    ProbabilisticSampler,
+    RateLimitingSampler,
+    RemoteControlledSampler,
+)
 from .constants import DEFAULT_SAMPLING_INTERVAL
 from .constants import DEFAULT_FLUSH_INTERVAL
 from .metrics import Metrics
-from .utils import get_boolean
+from .utils import get_boolean, ErrorReporter
 
 DEFAULT_REPORTING_PORT = 5775
 DEFAULT_SAMPLING_PORT = 5778
@@ -55,6 +70,10 @@ class Config(object):
             param: true
 
     """
+
+    _initialized = False
+    _initialized_lock = threading.Lock()
+
     def __init__(self, config, metrics=None, service_name=None):
         """
         :param metrics: an instance of Metrics class, or None
@@ -71,6 +90,12 @@ class Config(object):
         if self._service_name is None:
             raise ValueError('service_name required in the config or param')
 
+        if self.logging:
+            self._error_reporter = ErrorReporter(
+                metrics=self.metrics, logger=logger)
+        else:
+            self._error_reporter = ErrorReporter(metrics=self.metrics)
+
     @property
     def service_name(self):
         return self._service_name
@@ -78,6 +103,10 @@ class Config(object):
     @property
     def metrics(self):
         return self._metrics
+
+    @property
+    def error_reporter(self):
+        return self._error_reporter
 
     @property
     def enabled(self):
@@ -114,17 +143,20 @@ class Config(object):
 
     @property
     def sampling_refresh_interval(self):
-        return self.config.get('sampling_refresh_interval', DEFAULT_SAMPLING_INTERVAL)
+        return self.config.get('sampling_refresh_interval',
+                               DEFAULT_SAMPLING_INTERVAL)
 
     @property
     def reporter_flush_interval(self):
-        return self.config.get('reporter_flush_interval', DEFAULT_FLUSH_INTERVAL)
+        return self.config.get('reporter_flush_interval',
+                               DEFAULT_FLUSH_INTERVAL)
 
     def local_agent_group(self):
         return self.config.get('local_agent', None)
 
     @property
     def local_agent_enabled(self):
+        # noinspection PyBroadException
         try:
             return get_boolean(self.local_agent_group().get('enabled',
                                LOCAL_AGENT_DEFAULT_ENABLED),
@@ -134,6 +166,7 @@ class Config(object):
 
     @property
     def local_agent_sampling_port(self):
+        # noinspection PyBroadException
         try:
             return int(self.local_agent_group()['sampling_port'])
         except:
@@ -141,50 +174,76 @@ class Config(object):
 
     @property
     def local_agent_reporting_port(self):
+        # noinspection PyBroadException
         try:
             return int(self.local_agent_group()['reporting_port'])
         except:
             return DEFAULT_REPORTING_PORT
 
-    def install_client_hooks(self):
-        """
-        Usually called from middleware to install client hooks
-        specified in the client_hooks section of the configuration
-        """
-        hooks = self.config.get('client_hooks', None)
-        if hooks is None or hooks == 'all':
-            hooks = [
-                'opentracing_instrumentation.client_hooks.install_all_patches'
-            ]
-        if hooks is not None and type(hooks) is list:
-            for hook_name in hooks:
-                logger.info('Loading client hook %s', hook_name)
-                hook = Config.load_symbol(hook_name)
-                logger.info('Applying client hook %s', hook_name)
-                hook()
-
     @staticmethod
-    def load_symbol(name):
-        """Load a symbol by name.
+    def initialized():
+        with Config._initialized_lock:
+            return Config._initialized
 
-        :param str name: The name to load, specified by `module.attr`.
-        :returns: The attribute value. If the specified module does not contain
-                  the requested attribute then `None` is returned.
+    def initialize_tracer(self):
         """
-        module_name, key = name.rsplit('.', 1)
-        try:
-            module = importlib.import_module(module_name)
-        except ImportError as err:
-            # it's possible the symbol is a class method
-            module_name, class_name = module_name.rsplit('.', 1)
-            module = importlib.import_module(module_name)
-            klass = getattr(module, class_name, None)
-            if klass:
-                attr = getattr(klass, key, None)
-            else:
-                raise err
-        else:
-            attr = getattr(module, key, None)
-        if not callable(attr):
-            raise ValueError('%s is not callable (was %r)' % (name, attr))
-        return attr
+        Initialize Jaeger Tracer based on the passed `jaeger_client.Config`.
+        Save it to `opentracing.tracer` global variable.
+        Only the first call to this method has any effect.
+        """
+
+        with Config._initialized_lock:
+            if Config._initialized:
+                logger.warn('Jaeger tracer already initialized, skipping')
+                return
+            Config._initialized = True
+
+        channel = self._create_local_agent_channel()
+        sampler = self.sampler
+        if sampler is None:
+            sampler = RemoteControlledSampler(
+                channel=channel,
+                service_name=self.service_name,
+                logger=logger,
+                metrics=self.metrics,
+                error_reporter=self.error_reporter,
+                sampling_refresh_interval=self.sampling_refresh_interval)
+        logger.info('Using sampler %s', sampler)
+
+        reporter = Reporter(
+            channel=channel,
+            queue_capacity=self.reporter_queue_size,
+            batch_size=self.reporter_batch_size,
+            flush_interval=self.reporter_flush_interval,
+            logger=logger,
+            metrics=self.metrics,
+            error_reporter=self.error_reporter)
+
+        if self.logging:
+            reporter = CompositeReporter(reporter, LoggingReporter(logger))
+
+        tracer = Tracer(
+            service_name=self.service_name,
+            sampler=sampler,
+            reporter=reporter,
+            metrics=self.metrics)
+
+        self._initialize_global_tracer(tracer=tracer)
+
+    def _initialize_global_tracer(self, tracer):
+        opentracing.tracer = tracer
+        logger.info('opentracing.tracer initialized to %s[app_name=%s]',
+                    tracer, self.service_name)
+
+    def _create_local_agent_channel(self):
+        """
+        Create an out-of-process channel communicating to local jaeger-agent.
+        Spans are submitted as SOCK_DGRAM Thrift, sampling strategy is polled
+        via JSON HTTP.
+
+        :param self: instance of Config
+        """
+        logger.info('Initializing Jaeger Tracer with UDP reporter')
+        return LocalAgentSender('localhost',
+                                self.local_agent_sampling_port,
+                                self.local_agent_reporting_port)

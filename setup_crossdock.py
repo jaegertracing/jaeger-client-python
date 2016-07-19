@@ -21,5 +21,6 @@ setup(
     },
     install_requires=[
         'tchannel<0.25',
+        'opentracing_instrumentation>=2,<3',
     ],
 )
