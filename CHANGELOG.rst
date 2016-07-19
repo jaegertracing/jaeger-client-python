@@ -3,10 +3,10 @@
 History
 -------
 
-1.0.2 (unreleased)
+2.0.0 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Remove TChannel dependency
 
 
 1.0.1 (2016-07-11)

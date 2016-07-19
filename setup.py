@@ -3,7 +3,7 @@
 
 from setuptools import setup, find_packages
 
-version = '1.0.2.dev0'
+version = '2.0.0.dev0'
 
 with open('jaeger_client/version.py', 'w') as fp:
     fp.write("__version__ = '%s'\n" % version)
@@ -34,7 +34,6 @@ setup(
         'thrift',
         'tornado>=4.3,<5',
         'opentracing==1.0rc4',
-        'opentracing_instrumentation>=1.0.1,<1.1',  # TODO only used to init headers config, should be removed 
     ],
     test_suite='tests',
     extras_require={
