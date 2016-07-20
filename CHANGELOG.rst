@@ -6,7 +6,7 @@ History
 2.0.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Allow passing external IOLoop
 
 
 2.0.0 (2016-07-19)
