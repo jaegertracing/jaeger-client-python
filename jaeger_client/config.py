@@ -185,7 +185,7 @@ class Config(object):
         with Config._initialized_lock:
             return Config._initialized
 
-    def initialize_tracer(self):
+    def initialize_tracer(self, io_loop=None):
         """
         Initialize Jaeger Tracer based on the passed `jaeger_client.Config`.
         Save it to `opentracing.tracer` global variable.
@@ -198,7 +198,7 @@ class Config(object):
                 return
             Config._initialized = True
 
-        channel = self._create_local_agent_channel()
+        channel = self._create_local_agent_channel(io_loop=io_loop)
         sampler = self.sampler
         if sampler is None:
             sampler = RemoteControlledSampler(
@@ -235,7 +235,7 @@ class Config(object):
         logger.info('opentracing.tracer initialized to %s[app_name=%s]',
                     tracer, self.service_name)
 
-    def _create_local_agent_channel(self):
+    def _create_local_agent_channel(self, io_loop):
         """
         Create an out-of-process channel communicating to local jaeger-agent.
         Spans are submitted as SOCK_DGRAM Thrift, sampling strategy is polled
@@ -244,6 +244,9 @@ class Config(object):
         :param self: instance of Config
         """
         logger.info('Initializing Jaeger Tracer with UDP reporter')
-        return LocalAgentSender('localhost',
-                                self.local_agent_sampling_port,
-                                self.local_agent_reporting_port)
+        return LocalAgentSender(
+            host='localhost',
+            sampling_port=self.local_agent_sampling_port,
+            reporting_port=self.local_agent_reporting_port,
+            io_loop=io_loop
+        )
