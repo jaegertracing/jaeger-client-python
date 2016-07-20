@@ -3,7 +3,7 @@
 History
 -------
 
-2.0.1 (unreleased)
+2.1.0 (2016-07-19)
 ------------------
 
 - Allow passing external IOLoop
