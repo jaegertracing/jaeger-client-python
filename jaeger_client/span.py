@@ -179,7 +179,7 @@ class Span(opentracing.Span):
         c = codecs.trace_context_to_string(
             trace_id=self.trace_id, span_id=self.span_id,
             parent_id=self.parent_id, flags=self.flags)
-        return "%s %s.%s" % (c, self.tracer.service_name, self.operation_name)
+        return '%s %s.%s' % (c, self.tracer.service_name, self.operation_name)
 
 
 def _set_sampling_priority(span, value):

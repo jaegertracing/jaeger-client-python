@@ -74,7 +74,7 @@ def local_ip():
     if ip.startswith('127.'):
         # Check eth0, eth1, eth2, en0, ...
         interfaces = [
-            i + str(n) for i in ("eth", "en", "wlan") for n in xrange(3)
+            i + str(n) for i in ('eth', 'en', 'wlan') for n in xrange(3)
         ]  # :(
         for interface in interfaces:
             try:
