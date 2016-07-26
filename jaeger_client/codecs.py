@@ -86,7 +86,7 @@ def trace_context_to_string(trace_id, span_id, parent_id, flags):
     :param flags:
     """
     parent_id = parent_id or 0L
-    return "{:x}:{:x}:{:x}:{:x}".format(trace_id, span_id, parent_id, flags)
+    return '{:x}:{:x}:{:x}:{:x}'.format(trace_id, span_id, parent_id, flags)
 
 
 def trace_context_from_string(value):

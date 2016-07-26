@@ -44,7 +44,8 @@ setup(
             'pytest-timeout',
             'pytest-tornado',
             'pytest-benchmark[histogram]>=3.0.0rc1',
-            'flake8==2.1.0',
+            'flake8<3',  # see https://github.com/zheller/flake8-quotes/issues/29
+            'flake8-quotes',
             'coveralls',
         ]
     },
