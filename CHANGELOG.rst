@@ -3,10 +3,10 @@
 History
 -------
 
-2.1.1 (unreleased)
+2.2.0 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Implement Zipkin codec for interop with TChannel
 
 
 2.1.0 (2016-07-19)
