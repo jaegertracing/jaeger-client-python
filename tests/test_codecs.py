@@ -21,9 +21,10 @@
 from __future__ import absolute_import
 
 import unittest
+from collections import namedtuple
 
 from jaeger_client import Span
-from jaeger_client.codecs import TextCodec, Codec
+from jaeger_client.codecs import TextCodec, Codec, ZipkinCodec
 from jaeger_client.codecs import trace_context_from_string
 from jaeger_client.codecs import trace_context_to_string
 from opentracing.propagation import InvalidCarrierException
@@ -163,3 +164,57 @@ class TestCodecs(unittest.TestCase):
         assert parent_id == 0xFFFFFFFFFFFFFFFFL
         assert parent_id == (1L << 64) - 1
         assert parent_id > 0
+
+    def test_zipkin_codec_extract(self):
+        codec = ZipkinCodec()
+
+        t = namedtuple('Tracing', 'span_id parent_id trace_id traceflags')
+        carrier = t(span_id=1, parent_id=2, trace_id=3, traceflags=1)
+        trace_id, span_id, parent_id, flags, baggage = codec.extract(carrier)
+        assert 3 == trace_id
+        assert 2 == parent_id
+        assert 1 == span_id
+        assert 1 == flags
+        assert baggage is None
+
+        t = namedtuple('Tracing', 'something')
+        carrier = t(something=1)
+        with self.assertRaises(InvalidCarrierException):
+            codec.extract(carrier)
+
+        t = namedtuple('Tracing', 'trace_id')
+        carrier = t(trace_id=1)
+        with self.assertRaises(InvalidCarrierException):
+            codec.extract(carrier)
+
+        t = namedtuple('Tracing', 'trace_id span_id')
+        carrier = t(trace_id=1, span_id=1)
+        with self.assertRaises(InvalidCarrierException):
+            codec.extract(carrier)
+
+        t = namedtuple('Tracing', 'trace_id span_id parent_id')
+        carrier = t(trace_id=1, span_id=1, parent_id=1)
+        with self.assertRaises(InvalidCarrierException):
+            codec.extract(carrier)
+
+        carrier = {'span_id': 1, 'parent_id': 2, 'trace_id': 3,
+                   'traceflags': 1}
+        trace_id, span_id, parent_id, flags, baggage = codec.extract(carrier)
+        assert 3 == trace_id
+        assert 2 == parent_id
+        assert 1 == span_id
+        assert 1 == flags
+        assert baggage is None
+
+    def test_zipkin_codec_inject(self):
+        codec = ZipkinCodec()
+
+        with self.assertRaises(InvalidCarrierException):
+            codec.inject(span=None, carrier=[])
+
+        span = Span(trace_id=256, span_id=127, parent_id=None, flags=1,
+                    operation_name='x', tracer=None, start_time=1)
+        carrier = {}
+        codec.inject(span=span, carrier=carrier)
+        assert carrier == {'span_id': 127, 'parent_id': None,
+                           'trace_id': 256, 'traceflags': 1}
