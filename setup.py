@@ -33,7 +33,7 @@ setup(
         # we want thrift>=0.9.2.post1,<0.9.3, but we let the users pin to that
         'thrift',
         'tornado>=4.3,<5',
-        'opentracing==2.0.0.dev1',
+        'opentracing>=1.1,<1.2',
     ],
     test_suite='tests',
     extras_require={
