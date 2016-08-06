@@ -162,6 +162,13 @@ class Span(opentracing.Span):
             else:
                 return None
 
+    def baggage_copy(self):
+        with self.update_lock:
+            if self.baggage:
+                return dict(self.baggage)
+            else:
+                return None
+
     def is_sampled(self):
         return self.flags & SAMPLED_FLAG == SAMPLED_FLAG
 

@@ -3,10 +3,10 @@
 History
 -------
 
-2.2.1 (unreleased)
+2.3.0 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Upgrade to 1.0rc6 and implement baggage_copy()
 
 
 2.2.0 (2016-08-02)
