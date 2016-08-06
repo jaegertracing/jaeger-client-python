@@ -29,6 +29,7 @@ def test_baggage():
     span = Span(trace_id=1, span_id=2, parent_id=None, flags=1,
                 operation_name='x', tracer=None)
     assert span.get_baggage_item('x') is None
+    assert span.baggage_copy() is None
     span.set_baggage_item('x', 'y').\
         set_baggage_item('z', 'why')
     assert span.get_baggage_item('x') == 'y'
@@ -40,6 +41,7 @@ def test_baggage():
     assert len(span.baggage) == 2
     span.set_baggage_item('X_y', '123')
     assert span.get_baggage_item('x-Y') == '123'
+    assert span.baggage_copy() == {'x-y': '123', 'x': 'b', 'z': 'why'}
 
 
 def test_sampling_priority(tracer):
