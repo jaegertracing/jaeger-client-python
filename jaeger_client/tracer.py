@@ -30,7 +30,7 @@ from opentracing import Format, UnsupportedFormatException
 from opentracing.ext import tags as ext_tags
 
 from .constants import MAX_ID_BITS
-from .codecs import TextCodec
+from .codecs import TextCodec, ZipkinCodec, ZipkinSpanFormat
 from .span import Span, SAMPLED_FLAG
 from .span_context import SpanContext
 from .version import __version__
@@ -51,6 +51,7 @@ class Tracer(opentracing.Tracer):
         self.random = random.Random(time.time() * (os.getpid() or 1))
         self.codecs = {
             Format.TEXT_MAP: TextCodec(),
+            ZipkinSpanFormat: ZipkinCodec(),
         }
 
     def start_span(self,

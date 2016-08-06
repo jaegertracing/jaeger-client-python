@@ -130,3 +130,48 @@ def span_context_from_string(value):
     except ValueError as e:
         raise SpanContextCorruptedException(
             'malformed trace context "%s": %s' % (value, e))
+
+
+# String constants identifying the interop format.
+ZipkinSpanFormat = 'zipkin-span-format'
+
+
+class ZipkinCodec(Codec):
+    """
+    ZipkinCodec handles ZipkinSpanFormat, which is an interop format
+    used by TChannel.
+
+    """
+    def inject(self, span, carrier):
+        if not isinstance(carrier, dict):
+            raise InvalidCarrierException('carrier not a dictionary')
+        with span.update_lock:
+            carrier['trace_id'] = span.trace_id
+            carrier['span_id'] = span.span_id
+            carrier['parent_id'] = span.parent_id
+            carrier['traceflags'] = span.flags
+
+    def extract(self, carrier):
+        if isinstance(carrier, dict):
+            trace_id = carrier.get('trace_id')
+            span_id = carrier.get('span_id')
+            parent_id = carrier.get('parent_id')
+            flags = carrier.get('traceflags')
+        else:
+            if hasattr(carrier, 'trace_id'):
+                trace_id = getattr(carrier, 'trace_id')
+            else:
+                raise InvalidCarrierException('carrier has no trace_id')
+            if hasattr(carrier, 'span_id'):
+                span_id = getattr(carrier, 'span_id')
+            else:
+                raise InvalidCarrierException('carrier has no span_id')
+            if hasattr(carrier, 'parent_id'):
+                parent_id = getattr(carrier, 'parent_id')
+            else:
+                raise InvalidCarrierException('carrier has no parent_id')
+            if hasattr(carrier, 'traceflags'):
+                flags = getattr(carrier, 'traceflags')
+            else:
+                raise InvalidCarrierException('carrier has no traceflags')
+        return trace_id, span_id, parent_id, flags, None

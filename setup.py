@@ -3,7 +3,11 @@
 
 from setuptools import setup, find_packages
 
+<<<<<<< HEAD
 version = '3.0.0.dev0'
+=======
+version = '2.2.1.dev0'
+>>>>>>> master
 
 with open('jaeger_client/version.py', 'w') as fp:
     fp.write("__version__ = '%s'\n" % version)
@@ -44,7 +48,8 @@ setup(
             'pytest-timeout',
             'pytest-tornado',
             'pytest-benchmark[histogram]>=3.0.0rc1',
-            'flake8==2.1.0',
+            'flake8<3',  # see https://github.com/zheller/flake8-quotes/issues/29
+            'flake8-quotes',
             'coveralls',
         ]
     },

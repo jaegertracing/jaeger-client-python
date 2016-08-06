@@ -60,10 +60,10 @@ class LocalAgentSender(TBufferedTransport):
     end of the batch span submission call.
     """
 
-    def __init__(self, host, sampling_port, reporting_port, ioloop=None):
-        # ioloop
+    def __init__(self, host, sampling_port, reporting_port, io_loop=None):
+        # IOLoop
         self._thread_loop = None
-        self.io_loop = ioloop or self.create_new_thread_loop()
+        self.io_loop = io_loop or self._create_new_thread_loop()
 
         # http sampling
         self.local_agent_http = LocalAgentHTTP(host, sampling_port)
@@ -73,7 +73,7 @@ class LocalAgentSender(TBufferedTransport):
         udp = TUDPTransport(host, reporting_port)
         TBufferedTransport.__init__(self, udp)
 
-    def create_new_thread_loop(self):
+    def _create_new_thread_loop(self):
         """
         Create a daemonized thread that will run Tornado IOLoop.
         :return: the IOLoop backed by the new thread.

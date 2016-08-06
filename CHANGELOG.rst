@@ -6,7 +6,19 @@ History
 3.0.0 (unreleased)
 ------------------
 
-- Upgrade to OpenTracing 2.0
+- Upgrade to OpenTracing 1.1
+
+
+2.2.0 (2016-08-02)
+------------------
+
+- Implement Zipkin codec for interop with TChannel
+
+
+2.1.0 (2016-07-19)
+------------------
+
+- Allow passing external IOLoop
 
 
 2.0.0 (2016-07-19)
