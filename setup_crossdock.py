@@ -21,6 +21,8 @@ setup(
     },
     install_requires=[
         'tchannel<0.25',
-        'opentracing_instrumentation>=2,<3',
+        # 'git://github.com/uber-common/opentracing-python-instrumentation
+        # .git@upgrade-to-span-context#egg=opentracing_instrumentation',
+        'opentracing_instrumentation==2.0.0.dev2',
     ],
 )
