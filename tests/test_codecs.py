@@ -23,13 +23,17 @@ from __future__ import absolute_import
 import unittest
 from collections import namedtuple
 
-from jaeger_client import Span
-from jaeger_client.codecs import TextCodec, Codec, ZipkinCodec
-from jaeger_client.codecs import span_context_from_string
-from jaeger_client.codecs import span_context_to_string
-from jaeger_client.span_context import SpanContext
-from opentracing.propagation import InvalidCarrierException
-from opentracing.propagation import SpanContextCorruptedException
+import pytest
+from jaeger_client import Span, SpanContext
+from jaeger_client.codecs import (
+    Codec, TextCodec, ZipkinCodec, ZipkinSpanFormat,
+    span_context_from_string,
+    span_context_to_string,
+)
+from opentracing import Format
+from opentracing.propagation import (
+    InvalidCarrierException, SpanContextCorruptedException
+)
 
 
 class TestCodecs(unittest.TestCase):
@@ -172,12 +176,12 @@ class TestCodecs(unittest.TestCase):
 
         t = namedtuple('Tracing', 'span_id parent_id trace_id traceflags')
         carrier = t(span_id=1, parent_id=2, trace_id=3, traceflags=1)
-        trace_id, span_id, parent_id, flags, baggage = codec.extract(carrier)
-        assert 3 == trace_id
-        assert 2 == parent_id
-        assert 1 == span_id
-        assert 1 == flags
-        assert baggage is None
+        context = codec.extract(carrier)
+        assert 3 == context.trace_id
+        assert 2 == context.parent_id
+        assert 1 == context.span_id
+        assert 1 == context.flags
+        assert context.baggage == {}
 
         t = namedtuple('Tracing', 'something')
         carrier = t(something=1)
@@ -201,12 +205,12 @@ class TestCodecs(unittest.TestCase):
 
         carrier = {'span_id': 1, 'parent_id': 2, 'trace_id': 3,
                    'traceflags': 1}
-        trace_id, span_id, parent_id, flags, baggage = codec.extract(carrier)
-        assert 3 == trace_id
-        assert 2 == parent_id
-        assert 1 == span_id
-        assert 1 == flags
-        assert baggage is None
+        context = codec.extract(carrier)
+        assert 3 == context.trace_id
+        assert 2 == context.parent_id
+        assert 1 == context.span_id
+        assert 1 == context.flags
+        assert context.baggage == {}
 
     def test_zipkin_codec_inject(self):
         codec = ZipkinCodec()
@@ -215,8 +219,21 @@ class TestCodecs(unittest.TestCase):
             codec.inject(span_context=None, carrier=[])
 
         ctx = SpanContext(trace_id=256, span_id=127, parent_id=None, flags=1)
-        span = Span(context=ctx,operation_name='x', tracer=None, start_time=1)
+        span = Span(context=ctx, operation_name='x', tracer=None, start_time=1)
         carrier = {}
         codec.inject(span_context=span, carrier=carrier)
         assert carrier == {'span_id': 127, 'parent_id': None,
                            'trace_id': 256, 'traceflags': 1}
+
+
+@pytest.mark.parametrize('fmt,carrier', [
+    (Format.TEXT_MAP, {}),
+    (Format.HTTP_HEADERS, {}),
+    (ZipkinSpanFormat, {}),
+])
+def test_round_trip(tracer, fmt, carrier):
+    span = tracer.start_span('test-%s' % fmt)
+    tracer.inject(span, fmt, carrier)
+    context = tracer.extract(fmt, carrier)
+    span2 = tracer.start_span('test-%s' % fmt, child_of=context)
+    assert span.trace_id == span2.trace_id

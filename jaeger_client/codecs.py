@@ -189,4 +189,6 @@ class ZipkinCodec(Codec):
                 flags = getattr(carrier, 'traceflags')
             else:
                 raise InvalidCarrierException('carrier has no traceflags')
-        return trace_id, span_id, parent_id, flags, None
+        return SpanContext(trace_id=trace_id, span_id=span_id,
+                           parent_id=parent_id, flags=flags,
+                           baggage=None)
