@@ -128,9 +128,6 @@ class FakeMetrics(Metrics):
     def _incr_count(self, key, value):
         self.counters[key] = value + self.counters.get(key, 0)
 
-# What tests do we want:
-# - auto-drain when calling Close (also on already empty)
-
 
 class ReporterTest(AsyncTestCase):
     @pytest.yield_fixture

@@ -23,12 +23,11 @@ from __future__ import absolute_import
 import unittest
 from collections import namedtuple
 
-from jaeger_client.span_context import SpanContext
-from jaeger_client.codecs import TextCodec, Codec
-from jaeger_client.codecs import span_context_from_string
-from jaeger_client.codecs import span_context_to_string
 from jaeger_client import Span
 from jaeger_client.codecs import TextCodec, Codec, ZipkinCodec
+from jaeger_client.codecs import span_context_from_string
+from jaeger_client.codecs import span_context_to_string
+from jaeger_client.span_context import SpanContext
 from opentracing.propagation import InvalidCarrierException
 from opentracing.propagation import SpanContextCorruptedException
 

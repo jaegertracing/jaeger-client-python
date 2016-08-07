@@ -51,7 +51,7 @@ class Tracer(opentracing.Tracer):
         self.codecs = {
             Format.TEXT_MAP: TextCodec(),
             Format.HTTP_HEADERS: TextCodec(),  # TODO use some encoding
-            Format.BINARY: BinaryCodec(),  # TODO use some encoding
+            Format.BINARY: BinaryCodec(),
             ZipkinSpanFormat: ZipkinCodec(),
         }
 
