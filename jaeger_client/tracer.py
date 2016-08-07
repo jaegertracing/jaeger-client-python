@@ -20,7 +20,6 @@
 
 from __future__ import absolute_import
 
-import copy
 import os
 import time
 import logging
@@ -30,7 +29,7 @@ from opentracing import Format, UnsupportedFormatException
 from opentracing.ext import tags as ext_tags
 
 from .constants import MAX_ID_BITS
-from .codecs import TextCodec, ZipkinCodec, ZipkinSpanFormat
+from .codecs import TextCodec, ZipkinCodec, ZipkinSpanFormat, BinaryCodec
 from .span import Span, SAMPLED_FLAG
 from .span_context import SpanContext
 from .version import __version__
@@ -51,11 +50,14 @@ class Tracer(opentracing.Tracer):
         self.random = random.Random(time.time() * (os.getpid() or 1))
         self.codecs = {
             Format.TEXT_MAP: TextCodec(),
+            Format.HTTP_HEADERS: TextCodec(),  # TODO use some encoding
+            Format.BINARY: BinaryCodec(),  # TODO use some encoding
             ZipkinSpanFormat: ZipkinCodec(),
         }
 
     def start_span(self,
                    operation_name=None,
+                   child_of=None,
                    references=None,
                    tags=None,
                    start_time=None):
@@ -64,6 +66,7 @@ class Tracer(opentracing.Tracer):
 
         :param operation_name: name of the operation represented by the new
             span from the perspective of the current service.
+        :param child_of: shortcut for 'child_of' reference
         :param references: (optional) either a single Reference object or a
             list of Reference objects that identify one or more parent
             SpanContexts. (See the Reference documentation for detail)
@@ -75,15 +78,16 @@ class Tracer(opentracing.Tracer):
 
         :return: Returns an already-started Span instance.
         """
-        parent = None
+        parent = child_of
         if references:
             if isinstance(references, list):
                 # TODO only the first reference is currently used
                 references = references[0]
-            parent = references.referee
-            # allow Span to be passed as referee, not just SpanContext
-            if isinstance(parent, Span):
-                parent = parent.context
+            parent = references.referenced_context
+
+        # allow Span to be passed as reference, not just SpanContext
+        if isinstance(parent, Span):
+            parent = parent.context
 
         rpc_server = tags and \
             tags.get(ext_tags.SPAN_KIND) == ext_tags.SPAN_KIND_RPC_SERVER
@@ -93,19 +97,18 @@ class Tracer(opentracing.Tracer):
             span_id = trace_id
             parent_id = None
             flags = SAMPLED_FLAG if self.sampler.is_sampled(trace_id) else 0
-            baggage = {}
+            baggage = None
         else:
-            with parent.update_lock:
-                trace_id = parent.trace_id
-                if rpc_server:
-                    # Zipkin-style one-span-per-RPC
-                    span_id = parent.span_id
-                    parent_id = parent.parent_id
-                else:
-                    span_id = self.random_id()
-                    parent_id = parent.span_id
-                flags = parent.flags
-                baggage = copy.deepcopy(parent.baggage)
+            trace_id = parent.trace_id
+            if rpc_server:
+                # Zipkin-style one-span-per-RPC
+                span_id = parent.span_id
+                parent_id = parent.parent_id
+            else:
+                span_id = self.random_id()
+                parent_id = parent.span_id
+            flags = parent.flags
+            baggage = dict(parent.baggage)
 
         span_ctx = SpanContext(trace_id=trace_id, span_id=span_id,
                                parent_id=parent_id, flags=flags,

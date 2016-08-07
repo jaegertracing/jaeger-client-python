@@ -20,10 +20,10 @@
 
 from __future__ import absolute_import
 
-from .span_context import SpanContext
 from opentracing import InvalidCarrierException
 from opentracing import SpanContextCorruptedException
 from .constants import TRACE_ID_HEADER, BAGGAGE_HEADER_PREFIX
+from .span_context import SpanContext
 
 
 class Codec(object):
@@ -45,14 +45,13 @@ class TextCodec(Codec):
     def inject(self, span_context, carrier):
         if not isinstance(carrier, dict):
             raise InvalidCarrierException('carrier not a collection')
-        with span_context.update_lock:
-            carrier[self.trace_id_header] = span_context_to_string(
-                trace_id=span_context.trace_id, span_id=span_context.span_id,
-                parent_id=span_context.parent_id, flags=span_context.flags)
-            baggage = span_context.baggage
-            if baggage:
-                for key, value in baggage.iteritems():
-                    carrier['%s%s' % (self.baggage_prefix, key)] = value
+        carrier[self.trace_id_header] = span_context_to_string(
+            trace_id=span_context.trace_id, span_id=span_context.span_id,
+            parent_id=span_context.parent_id, flags=span_context.flags)
+        baggage = span_context.baggage
+        if baggage:
+            for key, value in baggage.iteritems():
+                carrier['%s%s' % (self.baggage_prefix, key)] = value
 
     def extract(self, carrier):
         if not hasattr(carrier, 'iteritems'):
@@ -77,6 +76,23 @@ class TextCodec(Codec):
         return SpanContext(trace_id=trace_id, span_id=span_id,
                            parent_id=parent_id, flags=flags,
                            baggage=baggage)
+
+
+class BinaryCodec(Codec):
+    """
+    BinaryCodec is a no-op.
+
+    """
+    def inject(self, span_context, carrier):
+        if not isinstance(carrier, bytearray):
+            raise InvalidCarrierException('carrier not a bytearray')
+        pass  # TODO binary encoding not implemented
+
+    def extract(self, carrier):
+        if not isinstance(carrier, bytearray):
+            raise InvalidCarrierException('carrier not a bytearray')
+        # TODO binary encoding not implemented
+        return 0L, 0L, None, 0, None
 
 
 def span_context_to_string(trace_id, span_id, parent_id, flags):
@@ -142,14 +158,13 @@ class ZipkinCodec(Codec):
     used by TChannel.
 
     """
-    def inject(self, span, carrier):
+    def inject(self, span_context, carrier):
         if not isinstance(carrier, dict):
             raise InvalidCarrierException('carrier not a dictionary')
-        with span.update_lock:
-            carrier['trace_id'] = span.trace_id
-            carrier['span_id'] = span.span_id
-            carrier['parent_id'] = span.parent_id
-            carrier['traceflags'] = span.flags
+        carrier['trace_id'] = span_context.trace_id
+        carrier['span_id'] = span_context.span_id
+        carrier['parent_id'] = span_context.parent_id
+        carrier['traceflags'] = span_context.flags
 
     def extract(self, carrier):
         if isinstance(carrier, dict):

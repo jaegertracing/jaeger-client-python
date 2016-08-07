@@ -19,6 +19,8 @@
 # THE SOFTWARE.
 
 from __future__ import absolute_import
+
+import threading
 import time
 
 import opentracing
@@ -31,6 +33,11 @@ DEBUG_FLAG = 0x02
 
 class Span(opentracing.Span):
     """Implements opentracing.Span with Zipkin semantics."""
+
+    __slots__ = ['_tracer', '_context',
+                 'operation_name', 'start_time', 'end_time', 'kind',
+                 'peer', 'component', 'logs', 'tags', 'update_lock']
+
     def __init__(self, context, tracer, operation_name,
                  tags=None, start_time=None):
         super(Span, self).__init__(context=context, tracer=tracer)
@@ -40,6 +47,7 @@ class Span(opentracing.Span):
         self.kind = None  # default to local span, unless RPC kind is set
         self.peer = None
         self.component = None
+        self.update_lock = threading.Lock()
         # we store tags and logs as Zipkin native thrift BinaryAnnotation and
         # Annotation structures, to avoid creating intermediate objects
         self.tags = []
@@ -55,7 +63,7 @@ class Span(opentracing.Span):
         :param operation_name: the new operation name
         :return: Returns the Span itself, for call chaining.
         """
-        with self.context.update_lock:
+        with self.update_lock:
             self.operation_name = operation_name
         return self
 
@@ -89,7 +97,7 @@ class Span(opentracing.Span):
                 handled = special(self, value)
             if not handled:
                 tag = thrift.make_string_tag(key, str(value))
-                with self.context.update_lock:
+                with self.update_lock:
                     self.tags.append(tag)
         return self
 
@@ -131,13 +139,22 @@ class Span(opentracing.Span):
                 err = thrift.make_string_tag('error', 'true')
             else:
                 err = None
-            with self.context.update_lock:
+            with self.update_lock:
                 self.logs.append(log)
                 if tag:
                     self.tags.append(tag)
                 if err:
                     self.tags.append(err)
         return self
+
+    def set_baggage_item(self, key, value):
+        new_context = self.context.with_baggage_item(key=key, value=value)
+        with self.update_lock:
+            self._context = new_context
+        return self
+
+    def get_baggage_item(self, key):
+        return self.context.baggage.get(key)
 
     def is_sampled(self):
         return self.context.flags & SAMPLED_FLAG == SAMPLED_FLAG
@@ -176,7 +193,7 @@ class Span(opentracing.Span):
 
 
 def _set_sampling_priority(span, value):
-    with span.context.update_lock:
+    with span.update_lock:
         if value > 0:
             span.context.flags |= SAMPLED_FLAG | DEBUG_FLAG
         else:
@@ -185,7 +202,7 @@ def _set_sampling_priority(span, value):
 
 
 def _set_peer_service(span, value):
-    with span.context.update_lock:
+    with span.update_lock:
         if span.peer is None:
             span.peer = {'service_name': value}
         else:
@@ -194,7 +211,7 @@ def _set_peer_service(span, value):
 
 
 def _set_peer_host_ipv4(span, value):
-    with span.context.update_lock:
+    with span.update_lock:
         if span.peer is None:
             span.peer = {'ipv4': value}
         else:
@@ -203,7 +220,7 @@ def _set_peer_host_ipv4(span, value):
 
 
 def _set_peer_port(span, value):
-    with span.context.update_lock:
+    with span.update_lock:
         if span.peer is None:
             span.peer = {'port': value}
         else:
@@ -212,7 +229,7 @@ def _set_peer_port(span, value):
 
 
 def _set_span_kind(span, value):
-    with span.context.update_lock:
+    with span.update_lock:
         if value is None or value == ext_tags.SPAN_KIND_RPC_CLIENT or \
                 value == ext_tags.SPAN_KIND_RPC_SERVER:
             span.kind = value
@@ -221,7 +238,7 @@ def _set_span_kind(span, value):
 
 
 def _set_component(span, value):
-    with span.context.update_lock:
+    with span.update_lock:
         span.component = value
     return True
 

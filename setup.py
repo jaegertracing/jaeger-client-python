@@ -3,11 +3,7 @@
 
 from setuptools import setup, find_packages
 
-<<<<<<< HEAD
 version = '3.0.0.dev0'
-=======
-version = '2.2.1.dev0'
->>>>>>> master
 
 with open('jaeger_client/version.py', 'w') as fp:
     fp.write("__version__ = '%s'\n" % version)

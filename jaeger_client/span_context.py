@@ -19,14 +19,13 @@
 # THE SOFTWARE.
 
 from __future__ import absolute_import
-import threading
 
 import opentracing
 
 
 class SpanContext(opentracing.SpanContext):
     __slots__ = ['trace_id', 'span_id', 'parent_id', 'flags',
-                 'baggage', 'update_lock']
+                 '_baggage', 'update_lock']
 
     """Implements opentracing.SpanContext"""
     def __init__(self, trace_id, span_id, parent_id, flags, baggage=None):
@@ -34,23 +33,19 @@ class SpanContext(opentracing.SpanContext):
         self.span_id = span_id
         self.parent_id = parent_id
         self.flags = flags
-        self.baggage = baggage
-        self.update_lock = threading.Lock()
+        self._baggage = baggage or opentracing.SpanContext.EMPTY_BAGGAGE
 
-    def set_baggage_item(self, key, value):
-        with self.update_lock:
-            if self.baggage is None:
-                self.baggage = {}
-            self.baggage[_normalize_baggage_key(key)] = str(value)
-        return self
+    @property
+    def baggage(self):
+        return self._baggage or opentracing.SpanContext.EMPTY_BAGGAGE
 
-    def get_baggage_item(self, key):
-        with self.update_lock:
-            if self.baggage:
-                return self.baggage.get(_normalize_baggage_key(key), None)
-            else:
-                return None
-
-
-def _normalize_baggage_key(key):
-    return str(key).lower().replace('_', '-')
+    def with_baggage_item(self, key, value):
+        baggage = dict(self._baggage)
+        baggage[key] = value
+        return SpanContext(
+            trace_id=self.trace_id,
+            span_id=self.span_id,
+            parent_id=self.parent_id,
+            flags=self.flags,
+            baggage=baggage,
+        )

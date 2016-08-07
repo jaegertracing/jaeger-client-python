@@ -129,7 +129,7 @@ def make_zipkin_spans(spans):
         # TODO extend Zipkin Thrift and pass endpoint once only
         for event in span.logs:
             event.host = endpoint
-        with span.context.update_lock:
+        with span.update_lock:
             add_zipkin_annotations(span=span, endpoint=endpoint)
             zipkin_span = zipkin_collector.Span(
                 trace_id=id_to_int(span.trace_id),

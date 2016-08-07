@@ -28,18 +28,19 @@ from jaeger_client.thrift import add_zipkin_annotations
 def test_baggage():
     ctx = SpanContext(trace_id=1, span_id=2, parent_id=None, flags=1)
     span = Span(context=ctx, operation_name='x', tracer=None)
-    assert span.context.get_baggage_item('x') is None
-    span.context.set_baggage_item('x', 'y').\
+    assert span.get_baggage_item('x') is None
+    span.set_baggage_item('x', 'y').\
         set_baggage_item('z', 'why')
-    assert span.context.get_baggage_item('x') == 'y'
-    assert span.context.get_baggage_item('z') == 'why'
-    assert span.context.get_baggage_item('tt') is None
+    assert span.get_baggage_item('x') == 'y'
+    assert span.get_baggage_item('z') == 'why'
+    assert span.get_baggage_item('tt') is None
     assert len(span.context.baggage) == 2
-    span.context.set_baggage_item('x', 'b')  # override
-    assert span.context.get_baggage_item('x') == 'b'
+    span.set_baggage_item('x', 'b')  # override
+    assert span.get_baggage_item('x') == 'b'
     assert len(span.context.baggage) == 2
-    span.context.set_baggage_item('X_y', '123')
-    assert span.context.get_baggage_item('x-Y') == '123'
+    span.set_baggage_item('X_y', '123')
+    assert span.get_baggage_item('X_y') == '123'
+    assert span.get_baggage_item('x-Y') is None
 
 
 def test_sampling_priority(tracer):

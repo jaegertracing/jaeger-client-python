@@ -104,8 +104,10 @@ class TestCodecs(unittest.TestCase):
         codec.inject(ctx, carrier)
         assert carrier == {'trace-id': '100:7f:0:1'}
 
-        ctx.set_baggage_item('Fry', 'Leela')
-        ctx.set_baggage_item('Bender', 'Countess de la Roca')
+        ctx._baggage = {
+            'fry': 'Leela',
+            'bender': 'Countess de la Roca',
+        }
         carrier = {}
         codec.inject(ctx, carrier)
         assert carrier == {
@@ -211,11 +213,11 @@ class TestCodecs(unittest.TestCase):
         codec = ZipkinCodec()
 
         with self.assertRaises(InvalidCarrierException):
-            codec.inject(span=None, carrier=[])
+            codec.inject(span_context=None, carrier=[])
 
-        span = Span(trace_id=256, span_id=127, parent_id=None, flags=1,
-                    operation_name='x', tracer=None, start_time=1)
+        ctx = SpanContext(trace_id=256, span_id=127, parent_id=None, flags=1)
+        span = Span(context=ctx,operation_name='x', tracer=None, start_time=1)
         carrier = {}
-        codec.inject(span=span, carrier=carrier)
+        codec.inject(span_context=span, carrier=carrier)
         assert carrier == {'span_id': 127, 'parent_id': None,
                            'trace_id': 256, 'traceflags': 1}
