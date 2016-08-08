@@ -28,11 +28,10 @@ import opentracing
 from opentracing import Format, UnsupportedFormatException
 from opentracing.ext import tags as ext_tags
 
-from .constants import MAX_ID_BITS
+from .constants import MAX_ID_BITS, JAEGER_CLIENT_VERSION
 from .codecs import TextCodec, ZipkinCodec, ZipkinSpanFormat, BinaryCodec
 from .span import Span, SAMPLED_FLAG
 from .span_context import SpanContext
-from .version import __version__
 from .thrift import ipv4_to_int
 from .metrics import Metrics
 from .utils import local_ip
@@ -149,7 +148,7 @@ class Tracer(opentracing.Tracer):
         return self.reporter.close()
 
     def start_span_internal(self, span, join=False):
-        span.set_tag(key='jaegerClient', value='Python-%s' % __version__)
+        span.set_tag(key='jaegerClient', value=JAEGER_CLIENT_VERSION)
         if not span.context.parent_id:
             if span.is_sampled():
                 if join:

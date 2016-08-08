@@ -20,6 +20,8 @@
 
 from __future__ import absolute_import, unicode_literals, print_function
 
+from . import __version__
+
 
 # Max number of bits to use when generating random ID
 MAX_ID_BITS = 64
@@ -35,3 +37,5 @@ TRACE_ID_HEADER = b'uber-trace-id'
 
 # Prefix for HTTP headers used to record baggage items
 BAGGAGE_HEADER_PREFIX = b'uberctx-'
+
+JAEGER_CLIENT_VERSION = 'Python-%s' % __version__
