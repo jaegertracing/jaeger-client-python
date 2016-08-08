@@ -22,17 +22,18 @@ If your python code is already instrumented for OpenTracing,
 you can simply switch to Jaeger's implementation with:
 
 ```python
-from jaeger_client import Config, initializer
+import opentracing
+from jaeger_client import Config
 
 if __name__ == "__main__":
   config = Config(config={},  # usually read from some yaml config
                   service_name='your-app-name')
-  initializer.initialize_with_local_agent(config=config)
+  tracer = config.initialize_tracer()
 
   with opentracing.tracer.start_span('TestSpan') as span:
     span.log_event('test message', payload={'life': 42})
 
-  opentracing.tracer.close()  # flush any buffered spans
+  tracer.close()  # flush any buffered spans
 ```
 
 ## Configuration

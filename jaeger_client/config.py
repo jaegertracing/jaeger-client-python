@@ -229,6 +229,7 @@ class Config(object):
             metrics=self.metrics)
 
         self._initialize_global_tracer(tracer=tracer)
+        return tracer
 
     def _initialize_global_tracer(self, tracer):
         opentracing.tracer = tracer
