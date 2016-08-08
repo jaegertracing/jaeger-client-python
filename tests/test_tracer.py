@@ -20,9 +20,11 @@
 
 import mock
 import random
+
+import pytest
 import tornado.httputil
 
-from opentracing import Format
+from opentracing import Format, child_of
 from opentracing.ext import tags as ext_tags
 from jaeger_client import ConstSampler, Tracer
 from jaeger_client.thrift_gen.zipkincore import constants as g
@@ -59,17 +61,26 @@ def test_start_trace(tracer):
         assert log_exists(span, g.SERVER_SEND), 'Must have ss event'
         tracer.reporter.assert_called_once()
 
-        # TODO restore below once debug Trace Attribute is supported
-        # tracer.sampler = ConstSampler(False)
-        # span = tracer.start_span("test2", debug=True)
-        # assert span.is_sampled(), \
-        #     'Debug span must be sampled even if sampler said no'
     tracer.close()
 
 
-def test_start_child(tracer):
+def test_forced_sampling(tracer):
+    tracer.sampler = ConstSampler(False)
+    span = tracer.start_span("test2",
+                             tags={ext_tags.SAMPLING_PRIORITY: 1})
+    assert span.is_sampled()
+    assert span.is_debug()
+
+
+@pytest.mark.parametrize('mode', ['arg', 'ref'])
+def test_start_child(tracer, mode):
     root = tracer.start_span("test")
-    span = tracer.start_span("test", parent=root)
+    if mode == 'arg':
+        span = tracer.start_span("test", child_of=root.context)
+    elif mode == 'ref':
+        span = tracer.start_span("test", references=child_of(root.context))
+    else:
+        raise ValueError('bad mode')
     span.set_tag(ext_tags.SPAN_KIND, ext_tags.SPAN_KIND_RPC_SERVER)
     assert span.is_sampled(), "Must be sampled"
     assert span.trace_id == root.trace_id, "Must have the same trace id"
@@ -86,7 +97,7 @@ def test_start_child(tracer):
 
 def test_child_span(tracer):
     span = tracer.start_span("test")
-    child = tracer.start_span("child", parent=span)
+    child = tracer.start_span("child", references=child_of(span.context))
     child.set_tag(ext_tags.SPAN_KIND, ext_tags.SPAN_KIND_RPC_CLIENT)
     child.set_tag('bender', 'is great')
     child.log_event('kiss-my-shiny-metal-...')
@@ -104,7 +115,7 @@ def test_child_span(tracer):
 
     tracer.sampler = ConstSampler(False)
     span = tracer.start_span("test")
-    child = tracer.start_span("child", parent=span)
+    child = tracer.start_span("child", references=child_of(span.context))
     child.set_tag('bender', 'is great')
     child.log_event('kiss-my-shiny-metal-...')
     child.finish()
@@ -125,16 +136,34 @@ def test_sampler_effects(tracer):
     tracer.close()
 
 
-def test_serialization(tracer):
+@pytest.mark.parametrize('inject_mode', ['span', 'context'])
+def test_serialization(tracer, inject_mode):
     span = tracer.start_span('help')
     carrier = {}
-    tracer.inject(span=span, format=Format.TEXT_MAP, carrier=carrier)
+    if inject_mode == 'span':
+        injectable = span
+    elif inject_mode == 'context':
+        injectable = span.context
+    else:
+        raise ValueError('bad inject_mode')
+    tracer.inject(
+        span_context=injectable, format=Format.TEXT_MAP, carrier=carrier
+    )
     assert len(carrier) > 0
     h_ctx = tornado.httputil.HTTPHeaders(carrier)
     assert 'UBER-TRACE-ID' in h_ctx
-    span2 = tracer.join('x', Format.TEXT_MAP, carrier)
-    assert span2 is not None
-    assert span2.trace_id == span.trace_id
-    assert span2.span_id == span.span_id
-    assert span2.parent_id == span.parent_id
-    assert span2.flags == span.flags
+    ctx2 = tracer.extract(Format.TEXT_MAP, carrier)
+    assert ctx2 is not None
+    assert ctx2.trace_id == span.trace_id
+    assert ctx2.span_id == span.span_id
+    assert ctx2.parent_id == span.parent_id
+    assert ctx2.flags == span.flags
+
+
+def test_serialization_error(tracer):
+    span = 'span'
+    carrier = {}
+    with pytest.raises(ValueError):
+        tracer.inject(
+            span_context=span, format=Format.TEXT_MAP, carrier=carrier
+        )

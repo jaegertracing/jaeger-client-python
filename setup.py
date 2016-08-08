@@ -1,12 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import re
 
 from setuptools import setup, find_packages
 
-version = '2.2.1.dev0'
+version = None
+with open('jaeger_client/__init__.py', 'r') as f:
+    for line in f:
+        m = re.match(r'^__version__\s*=\s*(["\'])([^"\']+)\1', line)
+        if m:
+            version = m.group(2)
+            break
 
-with open('jaeger_client/version.py', 'w') as fp:
-    fp.write("__version__ = '%s'\n" % version)
+assert version is not None, \
+    'Could not determine version number from jaeger_client/__init__.py'
 
 setup(
     name='jaeger-client',
@@ -33,7 +40,7 @@ setup(
         # we want thrift>=0.9.2.post1,<0.9.3, but we let the users pin to that
         'thrift',
         'tornado>=4.3,<5',
-        'opentracing==1.0rc4',
+        'opentracing>=1.1,<1.2',
     ],
     test_suite='tests',
     extras_require={

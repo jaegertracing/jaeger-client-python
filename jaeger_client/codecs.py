@@ -21,12 +21,13 @@
 from __future__ import absolute_import
 
 from opentracing import InvalidCarrierException
-from opentracing import TraceCorruptedException
+from opentracing import SpanContextCorruptedException
 from .constants import TRACE_ID_HEADER, BAGGAGE_HEADER_PREFIX
+from .span_context import SpanContext
 
 
 class Codec(object):
-    def inject(self, span, carrier):
+    def inject(self, span_context, carrier):
         raise NotImplementedError()
 
     def extract(self, carrier):
@@ -41,17 +42,16 @@ class TextCodec(Codec):
         self.baggage_prefix = baggage_header_prefix.lower().replace('_', '-')
         self.prefix_length = len(baggage_header_prefix)
 
-    def inject(self, span, carrier):
+    def inject(self, span_context, carrier):
         if not isinstance(carrier, dict):
             raise InvalidCarrierException('carrier not a collection')
-        with span.update_lock:
-            carrier[self.trace_id_header] = trace_context_to_string(
-                trace_id=span.trace_id, span_id=span.span_id,
-                parent_id=span.parent_id, flags=span.flags)
-            baggage = span.baggage
-            if baggage is not None:
-                for key, value in baggage.iteritems():
-                    carrier['%s%s' % (self.baggage_prefix, key)] = value
+        carrier[self.trace_id_header] = span_context_to_string(
+            trace_id=span_context.trace_id, span_id=span_context.span_id,
+            parent_id=span_context.parent_id, flags=span_context.flags)
+        baggage = span_context.baggage
+        if baggage:
+            for key, value in baggage.iteritems():
+                carrier['%s%s' % (self.baggage_prefix, key)] = value
 
     def extract(self, carrier):
         if not hasattr(carrier, 'iteritems'):
@@ -62,17 +62,40 @@ class TextCodec(Codec):
             uc_key = key.lower()
             if uc_key == self.trace_id_header:
                 trace_id, span_id, parent_id, flags = \
-                    trace_context_from_string(value)
+                    span_context_from_string(value)
             elif uc_key.startswith(self.baggage_prefix):
                 attr_key = key[self.prefix_length:]
                 if baggage is None:
                     baggage = {attr_key.lower(): value}
                 else:
                     baggage[attr_key.lower()] = value
-        return trace_id, span_id, parent_id, flags, baggage
+        if trace_id is None and baggage is not None:
+            raise SpanContextCorruptedException('baggage without trace ctx')
+        if trace_id is None:
+            return None
+        return SpanContext(trace_id=trace_id, span_id=span_id,
+                           parent_id=parent_id, flags=flags,
+                           baggage=baggage)
 
 
-def trace_context_to_string(trace_id, span_id, parent_id, flags):
+class BinaryCodec(Codec):
+    """
+    BinaryCodec is a no-op.
+
+    """
+    def inject(self, span_context, carrier):
+        if not isinstance(carrier, bytearray):
+            raise InvalidCarrierException('carrier not a bytearray')
+        pass  # TODO binary encoding not implemented
+
+    def extract(self, carrier):
+        if not isinstance(carrier, bytearray):
+            raise InvalidCarrierException('carrier not a bytearray')
+        # TODO binary encoding not implemented
+        return 0L, 0L, None, 0, None
+
+
+def span_context_to_string(trace_id, span_id, parent_id, flags):
     """
     Serialize span ID to a string
         {trace_id}:{span_id}:{parent_id}:{flags}
@@ -89,7 +112,7 @@ def trace_context_to_string(trace_id, span_id, parent_id, flags):
     return '{:x}:{:x}:{:x}:{:x}'.format(trace_id, span_id, parent_id, flags)
 
 
-def trace_context_from_string(value):
+def span_context_from_string(value):
     """
     Decode span ID from a string into a TraceContext.
     Returns None if the string value is malformed.
@@ -99,15 +122,15 @@ def trace_context_from_string(value):
     if type(value) is list and len(value) > 0:
         # sometimes headers are presented as arrays of values
         if len(value) > 1:
-            raise TraceCorruptedException(
+            raise SpanContextCorruptedException(
                 'trace context must be a string or array of 1: "%s"' % value)
         value = value[0]
     if not isinstance(value, basestring):
-        raise TraceCorruptedException(
+        raise SpanContextCorruptedException(
             'trace context not a string "%s"' % value)
     parts = value.split(':')
     if len(parts) != 4:
-        raise TraceCorruptedException(
+        raise SpanContextCorruptedException(
             'malformed trace context "%s"' % value)
     try:
         trace_id = long(parts[0], 16)
@@ -115,13 +138,13 @@ def trace_context_from_string(value):
         parent_id = long(parts[2], 16)
         flags = int(parts[3], 16)
         if trace_id < 1 or span_id < 1 or parent_id < 0 or flags < 0:
-            raise TraceCorruptedException(
+            raise SpanContextCorruptedException(
                 'malformed trace context "%s"' % value)
         if parent_id == 0:
             parent_id = None
         return trace_id, span_id, parent_id, flags
     except ValueError as e:
-        raise TraceCorruptedException(
+        raise SpanContextCorruptedException(
             'malformed trace context "%s": %s' % (value, e))
 
 
@@ -135,14 +158,13 @@ class ZipkinCodec(Codec):
     used by TChannel.
 
     """
-    def inject(self, span, carrier):
+    def inject(self, span_context, carrier):
         if not isinstance(carrier, dict):
             raise InvalidCarrierException('carrier not a dictionary')
-        with span.update_lock:
-            carrier['trace_id'] = span.trace_id
-            carrier['span_id'] = span.span_id
-            carrier['parent_id'] = span.parent_id
-            carrier['traceflags'] = span.flags
+        carrier['trace_id'] = span_context.trace_id
+        carrier['span_id'] = span_context.span_id
+        carrier['parent_id'] = span_context.parent_id
+        carrier['traceflags'] = span_context.flags
 
     def extract(self, carrier):
         if isinstance(carrier, dict):
@@ -167,4 +189,6 @@ class ZipkinCodec(Codec):
                 flags = getattr(carrier, 'traceflags')
             else:
                 raise InvalidCarrierException('carrier has no traceflags')
-        return trace_id, span_id, parent_id, flags, None
+        return SpanContext(trace_id=trace_id, span_id=span_id,
+                           parent_id=parent_id, flags=flags,
+                           baggage=None)

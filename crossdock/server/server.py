@@ -130,9 +130,10 @@ class Server(object):
         if span_handler:
             span_handler(span)
 
-        traceId = "%x" % span.trace_id
-        observed_span = ObservedSpan(traceId, span.is_sampled(),
-                                     span.get_baggage_item(constants.baggage_key))
+        trace_id = "%x" % span.trace_id
+        observed_span = ObservedSpan(
+            trace_id, span.is_sampled(),
+            span.get_baggage_item(constants.baggage_key))
 
         tr = TraceResponse(span=observed_span)
 

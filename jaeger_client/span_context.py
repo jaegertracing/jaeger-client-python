@@ -18,24 +18,34 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-from __future__ import absolute_import, unicode_literals, print_function
+from __future__ import absolute_import
 
-from . import __version__
+import opentracing
 
 
-# Max number of bits to use when generating random ID
-MAX_ID_BITS = 64
+class SpanContext(opentracing.SpanContext):
+    __slots__ = ['trace_id', 'span_id', 'parent_id', 'flags',
+                 '_baggage', 'update_lock']
 
-# How often remotely controller sampler polls for sampling strategy
-DEFAULT_SAMPLING_INTERVAL = 60
+    """Implements opentracing.SpanContext"""
+    def __init__(self, trace_id, span_id, parent_id, flags, baggage=None):
+        self.trace_id = trace_id
+        self.span_id = span_id
+        self.parent_id = parent_id
+        self.flags = flags
+        self._baggage = baggage or opentracing.SpanContext.EMPTY_BAGGAGE
 
-# How often remote reporter does a preemptive flush of its buffers
-DEFAULT_FLUSH_INTERVAL = 1
+    @property
+    def baggage(self):
+        return self._baggage or opentracing.SpanContext.EMPTY_BAGGAGE
 
-# Name of the HTTP header used to encode trace ID
-TRACE_ID_HEADER = b'uber-trace-id'
-
-# Prefix for HTTP headers used to record baggage items
-BAGGAGE_HEADER_PREFIX = b'uberctx-'
-
-JAEGER_CLIENT_VERSION = 'Python-%s' % __version__
+    def with_baggage_item(self, key, value):
+        baggage = dict(self._baggage)
+        baggage[key] = value
+        return SpanContext(
+            trace_id=self.trace_id,
+            span_id=self.span_id,
+            parent_id=self.parent_id,
+            flags=self.flags,
+            baggage=baggage,
+        )

@@ -21,25 +21,26 @@
 from __future__ import absolute_import
 
 from opentracing.ext import tags as ext_tags
-from jaeger_client import Span, ConstSampler
+from jaeger_client import Span, SpanContext, ConstSampler
 from jaeger_client.thrift import add_zipkin_annotations
 
 
 def test_baggage():
-    span = Span(trace_id=1, span_id=2, parent_id=None, flags=1,
-                operation_name='x', tracer=None)
+    ctx = SpanContext(trace_id=1, span_id=2, parent_id=None, flags=1)
+    span = Span(context=ctx, operation_name='x', tracer=None)
     assert span.get_baggage_item('x') is None
     span.set_baggage_item('x', 'y').\
         set_baggage_item('z', 'why')
     assert span.get_baggage_item('x') == 'y'
     assert span.get_baggage_item('z') == 'why'
     assert span.get_baggage_item('tt') is None
-    assert len(span.baggage) == 2
+    assert len(span.context.baggage) == 2
     span.set_baggage_item('x', 'b')  # override
     assert span.get_baggage_item('x') == 'b'
-    assert len(span.baggage) == 2
+    assert len(span.context.baggage) == 2
     span.set_baggage_item('X_y', '123')
-    assert span.get_baggage_item('x-Y') == '123'
+    assert span.get_baggage_item('X_y') == '123'
+    assert span.get_baggage_item('x-Y') is None
 
 
 def test_sampling_priority(tracer):
@@ -66,8 +67,8 @@ def test_info_error(tracer):
 
 def test_span_to_string(tracer):
     tracer.service_name = 'unittest'
-    span = Span(trace_id=1, span_id=1, parent_id=1, flags=1,
-                operation_name='crypt', tracer=tracer)
+    ctx = SpanContext(trace_id=1, span_id=1, parent_id=1, flags=1)
+    span = Span(context=ctx, operation_name='crypt', tracer=tracer)
     assert '%s' % span == '1:1:1:1 unittest.crypt'
 
 

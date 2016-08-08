@@ -62,6 +62,7 @@ def traceresponse_from_json(j):
         return traceresponse_from_struct(json.loads(j))
     except:
         logging.exception('Failed to parse JSON')
+        raise
 
 # Generic
 

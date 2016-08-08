@@ -27,7 +27,7 @@ import tornado.gen
 import jaeger_client.reporter
 
 from concurrent.futures import Future
-from jaeger_client import Span
+from jaeger_client import Span, SpanContext
 from jaeger_client.metrics import Metrics
 from jaeger_client.utils import ErrorReporter
 from tornado.ioloop import IOLoop
@@ -137,8 +137,8 @@ class ReporterTest(AsyncTestCase):
     def _new_span(self, name):
         tracer = FakeTrace(ip_address='127.0.0.1',
                            service_name='reporter_test')
-        span = Span(trace_id=1, span_id=1, parent_id=None, flags=1,
-                    tracer=tracer, operation_name=name)
+        ctx = SpanContext(trace_id=1, span_id=1, parent_id=None, flags=1)
+        span = Span(context=ctx, tracer=tracer, operation_name=name)
         span.start_time = time.time()
         span.end_time = span.start_time + 0.001  # 1ms
         return span
@@ -248,6 +248,7 @@ class ReporterTest(AsyncTestCase):
         sender.futures[1].set_result(1)
 
         yield reporter.close()
+
 
     @gen_test
     def test_close_drains_queue(self):

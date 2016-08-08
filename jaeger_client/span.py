@@ -19,13 +19,13 @@
 # THE SOFTWARE.
 
 from __future__ import absolute_import
+
 import threading
 import time
 
 import opentracing
 from opentracing.ext import tags as ext_tags
-from . import thrift
-from . import codecs
+from . import codecs, thrift
 
 SAMPLED_FLAG = 0x01
 DEBUG_FLAG = 0x02
@@ -33,14 +33,14 @@ DEBUG_FLAG = 0x02
 
 class Span(opentracing.Span):
     """Implements opentracing.Span with Zipkin semantics."""
-    def __init__(self, trace_id, span_id, parent_id, flags,
-                 operation_name, tracer, tags=None, baggage=None,
-                 start_time=None):
-        super(Span, self).__init__(tracer=tracer)
-        self.trace_id = trace_id
-        self.span_id = span_id
-        self.parent_id = parent_id
-        self.flags = flags
+
+    __slots__ = ['_tracer', '_context',
+                 'operation_name', 'start_time', 'end_time', 'kind',
+                 'peer', 'component', 'logs', 'tags', 'update_lock']
+
+    def __init__(self, context, tracer, operation_name,
+                 tags=None, start_time=None):
+        super(Span, self).__init__(context=context, tracer=tracer)
         self.operation_name = operation_name
         self.start_time = start_time or time.time()
         self.end_time = None
@@ -52,7 +52,6 @@ class Span(opentracing.Span):
         # Annotation structures, to avoid creating intermediate objects
         self.tags = []
         self.logs = []
-        self.baggage = baggage
         if tags:
             for k, v in tags.iteritems():
                 self.set_tag(k, v)
@@ -149,24 +148,19 @@ class Span(opentracing.Span):
         return self
 
     def set_baggage_item(self, key, value):
+        new_context = self.context.with_baggage_item(key=key, value=value)
         with self.update_lock:
-            if self.baggage is None:
-                self.baggage = {}
-            self.baggage[_normalize_baggage_key(key)] = str(value)
+            self._context = new_context
         return self
 
     def get_baggage_item(self, key):
-        with self.update_lock:
-            if self.baggage:
-                return self.baggage.get(_normalize_baggage_key(key), None)
-            else:
-                return None
+        return self.context.baggage.get(key)
 
     def is_sampled(self):
-        return self.flags & SAMPLED_FLAG == SAMPLED_FLAG
+        return self.context.flags & SAMPLED_FLAG == SAMPLED_FLAG
 
     def is_debug(self):
-        return self.flags & DEBUG_FLAG == DEBUG_FLAG
+        return self.context.flags & DEBUG_FLAG == DEBUG_FLAG
 
     def is_rpc(self):
         return self.kind == ext_tags.SPAN_KIND_RPC_CLIENT or \
@@ -175,19 +169,35 @@ class Span(opentracing.Span):
     def is_rpc_client(self):
         return self.kind == ext_tags.SPAN_KIND_RPC_CLIENT
 
+    @property
+    def trace_id(self):
+        return self.context.trace_id
+
+    @property
+    def span_id(self):
+        return self.context.span_id
+
+    @property
+    def parent_id(self):
+        return self.context.parent_id
+
+    @property
+    def flags(self):
+        return self.context.flags
+
     def __repr__(self):
-        c = codecs.trace_context_to_string(
-            trace_id=self.trace_id, span_id=self.span_id,
-            parent_id=self.parent_id, flags=self.flags)
+        c = codecs.span_context_to_string(
+            trace_id=self.context.trace_id, span_id=self.context.span_id,
+            parent_id=self.context.parent_id, flags=self.context.flags)
         return '%s %s.%s' % (c, self.tracer.service_name, self.operation_name)
 
 
 def _set_sampling_priority(span, value):
     with span.update_lock:
         if value > 0:
-            span.flags |= SAMPLED_FLAG | DEBUG_FLAG
+            span.context.flags |= SAMPLED_FLAG | DEBUG_FLAG
         else:
-            span.flags &= ~SAMPLED_FLAG
+            span.context.flags &= ~SAMPLED_FLAG
     return True
 
 
@@ -232,9 +242,6 @@ def _set_component(span, value):
         span.component = value
     return True
 
-
-def _normalize_baggage_key(key):
-    return str(key).lower().replace('_', '-')
 
 # Register handlers for special tags.
 # Handler returns True if special tag was processed.

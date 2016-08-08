@@ -3,10 +3,10 @@
 History
 -------
 
-2.2.1 (unreleased)
+3.0.0 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Upgrade to OpenTracing 1.1
 
 
 2.2.0 (2016-08-02)

@@ -22,8 +22,9 @@ from cStringIO import StringIO
 
 import jaeger_client.thrift_gen.zipkincore.ZipkinCollector as zipkin_collector
 import jaeger_client.thrift_gen.sampling.SamplingManager as sampling_manager
+from opentracing import child_of
 from jaeger_client import ProbabilisticSampler, RateLimitingSampler
-from jaeger_client import thrift, Span
+from jaeger_client import thrift, Span, SpanContext
 from jaeger_client.thrift_gen.agent import Agent as Agent
 from thrift.protocol.TCompactProtocol import TCompactProtocol
 from thrift.transport.TTransport import TMemoryBuffer
@@ -92,10 +93,11 @@ def _marshall_span(span):
 def test_large_ids(tracer):
 
     def serialize(span_id):
-        parent = Span(trace_id=span_id, span_id=span_id,
-                      parent_id=0, flags=1,
-                      operation_name='x', tracer=tracer)
-        span = tracer.start_span(operation_name='x', parent=parent)
+        parent_ctx = SpanContext(trace_id=span_id, span_id=span_id,
+                                 parent_id=0, flags=1)
+        parent = Span(context=parent_ctx, operation_name='x', tracer=tracer)
+        span = tracer.start_span(operation_name='x',
+                                 references=child_of(parent.context))
         span.finish()
         _marshall_span(span)
 
