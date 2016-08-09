@@ -61,10 +61,9 @@ class Config(object):
     .. code-block:: yaml
 
         enabled: true
-        reporter_batch_size: 1
+        reporter_batch_size: 10
         logging: true
         metrics: true
-        tchannel_factory: jaeger.config.tchannel_singleton
         sampler:
             type: const
             param: true
