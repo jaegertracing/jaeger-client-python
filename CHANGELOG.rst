@@ -6,7 +6,7 @@ History
 3.0.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Do not publish crossdock module
 
 
 3.0.0 (2016-08-07)

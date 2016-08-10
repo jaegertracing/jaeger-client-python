@@ -22,7 +22,7 @@ setup(
     description='Jaeger Python OpenTracing Tracer implementation',
     author='Yuri Shkuro',
     author_email='ys@uber.com',
-    packages=find_packages(exclude=['tests', 'example', 'tests.*']),
+    packages=find_packages(exclude=['crossdock', 'tests', 'example', 'tests.*']),
     include_package_data=True,
     license="MIT",
     zip_safe=False,
