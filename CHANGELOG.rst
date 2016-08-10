@@ -3,7 +3,7 @@
 History
 -------
 
-3.0.1 (unreleased)
+3.0.1 (2016-08-09)
 ------------------
 
 - Do not publish crossdock module
