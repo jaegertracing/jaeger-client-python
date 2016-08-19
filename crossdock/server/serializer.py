@@ -30,11 +30,13 @@ def downstream_from_struct(i):
     return d
 
 
-def downstream_to_json(d):
-    s = {}
+def join_trace_request_to_json(d, s):
+    r = {}
     if d is not None:
-        s["downstream"] = obj_to_json(d)
-    return json.dumps(s)
+        r["downstream"] = obj_to_json(d)
+    if s is not None:
+        r["serverRole"] = str(s)
+    return json.dumps(r)
 
 #
 # Serializers for the upstream responses

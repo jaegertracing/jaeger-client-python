@@ -10,9 +10,10 @@ from jaeger_client.tracer import Tracer
 from jaeger_client.sampler import ConstSampler
 import crossdock.server.constants as constants
 import crossdock.server.serializer as serializer
-from opentracing_instrumentation import http_client, http_server
+from opentracing_instrumentation import http_client, http_server, get_current_span, request_context
 from opentracing_instrumentation.client_hooks import tornado_http
 import opentracing.ext.tags as ext_tags
+
 from crossdock.thrift_gen.tracetest.ttypes import ObservedSpan, TraceResponse, Transport, \
     JoinTraceRequest
 
@@ -23,26 +24,26 @@ from crossdock.server.thriftrw_serializer import trace_response_to_thriftrw, \
 DefaultClientPortHTTP = 8080
 DefaultServerPortHTTP = 8081
 DefaultServerPortTChannel = 8082
-tchannel_supported = False
+tchannel = None
 
-# Tchannel initialization.
-
-
-class OpenTracingHook(event.EventHook):
-    def before_send_request(self, request):
-        print 'before_send_request: trace_id: %x, span_id: %x' % \
-            (request.tracing.trace_id, request.tracing.span_id)
 
 idl_path = 'idl/thrift/crossdock/tracetest.thrift'
-service = thrift.load(path=idl_path, service='python')
-tchannel = TChannel('python', hostport="0:%d" % DefaultServerPortTChannel, trace=True)
-tchannel.hooks.register(OpenTracingHook())
+thrift_services = {}
+
+
+def get_thrift_service(service_name):
+    if service_name in thrift_services:
+        return thrift_services[service_name]
+    thrift_service = thrift.load(path=idl_path, service=service_name)
+    thrift_services[service_name] = thrift_service
+    return thrift_service
 
 
 def serve():
     """main entry point"""
     logging.getLogger().setLevel(logging.DEBUG)
     logging.info('Python Tornado Crossdock Server Running ...')
+    tchannel = make_tchannel(DefaultServerPortTChannel)
     tchannel.listen()
     app = make_app(Server())
     app.listen(DefaultClientPortHTTP)
@@ -88,14 +89,42 @@ def tchannelNotImplResponse():
     return TraceResponse(notImplementedError="python <=> tchannel not implemented")
 
 
-@tchannel.thrift.register(service.TracedService)
-def startTrace(request):
-    return trace_response_to_thriftrw(service, tchannelNotImplResponse())
+def make_tchannel(port):
+    global tchannel
+    tchannel = TChannel('python', hostport="localhost:%d" % port, trace=False)
 
+    service = get_thrift_service(service_name='python')
 
-@tchannel.thrift.register(service.TracedService)
-def joinTrace(request):
-    return trace_response_to_thriftrw(service, tchannelNotImplResponse())
+    @tchannel.thrift.register(service.TracedService, method='startTrace')
+    @tornado.gen.coroutine
+    def start_trace(request):
+        return trace_response_to_thriftrw(service, tchannelNotImplResponse())
+
+    @tchannel.thrift.register(service.TracedService, method='joinTrace')
+    @tornado.gen.coroutine
+    def join_trace(request):
+        jtr = request.body.request if request.body.request else None
+        res = yield handle_trace_request(jtr)
+        raise tornado.gen.Return(res)
+
+    @tornado.gen.coroutine
+    def handle_trace_request(trace_request):
+        span = get_current_span()
+        observed_span = service.ObservedSpan(
+            traceId="%x" % span.trace_id,
+            sampled=span.is_sampled(),
+            baggage=span.get_baggage_item(constants.baggage_key)
+        )
+
+        tr = TraceResponse(span=observed_span, notImplementedError="")
+
+        if trace_request and trace_request.downstream is not None:
+            res = yield call_downstream(span, trace_request, tr, None)
+            raise tornado.gen.Return(res)
+        else:
+            raise tornado.gen.Return(trace_response_to_thriftrw(service, tr))
+
+    return tchannel
 
 
 # HTTP Tracing Stuff
@@ -118,91 +147,104 @@ class Server(object):
         self.handle_trace_request(request, sstr, update_span, response_writer)
 
     def join_trace(self, request, response_writer):
-
         jtr = serializer.join_trace_request_from_json(request.body) if request.body else None
 
         self.handle_trace_request(request, jtr, None, response_writer)
 
+    @tornado.gen.coroutine
     def handle_trace_request(self, http_request, trace_request, span_handler, response_writer):
-
         span = http_server.before_request(http_server.TornadoRequestWrapper(request=http_request),
                                           self.tracer)
         if span_handler:
             span_handler(span)
 
-        trace_id = "%x" % span.trace_id
-        observed_span = ObservedSpan(
-            trace_id, span.is_sampled(),
-            span.get_baggage_item(constants.baggage_key))
+        # TODO neither of these seem to work
+        # with span_in_stack_context(span):
+        # with request_context.span_in_stack_context(span):
+        with tchannel.context_provider.span_in_context(span):
 
-        tr = TraceResponse(span=observed_span)
+            trace_id = "%x" % span.trace_id
+            observed_span = ObservedSpan(
+                trace_id, span.is_sampled(),
+                span.get_baggage_item(constants.baggage_key))
 
-        if trace_request and trace_request.downstream is not None:
-            self.call_downstream(span, trace_request, tr, response_writer)
-        else:
-            response_writer.write(serializer.obj_to_json(tr))
-            response_writer.finish()
+            tr = TraceResponse(span=observed_span)
 
-    def call_downstream(self, span, trace_request, trace_response, response_writer):
-        if trace_request.downstream.transport == Transport.HTTP:
-            self.call_downstream_http(span, trace_request, trace_response, response_writer)
-        elif trace_request.downstream.transport == Transport.TCHANNEL:
-            if tchannel_supported:
-                self.real_call_downstream_tchannel(span, trace_request, trace_response,
-                                                   response_writer)
+            if trace_request and trace_request.downstream is not None:
+                call_downstream(span, trace_request, tr, response_writer)
             else:
-                self.call_downstream_tchannel(span, trace_request, trace_response,
-                                              response_writer)
-        else:
-            response_writer.finish()
-            raise UnknownTransportException("%s" % trace_request.downstream.transport)
-
-    def call_downstream_http(self, span, trace_request, trace_response, response_writer):
-
-        def handle_response(response):
-            tr = serializer.traceresponse_from_json(response.body)
-            if tr.notImplementedError:
                 response_writer.write(serializer.obj_to_json(tr))
-            else:
-                trace_response.downstream = tr
-                response_writer.write(serializer.obj_to_json(trace_response))
+                response_writer.finish()
+
+
+@tornado.gen.coroutine
+def call_downstream(span, trace_request, trace_response, response_writer):
+    # TODO stop passing span around like this
+    if trace_request.downstream.transport == Transport.HTTP:
+        resp = yield call_downstream_http(span, trace_request, trace_response, response_writer)
+    elif trace_request.downstream.transport == Transport.TCHANNEL:
+        resp = yield call_downstream_tchannel(trace_request, trace_response, response_writer)
+    else:
+        if response_writer:
             response_writer.finish()
+        raise UnknownTransportException("%s" % trace_request.downstream.transport)
+    raise tornado.gen.Return(resp)
 
-        downstream = trace_request.downstream
-        url = "http://%s:%s/join_trace" % (downstream.host, downstream.port)
-        body = serializer.downstream_to_json(downstream.downstream)
 
-        req = tornado.httpclient.HTTPRequest(url=url, method="POST",
-                                             headers={"Content-Type": "application/json"},
-                                             body=body)
-        http_client.before_http_request(tornado_http.TornadoRequestWrapper(request=req),
-                                        lambda: span)
-        client = tornado.httpclient.AsyncHTTPClient()
-        client.fetch(req, handle_response)
+@tornado.gen.coroutine
+def call_downstream_http(span, trace_request, trace_response, response_writer):
+    downstream = trace_request.downstream
+    url = "http://%s:%s/join_trace" % (downstream.host, downstream.port)
+    body = serializer.join_trace_request_to_json(downstream.downstream, trace_request.downstream.serverRole)
 
-    def call_downstream_tchannel(self, span, trace_request, trace_response, response_writer):
+    req = tornado.httpclient.HTTPRequest(url=url, method="POST",
+                                         headers={"Content-Type": "application/json"},
+                                         body=body)
+    http_client.before_http_request(tornado_http.TornadoRequestWrapper(request=req),
+                                    lambda: span)
+    client = tornado.httpclient.AsyncHTTPClient()
+    response = yield client.fetch(req)
 
-        tr = tchannelNotImplResponse()
-        response_writer.write(serializer.obj_to_json(tr))
+    service = get_thrift_service('python')
+    tr = serializer.traceresponse_from_json(response.body)
+    if tr.notImplementedError:
+        if response_writer:
+            response_writer.write(serializer.obj_to_json(tr))
+        else:
+            raise tornado.gen.Return(trace_response_to_thriftrw(service, tchannelNotImplResponse()))
+    else:
+        if response_writer:
+            trace_response.downstream = tr
+            response_writer.write(serializer.obj_to_json(trace_response))
+        else:
+            observed_span = service.ObservedSpan(
+                traceId=tr.span.traceId,
+                sampled=tr.span.sampled,
+                baggage=tr.span.baggage
+            )
+
+            tr = TraceResponse(span=observed_span, notImplementedError="")
+            tr = trace_response_to_thriftrw(service, tr)
+            trace_response.downstream = tr
+
+            raise tornado.gen.Return(trace_response_to_thriftrw(service, trace_response))
+    if response_writer:
         response_writer.finish()
 
-    def real_call_downstream_tchannel(self, span, trace_request, trace_response, response_writer):
 
-        def handle_response(f):
-            response = f.result()
-            trace_response.downstream = response.body
+@tornado.gen.coroutine
+def call_downstream_tchannel(trace_request, trace_response, response_writer):
+    downstream = trace_request.downstream
+    downstream_service = get_thrift_service('python')
 
-            response_writer.write(serializer.obj_to_json(trace_response))
-            response_writer.finish()
+    jtr = JoinTraceRequest(trace_request.downstream.serverRole, downstream.downstream)
+    jtr = join_trace_request_to_thriftrw(downstream_service, jtr)
 
-        downstream = trace_request.downstream
-        # XXX cache these
-        service = thrift.load(idl_path, service=downstream.serviceName)
-
-        jtr = JoinTraceRequest(trace_request.serverRole, downstream.downstream)
-        jtr = join_trace_request_to_thriftrw(service, jtr)
-        # with context.RequestContext(span):
-        with context.request_context(span):
-            f = tchannel.thrift(service.TracedService.joinTrace(jtr),
-                                hostport="%s:%s" % (downstream.host, downstream.port))
-        tornado.ioloop.IOLoop.current().add_future(f, handle_response)
+    f = yield tchannel.thrift(downstream_service.TracedService.joinTrace(jtr),
+                              hostport="localhost:%s" % downstream.port)
+    trace_response.downstream = f.body
+    if response_writer:
+        response_writer.write(serializer.obj_to_json(trace_response))
+        response_writer.finish()
+    else:
+        raise tornado.gen.Return(trace_response_to_thriftrw(downstream_service, trace_response))
