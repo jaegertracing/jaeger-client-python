@@ -3,10 +3,10 @@
 History
 -------
 
-3.0.2 (unreleased)
+3.0.2 (2016-08-18)
 ------------------
 
-- Nothing changed yet.
+- Do not create SpanContext from Zipkin span if trace_id is empty/zero
 
 
 3.0.1 (2016-08-09)

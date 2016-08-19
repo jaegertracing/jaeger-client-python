@@ -92,7 +92,7 @@ class BinaryCodec(Codec):
         if not isinstance(carrier, bytearray):
             raise InvalidCarrierException('carrier not a bytearray')
         # TODO binary encoding not implemented
-        return 0L, 0L, None, 0, None
+        return None
 
 
 def span_context_to_string(trace_id, span_id, parent_id, flags):
@@ -189,6 +189,8 @@ class ZipkinCodec(Codec):
                 flags = getattr(carrier, 'traceflags')
             else:
                 raise InvalidCarrierException('carrier has no traceflags')
+        if not trace_id:
+            return None
         return SpanContext(trace_id=trace_id, span_id=span_id,
                            parent_id=parent_id, flags=flags,
                            baggage=None)
