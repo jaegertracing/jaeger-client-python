@@ -29,7 +29,9 @@ from tornado.httpclient import HTTPRequest
 @pytest.fixture
 def app():
     """Required by pytest-tornado's http_server fixture"""
-    return server.make_app(server.Server())
+    app = server.make_app(server.Server())
+    app.debug = False
+    return app
 
 
 # TODO expand permutations to do TCHANNEL as well
