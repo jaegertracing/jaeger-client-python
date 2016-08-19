@@ -36,7 +36,7 @@ def app():
 PERMUTATIONS = []
 for s2 in ["HTTP"]:
     for s3 in ["HTTP"]:
-        for sampled in [True]:
+        for sampled in [True, False]:
             PERMUTATIONS.append((s2, s3, sampled))
 
 
