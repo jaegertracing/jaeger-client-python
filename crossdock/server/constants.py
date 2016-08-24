@@ -1,1 +1,1 @@
-baggage_key = "crossdock-baggage-key"
+baggage_key = 'crossdock-baggage-key'

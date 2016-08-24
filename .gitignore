@@ -46,6 +46,7 @@ docs/_build/*
 # Ignore coverage output
 *.xml
 coverage/
+htmlcov/
 
 # Ignore benchmarks output
 perf.log

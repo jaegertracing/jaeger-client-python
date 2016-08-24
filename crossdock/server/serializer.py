@@ -33,9 +33,9 @@ def downstream_from_struct(i):
 def join_trace_request_to_json(downstream, server_role):
     req = {}
     if downstream is not None:
-        req["downstream"] = obj_to_json(downstream)
+        req['downstream'] = obj_to_json(downstream)
     if server_role is not None:
-        req["serverRole"] = str(server_role)
+        req['serverRole'] = str(server_role)
     return json.dumps(req)
 
 #
@@ -78,15 +78,15 @@ def class_keys(obj):
 def obj_to_json(obj):
     s = {}
     for k in class_keys(obj):
-        if k == "downstream":
+        if k == 'downstream':
             if obj.downstream is not None:
-                s["downstream"] = obj_to_json(obj.downstream)
-        elif k == "transport":
+                s['downstream'] = obj_to_json(obj.downstream)
+        elif k == 'transport':
             if obj.transport is not None:
-                s["transport"] = Transport._VALUES_TO_NAMES[obj.transport]
-        elif k == "span":
+                s['transport'] = Transport._VALUES_TO_NAMES[obj.transport]
+        elif k == 'span':
             if obj.span is not None:
-                s["span"] = obj_to_json(obj.span)
+                s['span'] = obj_to_json(obj.span)
         else:
             s[k] = getattr(obj, k)
     return s
@@ -95,11 +95,11 @@ def obj_to_json(obj):
 def set_object_values(obj, i, dsf):
     for k in i.iterkeys():
         if hasattr(obj, k):
-            if k == "downstream":
+            if k == 'downstream':
                 obj.downstream = dsf(i[k])
-            elif k == "transport":
+            elif k == 'transport':
                 obj.transport = Transport._NAMES_TO_VALUES[i[k]]
-            elif k == "span":
+            elif k == 'span':
                 obj.span = observed_span_from_struct(i[k])
             else:
                 setattr(obj, k, i[k])

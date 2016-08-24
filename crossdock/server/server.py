@@ -84,20 +84,20 @@ class MainHandler(tornado.web.RequestHandler):
 def make_app(server):
     return tornado.web.Application(
         [
-            (r"/", MainHandler),
-            (r"/start_trace", MainHandler, (dict(server=server, method=Server.start_trace))),
-            (r"/join_trace", MainHandler, (dict(server=server, method=Server.join_trace))),
+            (r'/', MainHandler),
+            (r'/start_trace', MainHandler, (dict(server=server, method=Server.start_trace))),
+            (r'/join_trace', MainHandler, (dict(server=server, method=Server.join_trace))),
         ], debug=True)
 
 
 # TChannel handlers
 def tchannelNotImplResponse():
-    return TraceResponse(notImplementedError="python <=> tchannel not implemented")
+    return TraceResponse(notImplementedError='python <=> tchannel not implemented')
 
 
 def make_tchannel(port):
     global tchannel
-    tchannel = TChannel('python', hostport="localhost:%d" % port, trace=True)
+    tchannel = TChannel('python', hostport='localhost:%d' % port, trace=True)
 
     service = get_thrift_service(service_name='python')
 
@@ -112,12 +112,12 @@ def make_tchannel(port):
     def handle_trace_request(trace_request):
         span = get_current_span()
         observed_span = service.ObservedSpan(
-            traceId="%x" % span.trace_id,
+            traceId='%x' % span.trace_id,
             sampled=span.is_sampled(),
             baggage=span.get_baggage_item(constants.baggage_key)
         )
 
-        trace_response = TraceResponse(span=observed_span, notImplementedError="")
+        trace_response = TraceResponse(span=observed_span, notImplementedError='')
 
         if trace_request and trace_request.downstream is not None:
             downstream_trace_resp = yield call_downstream(span, trace_request.downstream)
@@ -126,7 +126,7 @@ def make_tchannel(port):
                 sampled=downstream_trace_resp.span.sampled,
                 baggage=downstream_trace_resp.span.baggage
             )
-            downstream_trace_resp = TraceResponse(span=observed_span, notImplementedError="")
+            downstream_trace_resp = TraceResponse(span=observed_span, notImplementedError='')
             downstream_trace_resp = trace_response_to_thriftrw(service, downstream_trace_resp)
             trace_response.downstream = downstream_trace_resp
 
@@ -167,7 +167,7 @@ class Server(object):
             span_handler(span)
 
         with request_context.span_in_stack_context(span):
-            trace_id = "%x" % span.trace_id
+            trace_id = '%x' % span.trace_id
             observed_span = ObservedSpan(
                 trace_id, span.is_sampled(),
                 span.get_baggage_item(constants.baggage_key))
@@ -199,17 +199,17 @@ def call_downstream(span, downstream):
     elif downstream.transport == Transport.TCHANNEL:
         downstream_trace_resp = yield call_downstream_tchannel(downstream)
     else:
-        raise UnknownTransportException("%s" % downstream.transport)
+        raise UnknownTransportException('%s' % downstream.transport)
     raise tornado.gen.Return(downstream_trace_resp)
 
 
 @tornado.gen.coroutine
 def call_downstream_http(span, downstream):
-    url = "http://%s:%s/join_trace" % (downstream.host, downstream.port)
+    url = 'http://%s:%s/join_trace' % (downstream.host, downstream.port)
     body = serializer.join_trace_request_to_json(downstream.downstream, downstream.serverRole)
 
-    req = tornado.httpclient.HTTPRequest(url=url, method="POST",
-                                         headers={"Content-Type": "application/json"},
+    req = tornado.httpclient.HTTPRequest(url=url, method='POST',
+                                         headers={'Content-Type': 'application/json'},
                                          body=body)
     http_client.before_http_request(tornado_http.TornadoRequestWrapper(request=req),
                                     lambda: span)
@@ -227,5 +227,5 @@ def call_downstream_tchannel(downstream):
     jtr = join_trace_request_to_thriftrw(downstream_service, jtr)
 
     future = yield tchannel.thrift(downstream_service.TracedService.joinTrace(jtr),
-                                   hostport="localhost:%s" % downstream.port)
+                                   hostport='localhost:%s' % downstream.port)
     raise tornado.gen.Return(future.body)
