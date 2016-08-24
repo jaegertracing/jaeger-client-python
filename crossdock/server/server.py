@@ -10,13 +10,13 @@ from jaeger_client import Tracer, ConstSampler
 from jaeger_client.reporter import NullReporter
 import crossdock.server.constants as constants
 import crossdock.server.serializer as serializer
-from opentracing_instrumentation import http_client, http_server, get_current_span
+from opentracing_instrumentation import http_client, http_server, get_current_span, request_context
 from opentracing_instrumentation.client_hooks import tornado_http
 import opentracing.ext.tags as ext_tags
 from crossdock.thrift_gen.tracetest.ttypes import ObservedSpan, TraceResponse, Transport, \
     JoinTraceRequest
 
-from tchannel import TChannel, thrift, context, event
+from tchannel import TChannel, thrift
 from crossdock.server.thriftrw_serializer import trace_response_to_thriftrw, \
     join_trace_request_to_thriftrw
 
@@ -95,20 +95,11 @@ def tchannelNotImplResponse():
     return TraceResponse(notImplementedError="python <=> tchannel not implemented")
 
 
-class UnimplementedEndpointException(Exception):
-    pass
-
-
 def make_tchannel(port):
     global tchannel
     tchannel = TChannel('python', hostport="localhost:%d" % port, trace=True)
 
     service = get_thrift_service(service_name='python')
-
-    @tchannel.thrift.register(service.TracedService, method='startTrace')
-    @tornado.gen.coroutine
-    def start_trace(request):
-        raise UnimplementedEndpointException("tchannel startTrace endpoint not implemented")
 
     @tchannel.thrift.register(service.TracedService, method='joinTrace')
     @tornado.gen.coroutine
@@ -147,13 +138,13 @@ class Server(object):
         self.tracer = opentracing.tracer
 
     def start_trace(self, request, response_writer):
-        sstr = serializer.start_trace_request_from_json(request.body)
+        start_trace_req = serializer.start_trace_request_from_json(request.body)
 
         def update_span(span):
-            span.set_baggage_item(constants.baggage_key, sstr.baggage)
-            span.set_tag(ext_tags.SAMPLING_PRIORITY, sstr.sampled)
+            span.set_baggage_item(constants.baggage_key, start_trace_req.baggage)
+            span.set_tag(ext_tags.SAMPLING_PRIORITY, start_trace_req.sampled)
 
-        self.handle_trace_request(request, sstr, update_span, response_writer)
+        self.handle_trace_request(request, start_trace_req, update_span, response_writer)
 
     def join_trace(self, request, response_writer):
 
@@ -168,7 +159,7 @@ class Server(object):
         if span_handler:
             span_handler(span)
 
-        with tchannel.context_provider.span_in_context(span):
+        with request_context.span_in_stack_context(span):
             trace_id = "%x" % span.trace_id
             observed_span = ObservedSpan(
                 trace_id, span.is_sampled(),

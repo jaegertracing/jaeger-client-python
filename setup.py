@@ -41,8 +41,6 @@ setup(
         'thrift',
         'tornado>=4.3,<5',
         'opentracing>=1.1,<1.2',
-        'tchannel>=0.27',
-        'opentracing_instrumentation>=2,<3',
     ],
     test_suite='tests',
     extras_require={
@@ -56,6 +54,8 @@ setup(
             'flake8<3',  # see https://github.com/zheller/flake8-quotes/issues/29
             'flake8-quotes',
             'coveralls',
+            'tchannel>=0.27',
+            'opentracing_instrumentation>=2,<3',
         ]
     },
 )
