@@ -20,10 +20,14 @@
 
 from __future__ import absolute_import
 
+import mock
 import json
 import pytest
+import opentracing
 from crossdock.server import server
 from tornado.httpclient import HTTPRequest
+from jaeger_client import Tracer, ConstSampler
+from jaeger_client.reporter import InMemoryReporter
 
 tchannel_port = "9999"
 
@@ -41,7 +45,20 @@ def mock_tchannel(io_loop):
     return tchannel
 
 
-# TODO expand permutations to do TCHANNEL as well
+# noinspection PyShadowingNames
+@pytest.yield_fixture
+def tracer():
+    tracer = Tracer(
+        service_name='test-tracer',
+        sampler=ConstSampler(True),
+        reporter=InMemoryReporter(),
+    )
+    try:
+        yield tracer
+    finally:
+        tracer.close()
+
+
 PERMUTATIONS = []
 for s2 in ["HTTP", "TCHANNEL"]:
     for s3 in ["HTTP", "TCHANNEL"]:
@@ -53,7 +70,7 @@ for s2 in ["HTTP", "TCHANNEL"]:
 @pytest.mark.gen_test
 def test_trace_propagation(
         s2_transport, s3_transport, sampled,
-        mock_tchannel,
+        mock_tchannel, tracer,
         base_url, http_port, http_client):
 
     # verify that server is ready
@@ -86,22 +103,27 @@ def test_trace_propagation(
     level1["downstream"] = level2
     body = json.dumps(level1)
 
-    req = HTTPRequest(url="%s/start_trace" % base_url, method="POST",
-                      headers={"Content-Type": "application/json"},
-                      body=body,
-                      request_timeout=2)
+    with mock.patch('opentracing.tracer', tracer):
+        assert opentracing.tracer == tracer # sanity check that patch worked
 
-    response = yield http_client.fetch(req)
-    assert response.code == 200
-    tr = server.serializer.traceresponse_from_json(response.body)
-    assert tr is not None
-    assert tr.span is not None
-    assert tr.span.baggage == level1.get("baggage")
-    assert tr.span.sampled == sampled
-    assert tr.span.traceId is not None
-    assert tr.downstream is not None
-    assert tr.downstream.span.baggage == level1.get("baggage")
-    assert tr.downstream.span.traceId == tr.span.traceId
-    assert tr.downstream.downstream is not None
-    assert tr.downstream.downstream.span.baggage == level1.get("baggage")
-    assert tr.downstream.downstream.span.traceId == tr.span.traceId
+        req = HTTPRequest(url="%s/start_trace" % base_url, method="POST",
+                          headers={"Content-Type": "application/json"},
+                          body=body,
+                          request_timeout=2)
+
+        response = yield http_client.fetch(req)
+        assert response.code == 200
+        tr = server.serializer.traceresponse_from_json(response.body)
+        assert tr is not None
+        assert tr.span is not None
+        assert tr.span.baggage == level1.get("baggage")
+        assert tr.span.sampled == sampled
+        assert tr.span.traceId is not None
+        assert tr.downstream is not None
+        assert tr.downstream.span.baggage == level1.get("baggage")
+        assert tr.downstream.span.sampled == sampled
+        assert tr.downstream.span.traceId == tr.span.traceId
+        assert tr.downstream.downstream is not None
+        assert tr.downstream.downstream.span.baggage == level1.get("baggage")
+        assert tr.downstream.downstream.span.sampled == sampled
+        assert tr.downstream.downstream.span.traceId == tr.span.traceId

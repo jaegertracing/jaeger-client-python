@@ -6,14 +6,13 @@ import tornado.ioloop
 import tornado.escape
 import tornado.httpclient
 from tornado.web import asynchronous
-from jaeger_client.tracer import Tracer
-from jaeger_client.sampler import ConstSampler
+from jaeger_client import Tracer, ConstSampler
+from jaeger_client.reporter import NullReporter
 import crossdock.server.constants as constants
 import crossdock.server.serializer as serializer
-from opentracing_instrumentation import http_client, http_server, get_current_span, request_context
+from opentracing_instrumentation import http_client, http_server, get_current_span
 from opentracing_instrumentation.client_hooks import tornado_http
 import opentracing.ext.tags as ext_tags
-
 from crossdock.thrift_gen.tracetest.ttypes import ObservedSpan, TraceResponse, Transport, \
     JoinTraceRequest
 
@@ -25,6 +24,13 @@ DefaultClientPortHTTP = 8080
 DefaultServerPortHTTP = 8081
 DefaultServerPortTChannel = 8082
 tchannel = None
+
+
+tracer = Tracer(
+    service_name='python',
+    reporter=NullReporter(),
+    sampler=ConstSampler(decision=True))
+opentracing.tracer = tracer
 
 
 idl_path = 'idl/thrift/crossdock/tracetest.thrift'
@@ -89,16 +95,20 @@ def tchannelNotImplResponse():
     return TraceResponse(notImplementedError="python <=> tchannel not implemented")
 
 
+class UnimplementedEndpointException(Exception):
+    pass
+
+
 def make_tchannel(port):
     global tchannel
-    tchannel = TChannel('python', hostport="localhost:%d" % port, trace=False)
+    tchannel = TChannel('python', hostport="localhost:%d" % port, trace=True)
 
     service = get_thrift_service(service_name='python')
 
     @tchannel.thrift.register(service.TracedService, method='startTrace')
     @tornado.gen.coroutine
     def start_trace(request):
-        return trace_response_to_thriftrw(service, tchannelNotImplResponse())
+        raise UnimplementedEndpointException("tchannel startTrace endpoint not implemented")
 
     @tchannel.thrift.register(service.TracedService, method='joinTrace')
     @tornado.gen.coroutine
@@ -134,8 +144,7 @@ class UnknownTransportException(Exception):
 
 class Server(object):
     def __init__(self):
-        self.tracer = Tracer("python", None, ConstSampler(decision=True))
-        opentracing.tracer = self.tracer
+        self.tracer = opentracing.tracer
 
     def start_trace(self, request, response_writer):
         sstr = serializer.start_trace_request_from_json(request.body)
@@ -147,22 +156,19 @@ class Server(object):
         self.handle_trace_request(request, sstr, update_span, response_writer)
 
     def join_trace(self, request, response_writer):
+
         jtr = serializer.join_trace_request_from_json(request.body) if request.body else None
 
         self.handle_trace_request(request, jtr, None, response_writer)
 
-    @tornado.gen.coroutine
     def handle_trace_request(self, http_request, trace_request, span_handler, response_writer):
+
         span = http_server.before_request(http_server.TornadoRequestWrapper(request=http_request),
                                           self.tracer)
         if span_handler:
             span_handler(span)
 
-        # TODO neither of these seem to work
-        # with span_in_stack_context(span):
-        # with request_context.span_in_stack_context(span):
         with tchannel.context_provider.span_in_context(span):
-
             trace_id = "%x" % span.trace_id
             observed_span = ObservedSpan(
                 trace_id, span.is_sampled(),
@@ -179,7 +185,6 @@ class Server(object):
 
 @tornado.gen.coroutine
 def call_downstream(span, trace_request, trace_response, response_writer):
-    # TODO stop passing span around like this
     if trace_request.downstream.transport == Transport.HTTP:
         resp = yield call_downstream_http(span, trace_request, trace_response, response_writer)
     elif trace_request.downstream.transport == Transport.TCHANNEL:
@@ -205,7 +210,7 @@ def call_downstream_http(span, trace_request, trace_response, response_writer):
     client = tornado.httpclient.AsyncHTTPClient()
     response = yield client.fetch(req)
 
-    service = get_thrift_service('python')
+    service = get_thrift_service(trace_request.downstream.serviceName)
     tr = serializer.traceresponse_from_json(response.body)
     if tr.notImplementedError:
         if response_writer:
@@ -235,7 +240,7 @@ def call_downstream_http(span, trace_request, trace_response, response_writer):
 @tornado.gen.coroutine
 def call_downstream_tchannel(trace_request, trace_response, response_writer):
     downstream = trace_request.downstream
-    downstream_service = get_thrift_service('python')
+    downstream_service = get_thrift_service(downstream.serviceName)
 
     jtr = JoinTraceRequest(trace_request.downstream.serverRole, downstream.downstream)
     jtr = join_trace_request_to_thriftrw(downstream_service, jtr)
