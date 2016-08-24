@@ -120,10 +120,17 @@ def make_tchannel(port):
         trace_response = TraceResponse(span=observed_span, notImplementedError="")
 
         if trace_request and trace_request.downstream is not None:
-            res = yield call_downstream(span, trace_request.downstream, trace_response, None)
-            raise tornado.gen.Return(res)
-        else:
-            raise tornado.gen.Return(trace_response_to_thriftrw(service, trace_response))
+            downstream_trace_resp = yield call_downstream(span, trace_request.downstream)
+            observed_span = service.ObservedSpan(
+                traceId=downstream_trace_resp.span.traceId,
+                sampled=downstream_trace_resp.span.sampled,
+                baggage=downstream_trace_resp.span.baggage
+            )
+            downstream_trace_resp = TraceResponse(span=observed_span, notImplementedError="")
+            downstream_trace_resp = trace_response_to_thriftrw(service, downstream_trace_resp)
+            trace_response.downstream = downstream_trace_resp
+
+        raise tornado.gen.Return(trace_response_to_thriftrw(service, trace_response))
 
     return tchannel
 
@@ -168,27 +175,36 @@ class Server(object):
             trace_response = TraceResponse(span=observed_span)
 
             if trace_request and trace_request.downstream is not None:
-                call_downstream(span, trace_request.downstream, trace_response, response_writer)
+
+                def handle_response(future):
+                    downstream_trace_resp = future.result()
+                    if downstream_trace_resp.notImplementedError:
+                        response_writer.write(serializer.obj_to_json(downstream_trace_resp))
+                    else:
+                        trace_response.downstream = downstream_trace_resp
+                        response_writer.write(serializer.obj_to_json(trace_response))
+                    response_writer.finish()
+
+                future = call_downstream(span, trace_request.downstream)
+                tornado.ioloop.IOLoop.current().add_future(future, handle_response)
             else:
                 response_writer.write(serializer.obj_to_json(trace_response))
                 response_writer.finish()
 
 
 @tornado.gen.coroutine
-def call_downstream(span, downstream, trace_response, response_writer):
+def call_downstream(span, downstream):
     if downstream.transport == Transport.HTTP:
-        resp = yield call_downstream_http(span, downstream, trace_response, response_writer)
+        downstream_trace_resp = yield call_downstream_http(span, downstream)
     elif downstream.transport == Transport.TCHANNEL:
-        resp = yield call_downstream_tchannel(downstream, trace_response, response_writer)
+        downstream_trace_resp = yield call_downstream_tchannel(downstream)
     else:
-        if response_writer:
-            response_writer.finish()
         raise UnknownTransportException("%s" % downstream.transport)
-    raise tornado.gen.Return(resp)
+    raise tornado.gen.Return(downstream_trace_resp)
 
 
 @tornado.gen.coroutine
-def call_downstream_http(span, downstream, trace_response, response_writer):
+def call_downstream_http(span, downstream):
     url = "http://%s:%s/join_trace" % (downstream.host, downstream.port)
     body = serializer.join_trace_request_to_json(downstream.downstream, downstream.serverRole)
 
@@ -198,33 +214,9 @@ def call_downstream_http(span, downstream, trace_response, response_writer):
     http_client.before_http_request(tornado_http.TornadoRequestWrapper(request=req),
                                     lambda: span)
     client = tornado.httpclient.AsyncHTTPClient()
-    response = yield client.fetch(req)
+    future = yield client.fetch(req)
 
-    service = get_thrift_service(downstream.serviceName)
-    tr = serializer.traceresponse_from_json(response.body)
-    if tr.notImplementedError:
-        if response_writer:
-            response_writer.write(serializer.obj_to_json(tr))
-        else:
-            raise tornado.gen.Return(trace_response_to_thriftrw(service, tchannelNotImplResponse()))
-    else:
-        if response_writer:
-            trace_response.downstream = tr
-            response_writer.write(serializer.obj_to_json(trace_response))
-        else:
-            observed_span = service.ObservedSpan(
-                traceId=tr.span.traceId,
-                sampled=tr.span.sampled,
-                baggage=tr.span.baggage
-            )
-
-            tr = TraceResponse(span=observed_span, notImplementedError="")
-            tr = trace_response_to_thriftrw(service, tr)
-            trace_response.downstream = tr
-
-            raise tornado.gen.Return(trace_response_to_thriftrw(service, trace_response))
-    if response_writer:
-        response_writer.finish()
+    raise tornado.gen.Return(serializer.traceresponse_from_json(future.body))
 
 
 @tornado.gen.coroutine
@@ -234,13 +226,6 @@ def call_downstream_tchannel(downstream):
     jtr = JoinTraceRequest(downstream.serverRole, downstream.downstream)
     jtr = join_trace_request_to_thriftrw(downstream_service, jtr)
 
-    f = yield tchannel.thrift(downstream_service.TracedService.joinTrace(jtr),
-                              hostport="localhost:%s" % downstream.port)
-    tornado.get.Return(f.body)
-
-    # trace_response.downstream = f.body
-    # if response_writer:
-    #     response_writer.write(serializer.obj_to_json(trace_response))
-    #     response_writer.finish()
-    # else:
-    #     raise tornado.gen.Return(trace_response_to_thriftrw(downstream_service, trace_response))
+    future = yield tchannel.thrift(downstream_service.TracedService.joinTrace(jtr),
+                                   hostport="localhost:%s" % downstream.port)
+    raise tornado.gen.Return(future.body)
