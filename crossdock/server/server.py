@@ -90,11 +90,6 @@ def make_app(server):
         ], debug=True)
 
 
-# TChannel handlers
-def tchannelNotImplResponse():
-    return TraceResponse(notImplementedError='python <=> tchannel not implemented')
-
-
 def make_tchannel(port):
     global tchannel
     tchannel = TChannel('python', hostport='localhost:%d' % port, trace=True)
@@ -157,9 +152,9 @@ class Server(object):
     @tornado.gen.coroutine
     def join_trace(self, request, response_writer):
 
-        jtr = serializer.join_trace_request_from_json(request.body) if request.body else None
+        join_trace_request = serializer.join_trace_request_from_json(request.body) if request.body else None
 
-        self.handle_downstream_request(request, jtr.downstream, None, response_writer)
+        self.handle_downstream_request(request, join_trace_request.downstream, None, response_writer)
 
     @tornado.gen.coroutine
     def handle_downstream_request(self, http_request, downstream, span_handler, response_writer):
@@ -170,11 +165,7 @@ class Server(object):
             span_handler(span)
 
         with request_context.span_in_stack_context(span):
-            trace_id = '%x' % span.trace_id
-            observed_span = ObservedSpan(
-                trace_id, span.is_sampled(),
-                span.get_baggage_item(constants.baggage_key))
-
+            observed_span = get_observed_span(span)
             trace_response = TraceResponse(span=observed_span)
 
             if downstream:
