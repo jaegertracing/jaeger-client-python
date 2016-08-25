@@ -17,3 +17,9 @@ def downstream_to_thriftrw(service, downstream):
 
 def join_trace_request_to_thriftrw(service, jtr):
     return service.JoinTraceRequest(jtr.serverRole, downstream_to_thriftrw(service, jtr.downstream))
+
+
+def observed_span_to_thriftrw(service, observed_span):
+    return service.ObservedSpan(traceId=observed_span.traceId,
+                                sampled=observed_span.sampled,
+                                baggage=observed_span.baggage)
