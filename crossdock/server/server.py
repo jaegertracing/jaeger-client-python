@@ -3,7 +3,6 @@ import logging
 import tornado.web
 import opentracing
 import tornado.ioloop
-import tornado.escape
 import tornado.httpclient
 from tornado.web import asynchronous
 from jaeger_client import Tracer, ConstSampler
