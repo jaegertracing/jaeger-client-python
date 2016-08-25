@@ -156,23 +156,17 @@ class Server(object):
         if span_handler:
             span_handler(span)
 
-        with request_context.span_in_stack_context(span):
-            observed_span = get_observed_span(span)
-            trace_response = TraceResponse(span=observed_span)
+        observed_span = get_observed_span(span)
+        trace_response = TraceResponse(span=observed_span)
 
-            if downstream:
-
-                def handle_response(future):
-                    downstream_trace_resp = future.result()
-                    trace_response.downstream = downstream_trace_resp
-                    response_writer.write(serializer.obj_to_json(trace_response))
-                    response_writer.finish()
-
+        if downstream:
+            with request_context.span_in_stack_context(span):
                 future = call_downstream(span, downstream)
-                tornado.ioloop.IOLoop.current().add_future(future, handle_response)
-            else:
-                response_writer.write(serializer.obj_to_json(trace_response))
-                response_writer.finish()
+            downstream_trace_resp = yield future
+            trace_response.downstream = downstream_trace_resp
+
+        response_writer.write(serializer.obj_to_json(trace_response))
+        response_writer.finish()
 
 
 def get_observed_span(span):
