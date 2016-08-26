@@ -17,7 +17,7 @@ from crossdock.thrift_gen.tracetest.ttypes import ObservedSpan, TraceResponse, T
 
 from tchannel import TChannel, thrift
 from crossdock.server.thriftrw_serializer import trace_response_to_thriftrw, \
-    join_trace_request_to_thriftrw, observed_span_to_thriftrw
+    join_trace_request_to_thriftrw
 
 DefaultClientPortHTTP = 8080
 DefaultServerPortHTTP = 8081
@@ -99,23 +99,8 @@ def make_tchannel(port):
     @tornado.gen.coroutine
     def join_trace(request):
         join_trace_request = request.body.request or None
-        response = yield prepare_response(join_trace_request.downstream)
-        raise tornado.gen.Return(response)
-
-    @tornado.gen.coroutine
-    def prepare_response(downstream):
-        span = get_current_span()
-        observed_span = observed_span_to_thriftrw(service, get_observed_span(span))
-
-        trace_response = TraceResponse(span=observed_span, notImplementedError='')
-
-        if downstream:
-            downstream_trace_resp = yield call_downstream(span, downstream)
-            observed_span = observed_span_to_thriftrw(service, downstream_trace_resp.span)
-            downstream_trace_resp = TraceResponse(span=observed_span, notImplementedError='')
-            trace_response.downstream = trace_response_to_thriftrw(service, downstream_trace_resp)
-
-        raise tornado.gen.Return(trace_response_to_thriftrw(service, trace_response))
+        response = yield prepare_response(get_current_span(), join_trace_request.downstream)
+        raise tornado.gen.Return(trace_response_to_thriftrw(service, response))
 
     return tchannel
 
@@ -137,39 +122,27 @@ class Server(object):
             span.set_baggage_item(constants.baggage_key, start_trace_req.baggage)
             span.set_tag(ext_tags.SAMPLING_PRIORITY, start_trace_req.sampled)
 
-        response = yield self.prepare_response(request, start_trace_req.downstream,
-                                                        update_span)
-        response_writer.write(response)
+        response = yield prepare_response(self.get_span(request, update_span),
+                                          start_trace_req.downstream)
+        response_writer.write(serializer.traced_service_object_to_json(response))
         response_writer.finish()
 
     @tornado.gen.coroutine
     def join_trace(self, request, response_writer):
-        join_trace_request = serializer.join_trace_request_from_json(request.body) \
-            if request.body else None
+        join_trace_request = serializer.join_trace_request_from_json(request.body)
 
-        response = yield self.prepare_response(request, join_trace_request.downstream,
-                                                        None)
-        response_writer.write(response)
+        response = yield prepare_response(self.get_span(request, None),
+                                          join_trace_request.downstream)
+        response_writer.write(serializer.traced_service_object_to_json(response))
         response_writer.finish()
 
-    @tornado.gen.coroutine
-    def prepare_response(self, http_request, downstream, update_span_func):
-
+    def get_span(self, http_request, update_span_func):
         span = http_server.before_request(http_server.TornadoRequestWrapper(request=http_request),
                                           self.tracer)
         if update_span_func:
             update_span_func(span)
 
-        observed_span = get_observed_span(span)
-        trace_response = TraceResponse(span=observed_span)
-
-        if downstream:
-            with request_context.span_in_stack_context(span):
-                future = call_downstream(span, downstream)
-            downstream_trace_resp = yield future
-            trace_response.downstream = downstream_trace_resp
-
-        raise tornado.gen.Return(serializer.traced_service_object_to_json(trace_response))
+        return span
 
 
 def get_observed_span(span):
@@ -178,6 +151,20 @@ def get_observed_span(span):
         sampled=span.is_sampled(),
         baggage=span.get_baggage_item(constants.baggage_key)
     )
+
+
+@tornado.gen.coroutine
+def prepare_response(span, downstream):
+    observed_span = get_observed_span(span)
+    trace_response = TraceResponse(span=observed_span)
+
+    if downstream:
+        with request_context.span_in_stack_context(span):
+            future = call_downstream(span, downstream)
+        downstream_trace_resp = yield future
+        trace_response.downstream = downstream_trace_resp
+
+    raise tornado.gen.Return(trace_response)
 
 
 @tornado.gen.coroutine

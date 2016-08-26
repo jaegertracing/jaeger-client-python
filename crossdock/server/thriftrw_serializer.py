@@ -1,7 +1,9 @@
 def trace_response_to_thriftrw(service, tr):
-    return service.TraceResponse(span=tr.span,
-                                 downstream=tr.downstream,
-                                 notImplementedError=tr.notImplementedError)
+    if tr is None:
+        return None
+    return service.TraceResponse(span=observed_span_to_thriftrw(service, tr.span),
+                                 downstream=trace_response_to_thriftrw(service, tr.downstream),
+                                 notImplementedError=tr.notImplementedError or '')
 
 
 def downstream_to_thriftrw(service, downstream):
