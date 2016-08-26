@@ -1,5 +1,5 @@
 project := jaeger_client
-projects := jaeger_client
+projects := jaeger_client crossdock
 flake8 := flake8
 COV_DIRS := $(projects:%=--cov %)
 pytest_args := -s --tb short --cov-config .coveragerc $(COV_DIRS) tests

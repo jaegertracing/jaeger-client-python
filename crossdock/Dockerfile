@@ -24,5 +24,8 @@ COPY crossdock ${APPDIR}/crossdock/
 COPY crossdock/setup_crossdock.py ${APPDIR}
 RUN python setup_crossdock.py install
 
+# TODO Remove this after the tchannel-python crossdock is no longer a package
+RUN rm -rf /usr/local/lib/python2.7/site-packages/crossdock
+
 CMD ["crossdock"]
 EXPOSE 8080-8082

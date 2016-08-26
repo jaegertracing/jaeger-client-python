@@ -55,7 +55,7 @@ setup(
             'flake8-quotes',
             'coveralls',
             'tchannel>=0.27',
-            'opentracing_instrumentation>=2,<3'
+            'opentracing_instrumentation>=2,<3',
         ]
     },
 )

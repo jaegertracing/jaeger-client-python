@@ -20,22 +20,43 @@
 
 from __future__ import absolute_import
 
+import mock
 import json
 import pytest
+import opentracing
 from crossdock.server import server
 from tornado.httpclient import HTTPRequest
+from jaeger_client import Tracer, ConstSampler
+from jaeger_client.reporter import InMemoryReporter
+
+tchannel_port = "9999"
 
 
 @pytest.fixture
 def app():
     """Required by pytest-tornado's http_server fixture"""
-    return server.make_app(server.Server())
+    s = server.Server(int(tchannel_port))
+    s.tchannel.listen()
+    return server.make_app(s)
 
 
-# TODO expand permutations to do TCHANNEL as well
+# noinspection PyShadowingNames
+@pytest.yield_fixture
+def tracer():
+    tracer = Tracer(
+        service_name='test-tracer',
+        sampler=ConstSampler(True),
+        reporter=InMemoryReporter(),
+    )
+    try:
+        yield tracer
+    finally:
+        tracer.close()
+
+
 PERMUTATIONS = []
-for s2 in ["HTTP"]:
-    for s3 in ["HTTP"]:
+for s2 in ["HTTP", "TCHANNEL"]:
+    for s3 in ["HTTP", "TCHANNEL"]:
         for sampled in [True, False]:
             PERMUTATIONS.append((s2, s3, sampled))
 
@@ -43,7 +64,7 @@ for s2 in ["HTTP"]:
 @pytest.mark.parametrize('s2_transport,s3_transport,sampled', PERMUTATIONS)
 @pytest.mark.gen_test
 def test_trace_propagation(
-        s2_transport, s3_transport, sampled,
+        s2_transport, s3_transport, sampled, tracer,
         base_url, http_port, http_client):
 
     # verify that server is ready
@@ -59,14 +80,14 @@ def test_trace_propagation(
     level3["serverRole"] = "s3"
     level3["transport"] = s3_transport
     level3["host"] = "localhost"
-    level3["port"] = http_port
+    level3["port"] = str(http_port) if s3_transport == "HTTP" else tchannel_port
 
     level2 = dict()
     level2["serviceName"] = "python"
     level2["serverRole"] = "s2"
     level2["transport"] = s2_transport
     level2["host"] = "localhost"
-    level2["port"] = http_port
+    level2["port"] = str(http_port) if s2_transport == "HTTP" else tchannel_port
     level2["downstream"] = level3
 
     level1 = dict()
@@ -76,18 +97,27 @@ def test_trace_propagation(
     level1["downstream"] = level2
     body = json.dumps(level1)
 
-    req = HTTPRequest(url="%s/start_trace" % base_url, method="POST",
-                      headers={"Content-Type": "application/json"},
-                      body=body,
-                      request_timeout=2)
+    with mock.patch('opentracing.tracer', tracer):
+        assert opentracing.tracer == tracer # sanity check that patch worked
 
-    response = yield http_client.fetch(req)
-    assert response.code == 200
-    tr = server.serializer.traceresponse_from_json(response.body)
-    assert tr is not None
-    assert tr.span is not None
-    assert tr.span.baggage == level1.get("baggage")
-    assert tr.span.sampled == sampled
-    assert tr.span.traceId is not None
-    assert tr.downstream is not None
-    assert tr.downstream.downstream is not None
+        req = HTTPRequest(url="%s/start_trace" % base_url, method="POST",
+                          headers={"Content-Type": "application/json"},
+                          body=body,
+                          request_timeout=2)
+
+        response = yield http_client.fetch(req)
+        assert response.code == 200
+        tr = server.serializer.traceresponse_from_json(response.body)
+        assert tr is not None
+        assert tr.span is not None
+        assert tr.span.baggage == level1.get("baggage")
+        assert tr.span.sampled == sampled
+        assert tr.span.traceId is not None
+        assert tr.downstream is not None
+        assert tr.downstream.span.baggage == level1.get("baggage")
+        assert tr.downstream.span.sampled == sampled
+        assert tr.downstream.span.traceId == tr.span.traceId
+        assert tr.downstream.downstream is not None
+        assert tr.downstream.downstream.span.baggage == level1.get("baggage")
+        assert tr.downstream.downstream.span.sampled == sampled
+        assert tr.downstream.downstream.span.traceId == tr.span.traceId
