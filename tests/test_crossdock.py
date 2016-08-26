@@ -35,14 +35,9 @@ tchannel_port = "9999"
 @pytest.fixture
 def app():
     """Required by pytest-tornado's http_server fixture"""
-    return server.make_app(server.Server())
-
-
-@pytest.fixture
-def mock_tchannel(io_loop):
-    tchannel = server.make_tchannel(int(tchannel_port))
-    tchannel.listen()
-    return tchannel
+    s = server.Server(int(tchannel_port))
+    s.tchannel.listen()
+    return server.make_app(s)
 
 
 # noinspection PyShadowingNames
@@ -69,8 +64,7 @@ for s2 in ["HTTP", "TCHANNEL"]:
 @pytest.mark.parametrize('s2_transport,s3_transport,sampled', PERMUTATIONS)
 @pytest.mark.gen_test
 def test_trace_propagation(
-        s2_transport, s3_transport, sampled,
-        mock_tchannel, tracer,
+        s2_transport, s3_transport, sampled, tracer,
         base_url, http_port, http_client):
 
     # verify that server is ready
