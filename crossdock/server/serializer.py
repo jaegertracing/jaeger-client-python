@@ -8,32 +8,32 @@ from crossdock.thrift_gen.tracetest.ttypes import JoinTraceRequest, StartTraceRe
 #
 # Serializers for the downstream calls
 #
-def set_downstream_object_values(obj, i):
-    return set_object_values(obj, i, downstream_from_struct)
+def set_downstream_object_values(downstream_object, json_obj):
+    return set_traced_service_object_values(downstream_object, json_obj, downstream_from_struct)
 
 
-def join_trace_request_from_json(j):
-    jtr = JoinTraceRequest()
-    set_downstream_object_values(jtr, json.loads(j))
-    return jtr
+def join_trace_request_from_json(json_request):
+    request = JoinTraceRequest()
+    set_downstream_object_values(request, json.loads(json_request))
+    return request
 
 
-def start_trace_request_from_json(j):
-    sstr = StartTraceRequest()
-    set_downstream_object_values(sstr, json.loads(j))
-    return sstr
+def start_trace_request_from_json(json_request):
+    request = StartTraceRequest()
+    set_downstream_object_values(request, json.loads(json_request))
+    return request
 
 
-def downstream_from_struct(i):
-    d = Downstream()
-    set_downstream_object_values(d, i)
-    return d
+def downstream_from_struct(json_obj):
+    downstream = Downstream()
+    set_downstream_object_values(downstream, json_obj)
+    return downstream
 
 
 def join_trace_request_to_json(downstream, server_role):
     req = {}
     if downstream is not None:
-        req['downstream'] = obj_to_json(downstream)
+        req['downstream'] = traced_service_object_to_json(downstream)
     if server_role is not None:
         req['serverRole'] = str(server_role)
     return json.dumps(req)
@@ -43,25 +43,25 @@ def join_trace_request_to_json(downstream, server_role):
 #
 
 
-def set_upstream_object_values(obj, i):
-    return set_object_values(obj, i, traceresponse_from_struct)
+def set_upstream_object_values(obj, json_obj):
+    return set_traced_service_object_values(obj, json_obj, traceresponse_from_struct)
 
 
-def observed_span_from_struct(i):
+def observed_span_from_struct(json_obj):
     os = ObservedSpan()
-    set_upstream_object_values(os, i)
+    set_upstream_object_values(os, json_obj)
     return os
 
 
-def traceresponse_from_struct(i):
+def traceresponse_from_struct(json_obj):
     tr = TraceResponse()
-    set_upstream_object_values(tr, i)
+    set_upstream_object_values(tr, json_obj)
     return tr
 
 
-def traceresponse_from_json(j):
+def traceresponse_from_json(json_str):
     try:
-        return traceresponse_from_struct(json.loads(j))
+        return traceresponse_from_struct(json.loads(json_str))
     except:
         logging.exception('Failed to parse JSON')
         raise
@@ -75,31 +75,31 @@ def class_keys(obj):
             a == 'type_spec']
 
 
-def obj_to_json(obj):
-    s = {}
+def traced_service_object_to_json(obj):
+    json_response = {}
     for k in class_keys(obj):
         if k == 'downstream':
             if obj.downstream is not None:
-                s['downstream'] = obj_to_json(obj.downstream)
+                json_response['downstream'] = traced_service_object_to_json(obj.downstream)
         elif k == 'transport':
             if obj.transport is not None:
-                s['transport'] = Transport._VALUES_TO_NAMES[obj.transport]
+                json_response['transport'] = Transport._VALUES_TO_NAMES[obj.transport]
         elif k == 'span':
             if obj.span is not None:
-                s['span'] = obj_to_json(obj.span)
+                json_response['span'] = traced_service_object_to_json(obj.span)
         else:
-            s[k] = getattr(obj, k)
-    return s
+            json_response[k] = getattr(obj, k)
+    return json_response
 
 
-def set_object_values(obj, i, dsf):
-    for k in i.iterkeys():
+def set_traced_service_object_values(obj, values, downstream_func):
+    for k in values.iterkeys():
         if hasattr(obj, k):
             if k == 'downstream':
-                obj.downstream = dsf(i[k])
+                obj.downstream = downstream_func(values[k])
             elif k == 'transport':
-                obj.transport = Transport._NAMES_TO_VALUES[i[k]]
+                obj.transport = Transport._NAMES_TO_VALUES[values[k]]
             elif k == 'span':
-                obj.span = observed_span_from_struct(i[k])
+                obj.span = observed_span_from_struct(values[k])
             else:
-                setattr(obj, k, i[k])
+                setattr(obj, k, values[k])
