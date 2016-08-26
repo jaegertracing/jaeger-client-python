@@ -22,8 +22,7 @@ services:
 
             - REPORT=compact
     go:
-        # TODO Use the master branch once this branch is merged
-        image: jaegertracing/xdock-go:upgrade-crossdock-tests-for-native-opentracing-in-tchannel
+        image: jaegertracing/xdock-go
         ports:
             - "8080-8082"
 
