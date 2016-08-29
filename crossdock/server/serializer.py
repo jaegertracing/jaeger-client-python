@@ -96,10 +96,13 @@ def set_traced_service_object_values(obj, values, downstream_func):
     for k in values.iterkeys():
         if hasattr(obj, k):
             if k == 'downstream':
-                obj.downstream = downstream_func(values[k])
+                if values[k] is not None:
+                    obj.downstream = downstream_func(values[k])
             elif k == 'transport':
-                obj.transport = Transport._NAMES_TO_VALUES[values[k]]
+                if values[k] is not None:
+                    obj.transport = Transport._NAMES_TO_VALUES[values[k]]
             elif k == 'span':
-                obj.span = observed_span_from_struct(values[k])
+                if values[k] is not None:
+                    obj.span = observed_span_from_struct(values[k])
             else:
                 setattr(obj, k, values[k])

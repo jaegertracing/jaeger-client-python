@@ -160,7 +160,7 @@ class Server(object):
     @tornado.gen.coroutine
     def prepare_response(self, span, downstream):
         observed_span = get_observed_span(span)
-        trace_response = TraceResponse(span=observed_span)
+        trace_response = TraceResponse(span=observed_span, notImplementedError='')
 
         if downstream:
             with request_context.span_in_stack_context(span):
