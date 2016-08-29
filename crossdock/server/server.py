@@ -115,8 +115,10 @@ class Server(object):
         @tornado.gen.coroutine
         def join_trace(request):
             join_trace_request = request.body.request or None
+            logging.info('TChannel join_trace request: %s', join_trace_request)
             response = yield self.prepare_response(get_current_span(),
                                                    join_trace_request.downstream)
+            logging.info('TChannel join_trace response: %s', response)
             raise tornado.gen.Return(trace_response_to_thriftrw(service, response))
 
         return tchannel
@@ -124,6 +126,7 @@ class Server(object):
     @tornado.gen.coroutine
     def start_trace(self, request, response_writer):
         start_trace_req = serializer.start_trace_request_from_json(request.body)
+        logging.info('HTTP start_trace request: %s', start_trace_req)
 
         def update_span(span):
             span.set_baggage_item(constants.baggage_key, start_trace_req.baggage)
@@ -131,15 +134,18 @@ class Server(object):
 
         response = yield self.prepare_response(self.get_span(request, update_span),
                                                start_trace_req.downstream)
+        logging.info('HTTP start_trace response: %s', response)
         response_writer.write(serializer.traced_service_object_to_json(response))
         response_writer.finish()
 
     @tornado.gen.coroutine
     def join_trace(self, request, response_writer):
         join_trace_request = serializer.join_trace_request_from_json(request.body)
+        logging.info('HTTP join_trace request: %s', join_trace_request)
 
         response = yield self.prepare_response(self.get_span(request, None),
                                                join_trace_request.downstream)
+        logging.info('HTTP join_trace response: %s', response)
         response_writer.write(serializer.traced_service_object_to_json(response))
         response_writer.finish()
 
@@ -154,7 +160,7 @@ class Server(object):
     @tornado.gen.coroutine
     def prepare_response(self, span, downstream):
         observed_span = get_observed_span(span)
-        trace_response = TraceResponse(span=observed_span)
+        trace_response = TraceResponse(span=observed_span, notImplementedError='')
 
         if downstream:
             with request_context.span_in_stack_context(span):
