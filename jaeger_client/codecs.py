@@ -83,9 +83,9 @@ class TextCodec(Codec):
                     baggage = {attr_key.lower(): value}
                 else:
                     baggage[attr_key.lower()] = value
-        if trace_id is None and baggage is not None:
+        if not trace_id and baggage:
             raise SpanContextCorruptedException('baggage without trace ctx')
-        if trace_id is None:
+        if not trace_id:
             return None
         return SpanContext(trace_id=trace_id, span_id=span_id,
                            parent_id=parent_id, flags=flags,

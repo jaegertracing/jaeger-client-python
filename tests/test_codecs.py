@@ -23,10 +23,11 @@ from __future__ import absolute_import
 import unittest
 from collections import namedtuple
 
+import mock
 import pytest
 from jaeger_client import Span, SpanContext
 from jaeger_client.codecs import (
-    Codec, TextCodec, ZipkinCodec, ZipkinSpanFormat,
+    Codec, TextCodec, BinaryCodec, ZipkinCodec, ZipkinSpanFormat,
     span_context_from_string,
     span_context_to_string,
 )
@@ -100,25 +101,36 @@ class TestCodecs(unittest.TestCase):
         assert ctx_rev == (256L, 127L, 256L, 0), 'Unicode is acceptable'
 
     def test_context_to_readable_headers(self):
-        codec = TextCodec(trace_id_header='Trace_ID',
-                          baggage_header_prefix='Trace-Attr-')
-        ctx = SpanContext(trace_id=256, span_id=127, parent_id=None, flags=1)
-        carrier = {}
-        codec.inject(ctx, carrier)
-        assert carrier == {'trace-id': '100:7f:0:1'}
+        for url_encoding in [False, True]:
+            codec = TextCodec(
+                url_encoding=url_encoding,
+                trace_id_header='Trace_ID',
+                baggage_header_prefix='Trace-Attr-')
+            ctx = SpanContext(
+                trace_id=256, span_id=127, parent_id=None, flags=1
+            )
+            carrier = {}
+            codec.inject(ctx, carrier)
+            assert carrier == {'trace-id': '100:7f:0:1'}
 
-        ctx._baggage = {
-            'fry': 'Leela',
-            'bender': 'Countess de la Roca',
-        }
-        carrier = {}
-        codec.inject(ctx, carrier)
-        assert carrier == {
-            'trace-id': '100:7f:0:1',
-            'trace-attr-bender': 'Countess de la Roca',
-            'trace-attr-fry': 'Leela'}
+            ctx._baggage = {
+                'fry': 'Leela',
+                'bender': 'Countess de la Roca',
+            }
+            carrier = {}
+            codec.inject(ctx, carrier)
+            if url_encoding:
+                assert carrier == {
+                    'trace-id': '100:7f:0:1',
+                    'trace-attr-bender': 'Countess%20de%20la%20Roca',
+                    'trace-attr-fry': 'Leela'}
+            else:
+                assert carrier == {
+                    'trace-id': '100:7f:0:1',
+                    'trace-attr-bender': 'Countess de la Roca',
+                    'trace-attr-fry': 'Leela'}
 
-    def test_context_from_readable_headers(self):
+    def test_context_from_bad_readable_headers(self):
         codec = TextCodec(trace_id_header='Trace_ID',
                           baggage_header_prefix='Trace-Attr-')
 
@@ -142,17 +154,47 @@ class TestCodecs(unittest.TestCase):
         with self.assertRaises(SpanContextCorruptedException):
             codec.extract(good_headers_bad_values)
 
+    def test_context_from_readable_headers(self):
+        for url_encoding in [False, True]:
+            codec = TextCodec(
+                url_encoding=url_encoding,
+                trace_id_header='Trace_ID',
+                baggage_header_prefix='Trace-Attr-')
+            if url_encoding:
+                headers = {
+                    'Trace-ID': '100%3A7f:0:1',
+                    'trace-attr-Kiff': 'Amy%20Wang',
+                    'trace-atTR-HERMES': 'LaBarbara%20Hermes'
+                }
+            else:
+                headers = {
+                    'Trace-ID': '100:7f:0:1',
+                    'trace-attr-Kiff': 'Amy Wang',
+                    'trace-atTR-HERMES': 'LaBarbara Hermes'
+                }
+            ctx = codec.extract(headers)
+            assert ctx.trace_id == 256
+            assert ctx.span_id == 127
+            assert ctx.parent_id is None
+            assert ctx.flags == 1
+            assert ctx.baggage == {
+                'kiff': 'Amy Wang',
+                'hermes': 'LaBarbara Hermes',
+            }
+
+    def test_baggage_without_trace_id(self):
+        codec = TextCodec(trace_id_header='Trace_ID',
+                          baggage_header_prefix='Trace-Attr-')
         headers = {
-            'Trace-ID': '100:7f:0:1',
+            'Trace-ID': '0:7f:0:1',  # trace_id = 0 is invalid
             'trace-attr-Kiff': 'Amy',
             'trace-atTR-HERMES': 'LaBarbara'
         }
-        ctx = codec.extract(headers)
-        assert ctx.trace_id == 256
-        assert ctx.span_id == 127
-        assert ctx.parent_id is None
-        assert ctx.flags == 1
-        assert ctx.baggage == {'kiff': 'Amy', 'hermes': 'LaBarbara'}
+        with mock.patch('jaeger_client.codecs.span_context_from_string') as \
+                from_str:
+            from_str.return_value = (0, 1, 1, 1)
+            with self.assertRaises(SpanContextCorruptedException):
+                codec.extract(headers)
 
     def test_context_from_large_ids(self):
         codec = TextCodec(trace_id_header='Trace_ID',
@@ -212,6 +254,9 @@ class TestCodecs(unittest.TestCase):
         assert 1 == context.flags
         assert context.baggage == {}
 
+        carrier['trace_id'] = 0
+        assert codec.extract(carrier) is None
+
     def test_zipkin_codec_inject(self):
         codec = ZipkinCodec()
 
@@ -224,6 +269,13 @@ class TestCodecs(unittest.TestCase):
         codec.inject(span_context=span, carrier=carrier)
         assert carrier == {'span_id': 127, 'parent_id': None,
                            'trace_id': 256, 'traceflags': 1}
+
+    def test_binary_codec(self):
+        codec = BinaryCodec()
+        with self.assertRaises(InvalidCarrierException):
+            codec.inject({}, {})
+        with self.assertRaises(InvalidCarrierException):
+            codec.extract({})
 
 
 @pytest.mark.parametrize('fmt,carrier', [

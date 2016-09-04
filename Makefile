@@ -6,8 +6,8 @@ pytest_args := -s --tb short --cov-config .coveragerc $(COV_DIRS) tests
 pytest := $(clay_config) py.test $(pytest_args)
 sources := $(shell find $(projects) tests -name '*.py' | grep -v version.py | grep -v thrift_gen)
 
-html_report := --cov-report html
 test_args := --cov-report term-missing --cov-report xml --junitxml junit.xml
+cover_args := --cov-report html
 
 include crossdock/rules.mk
 
@@ -39,9 +39,10 @@ test-perf: clean
 
 # --benchmark-histogram --benchmark-min-time=0.001
 
-.PHONY: testhtml
-testhtml: clean
-	$(pytest) $(html_report) && open htmlcov/index.html
+.PHONY: cover
+cover: clean
+	$(pytest) $(cover_args) --benchmark-skip
+	open htmlcov/index.html
 
 .PHONY: jenkins
 jenkins: bootstrap
