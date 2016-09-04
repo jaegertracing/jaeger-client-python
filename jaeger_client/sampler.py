@@ -25,12 +25,21 @@ import time
 
 from threading import Lock
 from tornado.ioloop import PeriodicCallback
-from .constants import MAX_ID_BITS, DEFAULT_SAMPLING_INTERVAL
+from .constants import (
+    MAX_ID_BITS,
+    DEFAULT_SAMPLING_INTERVAL,
+    SAMPLER_TYPE_CONST,
+    SAMPLER_TYPE_PROBABILISTIC,
+    SAMPLER_TYPE_RATE_LIMITING,
+)
 from .metrics import Metrics
 from .utils import ErrorReporter
 from .local_agent_net import parse_sampling_strategy
 
 default_logger = logging.getLogger('jaeger_tracing')
+
+SAMPLER_TYPE_TAG_KEY = 'sampler.type'
+SAMPLER_PARAM_TAG_KEY = 'sampler.param'
 
 
 class Sampler(object):
@@ -39,11 +48,18 @@ class Sampler(object):
     "sampled", i.e. recorded in permanent storage.
     """
 
+    def __init__(self, tags=None):
+        self._tags = tags
+
     def is_sampled(self, trace_id):
         raise NotImplementedError()
 
     def close(self):
         raise NotImplementedError()
+
+    @property
+    def tags(self):
+        return self._tags
 
     def __eq__(self, other):
         return (isinstance(other, self.__class__) and
@@ -57,6 +73,12 @@ class ConstSampler(Sampler):
     """ConstSampler always returns the same decision."""
 
     def __init__(self, decision):
+        super(ConstSampler, self).__init__(
+            tags={
+                SAMPLER_TYPE_TAG_KEY: SAMPLER_TYPE_CONST,
+                SAMPLER_PARAM_TAG_KEY: decision,
+            }
+        )
         self.decision = decision
 
     def is_sampled(self, trace_id):
@@ -81,6 +103,12 @@ class ProbabilisticSampler(Sampler):
     """
 
     def __init__(self, rate):
+        super(ProbabilisticSampler, self).__init__(
+            tags={
+                SAMPLER_TYPE_TAG_KEY: SAMPLER_TYPE_PROBABILISTIC,
+                SAMPLER_PARAM_TAG_KEY: rate,
+            }
+        )
         assert 0.0 <= rate <= 1.0, 'Sampling rate must be between 0.0 and 1.0'
         self.rate = rate
         self.max_number = 1 << MAX_ID_BITS
@@ -106,6 +134,12 @@ class RateLimitingSampler(Sampler):
     """
 
     def __init__(self, max_traces_per_second=10):
+        super(RateLimitingSampler, self).__init__(
+            tags={
+                SAMPLER_TYPE_TAG_KEY: SAMPLER_TYPE_RATE_LIMITING,
+                SAMPLER_PARAM_TAG_KEY: max_traces_per_second,
+            }
+        )
         assert max_traces_per_second >= 0, \
             'max_traces_per_second must not be negative'
         self.credits_per_second = max_traces_per_second
@@ -163,6 +197,7 @@ class RemoteControlledSampler(Sampler):
         :param init:
         :return:
         """
+        super(RemoteControlledSampler, self).__init__()
         self._channel = channel
         self.service_name = service_name
         self.logger = kwargs.get('logger', default_logger)
@@ -194,6 +229,11 @@ class RemoteControlledSampler(Sampler):
     def is_sampled(self, trace_id):
         with self.lock:
             return self.sampler.is_sampled(trace_id)
+
+    @property
+    def tags(self):
+        with self.lock:
+            return self.sampler.tags
 
     def _init_polling(self):
         """

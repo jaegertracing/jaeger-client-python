@@ -37,8 +37,13 @@ from .sampler import (
     RateLimitingSampler,
     RemoteControlledSampler,
 )
-from .constants import DEFAULT_SAMPLING_INTERVAL
-from .constants import DEFAULT_FLUSH_INTERVAL
+from .constants import (
+    DEFAULT_SAMPLING_INTERVAL,
+    DEFAULT_FLUSH_INTERVAL,
+    SAMPLER_TYPE_CONST,
+    SAMPLER_TYPE_PROBABILISTIC,
+    SAMPLER_TYPE_RATE_LIMITING,
+)
 from .metrics import Metrics
 from .utils import get_boolean, ErrorReporter
 
@@ -130,11 +135,11 @@ class Config(object):
         sampler_param = sampler_config.get('param', None)
         if not sampler_type:
             return None
-        elif sampler_type == 'const':
+        elif sampler_type == SAMPLER_TYPE_CONST:
             return ConstSampler(decision=get_boolean(sampler_param, False))
-        elif sampler_type == 'probabilistic':
+        elif sampler_type == SAMPLER_TYPE_PROBABILISTIC:
             return ProbabilisticSampler(rate=float(sampler_param))
-        elif sampler_type == 'rate_limiting':
+        elif sampler_type in [SAMPLER_TYPE_RATE_LIMITING, 'rate_limiting']:
             return RateLimitingSampler(
                 max_traces_per_second=float(sampler_param))
 

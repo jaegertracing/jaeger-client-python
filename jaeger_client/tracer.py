@@ -20,6 +20,8 @@
 
 from __future__ import absolute_import
 
+import socket
+
 import os
 import time
 import logging
@@ -28,7 +30,7 @@ import opentracing
 from opentracing import Format, UnsupportedFormatException
 from opentracing.ext import tags as ext_tags
 
-from .constants import MAX_ID_BITS, JAEGER_CLIENT_VERSION
+from . import constants
 from .codecs import TextCodec, ZipkinCodec, ZipkinSpanFormat, BinaryCodec
 from .span import Span, SAMPLED_FLAG
 from .span_context import SpanContext
@@ -53,6 +55,15 @@ class Tracer(opentracing.Tracer):
             Format.BINARY: BinaryCodec(),
             ZipkinSpanFormat: ZipkinCodec(),
         }
+        self.tags = {
+            constants.JAEGER_VERSION_TAG_KEY: constants.JAEGER_CLIENT_VERSION,
+        }
+        # noinspection PyBroadException
+        try:
+            hostname = socket.gethostname()
+            self.tags[constants.JAEGER_HOSTNAME_TAG_KEY] = hostname
+        except:
+            logger.exception('Unable to determine host name')
 
     def start_span(self,
                    operation_name=None,
@@ -95,8 +106,13 @@ class Tracer(opentracing.Tracer):
             trace_id = self.random_id()
             span_id = trace_id
             parent_id = None
-            flags = SAMPLED_FLAG if self.sampler.is_sampled(trace_id) else 0
+            flags = 0
             baggage = None
+            if self.sampler.is_sampled(trace_id):
+                flags = SAMPLED_FLAG
+                tags = tags or {}
+                for k, v in self.sampler.tags.iteritems():
+                    tags[k] = v
         else:
             trace_id = parent.trace_id
             if rpc_server:
@@ -116,7 +132,14 @@ class Tracer(opentracing.Tracer):
                     operation_name=operation_name,
                     tags=tags, start_time=start_time)
 
-        return self.start_span_internal(span=span, join=rpc_server)
+        if (rpc_server or not parent_id) and (flags & SAMPLED_FLAG):
+            # this is a first-in-process span, and is sampled
+            for k, v in self.tags.iteritems():
+                span.set_tag(k, v)
+
+        self._emit_span_metrics(span=span, join=rpc_server)
+
+        return span
 
     def inject(self, span_context, format, carrier):
         codec = self.codecs.get(format, None)
@@ -147,8 +170,11 @@ class Tracer(opentracing.Tracer):
         self.sampler.close()
         return self.reporter.close()
 
-    def start_span_internal(self, span, join=False):
-        span.set_tag(key='jaegerClient', value=JAEGER_CLIENT_VERSION)
+    def _emit_span_metrics(self, span, join=False):
+        if span.is_sampled():
+            self.metrics.count(Metrics.SPANS_SAMPLED, 1)
+        else:
+            self.metrics.count(Metrics.SPANS_NOT_SAMPLED, 1)
         if not span.context.parent_id:
             if span.is_sampled():
                 if join:
@@ -163,11 +189,7 @@ class Tracer(opentracing.Tracer):
         return span
 
     def report_span(self, span):
-        if span.is_sampled():
-            self.metrics.count(Metrics.SPANS_SAMPLED, 1)
-        else:
-            self.metrics.count(Metrics.SPANS_NOT_SAMPLED, 1)
         self.reporter.report_span(span)
 
     def random_id(self):
-        return self.random.getrandbits(MAX_ID_BITS)
+        return self.random.getrandbits(constants.MAX_ID_BITS)
