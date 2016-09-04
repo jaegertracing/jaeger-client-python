@@ -48,8 +48,8 @@ class Tracer(opentracing.Tracer):
         self.metrics = metrics or Metrics()
         self.random = random.Random(time.time() * (os.getpid() or 1))
         self.codecs = {
-            Format.TEXT_MAP: TextCodec(),
-            Format.HTTP_HEADERS: TextCodec(),  # TODO use some encoding
+            Format.TEXT_MAP: TextCodec(url_encoding=False),
+            Format.HTTP_HEADERS: TextCodec(url_encoding=True),
             Format.BINARY: BinaryCodec(),
             ZipkinSpanFormat: ZipkinCodec(),
         }
