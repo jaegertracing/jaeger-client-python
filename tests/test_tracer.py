@@ -27,6 +27,7 @@ import tornado.httputil
 from opentracing import Format, child_of
 from opentracing.ext import tags as ext_tags
 from jaeger_client import ConstSampler, Tracer
+from jaeger_client import constants as c
 from jaeger_client.thrift_gen.zipkincore import constants as g
 from jaeger_client.thrift import add_zipkin_annotations
 
@@ -167,3 +168,73 @@ def test_serialization_error(tracer):
         tracer.inject(
             span_context=span, format=Format.TEXT_MAP, carrier=carrier
         )
+
+
+def test_tracer_tags_hostname():
+    reporter = mock.MagicMock()
+    sampler = ConstSampler(True)
+
+    with mock.patch('socket.gethostname', return_value='dream-host.com'):
+        t = Tracer(service_name='x', reporter=reporter, sampler=sampler)
+        assert t.tags.get(c.JAEGER_HOSTNAME_TAG_KEY) == 'dream-host.com'
+
+
+def test_tracer_tags_no_hostname():
+    reporter = mock.MagicMock()
+    sampler = ConstSampler(True)
+
+    from jaeger_client.tracer import logger
+    with mock.patch.object(logger, 'exception') as mock_log:
+        with mock.patch('socket.gethostname',
+                        side_effect=['host', ValueError()]):
+            Tracer(service_name='x', reporter=reporter, sampler=sampler)
+        assert mock_log.call_count == 1
+
+
+@pytest.mark.parametrize('span_type,expected_tags', [
+    ('root', {
+        'jaeger.version': c.JAEGER_CLIENT_VERSION,
+        'jaeger.hostname': 'dream-host.com',
+        'sampler.type': 'const',
+        'sampler.param': 'True',
+    }),
+    ('child', {
+        'jaeger.version': None,
+        'jaeger.hostname': None,
+        'sampler.type': None,
+        'sampler.param': None,
+    }),
+    ('rpc-server', {
+        'jaeger.version': c.JAEGER_CLIENT_VERSION,
+        'jaeger.hostname': 'dream-host.com',
+        'sampler.type': None,
+        'sampler.param': None,
+    }),
+])
+def test_tracer_tags_on_root_span(span_type, expected_tags):
+    reporter = mock.MagicMock()
+    sampler = ConstSampler(True)
+    with mock.patch('socket.gethostname', return_value='dream-host.com'):
+        tracer = Tracer(service_name='x', reporter=reporter, sampler=sampler)
+        span = tracer.start_span(operation_name='root')
+        if span_type == 'child':
+            span = tracer.start_span('child', child_of=span)
+        if span_type == 'rpc-server':
+            span = tracer.start_span(
+                'child', child_of=span.context,
+                tags={ext_tags.SPAN_KIND: ext_tags.SPAN_KIND_RPC_SERVER}
+            )
+        for key, value in expected_tags.iteritems():
+            found_tag = None
+            for tag in span.tags:
+                if tag.key == key:
+                    found_tag = tag
+            if value is None:
+                assert found_tag is None, 'test (%s)' % span_type
+                continue
+
+            assert found_tag is not None, 'test (%s): expecting tag %s' % (
+                span_type, key
+            )
+            assert found_tag.value == value, \
+                'test (%s): expecting tag %s=%s' % (span_type, key, value)
