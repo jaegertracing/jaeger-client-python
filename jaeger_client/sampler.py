@@ -40,6 +40,7 @@ default_logger = logging.getLogger('jaeger_tracing')
 
 SAMPLER_TYPE_TAG_KEY = 'sampler.type'
 SAMPLER_PARAM_TAG_KEY = 'sampler.param'
+DEFAULT_SAMPLING_PROBABILITY = 0.001
 
 
 class Sampler(object):
@@ -209,7 +210,7 @@ class RemoteControlledSampler(Sampler):
             ErrorReporter(metrics=self.metrics)
 
         if self.sampler is None:
-            self.sampler = ProbabilisticSampler(0.01)
+            self.sampler = ProbabilisticSampler(DEFAULT_SAMPLING_PROBABILITY)
         else:
             self.sampler.is_sampled(0)  # assert we got valid sampler API
 

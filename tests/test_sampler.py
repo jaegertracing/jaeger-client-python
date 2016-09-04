@@ -22,7 +22,13 @@ import time
 import mock
 import pytest
 
-from jaeger_client.sampler import ProbabilisticSampler, ConstSampler, RateLimitingSampler
+from jaeger_client.sampler import (
+    ConstSampler,
+    ProbabilisticSampler,
+    RateLimitingSampler,
+    RemoteControlledSampler,
+    DEFAULT_SAMPLING_PROBABILITY,
+)
 
 
 def test_probabilistic_sampler_errors():
@@ -41,6 +47,10 @@ def test_probabilistic_sampler():
     assert sampler.is_sampled(id1-10)
     assert not sampler.is_sampled(id1+10)
     sampler.close()
+    assert sampler.tags == {
+        'sampler.type': 'probabilistic',
+        'sampler.param': 0.5,
+    }
 
 
 def test_const_sampler():
@@ -50,11 +60,16 @@ def test_const_sampler():
     sampler = ConstSampler(False)
     assert not sampler.is_sampled(1)
     assert not sampler.is_sampled(1 << 63)
+    assert sampler.tags == {
+        'sampler.type': 'const',
+        'sampler.param': False,
+    }
 
 
 def test_rate_limiting_sampler():
     sampler = RateLimitingSampler(2)
-    # stop time by overwriting timestamp() function to always return the same time
+    # stop time by overwriting timestamp() function to always return
+    # the same time
     ts = time.time()
     sampler.last_tick = ts
     with mock.patch('jaeger_client.sampler.RateLimitingSampler.timestamp') \
@@ -67,7 +82,8 @@ def test_rate_limiting_sampler():
 
         # move time 250ms forward, not enough credits to pay for one sample
         mock_time.side_effect = lambda: ts + 0.25
-        assert not sampler.is_sampled(0), 'not enough time passed for full item'
+        assert not sampler.is_sampled(0), \
+            'not enough time passed for full item'
 
         # move time 500ms forward, now enough credits to pay for one sample
         mock_time.side_effect = lambda: ts + 0.5
@@ -80,10 +96,16 @@ def test_rate_limiting_sampler():
         mock_time.side_effect = lambda: ts + 5
         assert sampler.is_sampled(0), 'enough time for new item'
         assert sampler.is_sampled(0), 'enough time for second new item'
-        assert not sampler.is_sampled(0), 'but no further, since time is stopped'
-        assert not sampler.is_sampled(0), 'but no further, since time is stopped'
-        assert not sampler.is_sampled(0), 'but no further, since time is stopped'
+        for i in range(0, 3):
+            assert not sampler.is_sampled(0), \
+                'but no further, since time is stopped'
     sampler.close()
+    # noinspection SpellCheckingInspection
+    assert sampler.tags == {
+        'sampler.type': 'ratelimiting',
+        'sampler.param': 2,
+    }
+
 
 def test_sample_equality():
     const1 = ConstSampler(True)
@@ -106,3 +128,14 @@ def test_sample_equality():
     assert rate1 != rate3
     assert rate1 != const1
     assert rate1 != prob1
+
+
+def test_remotely_controlled_sampler():
+    sampler = RemoteControlledSampler(
+        channel=mock.MagicMock(),
+        service_name='x'
+    )
+    assert sampler.tags == {
+        'sampler.type': 'probabilistic',
+        'sampler.param': DEFAULT_SAMPLING_PROBABILITY,
+    }
