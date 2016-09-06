@@ -3,10 +3,12 @@
 History
 -------
 
-3.0.3 (unreleased)
+3.1.0 (2016-09-06)
 ------------------
 
-- Nothing changed yet.
+- Report sampling strategy as root span tags `sampler.type` and `sampler.param`. In case of probabilistic sampling (most frequently used strategy), the values would be `probabilistic` and the sampling probability [0 .. 1], respectively.
+- Record host name as `jaeger.hostname` tag on the first-in-process spans (i.e. root spans and rpc-server spans)
+- Record the version of the Jaeger library as `jaeger.version` tag
 
 
 3.0.2 (2016-08-18)
