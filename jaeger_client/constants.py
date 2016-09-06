@@ -39,3 +39,20 @@ TRACE_ID_HEADER = b'uber-trace-id'
 BAGGAGE_HEADER_PREFIX = b'uberctx-'
 
 JAEGER_CLIENT_VERSION = 'Python-%s' % __version__
+
+# Tracer-scoped tag that tells the version of Jaeger client library
+JAEGER_VERSION_TAG_KEY = 'jaeger.version'
+
+# Tracer-scoped tag that contains the hostname
+JAEGER_HOSTNAME_TAG_KEY = 'jaeger.hostname'
+
+# the type of sampler that always makes the same decision.
+SAMPLER_TYPE_CONST = 'const'
+
+# the type of sampler that samples traces with a certain fixed probability.
+SAMPLER_TYPE_PROBABILISTIC = 'probabilistic'
+
+# the type of sampler that samples only up to a fixed number
+# of traces per second.
+# noinspection SpellCheckingInspection
+SAMPLER_TYPE_RATE_LIMITING = 'ratelimiting'
