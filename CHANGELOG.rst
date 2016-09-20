@@ -3,7 +3,7 @@
 History
 -------
 
-3.2.0 (unreleased)
+3.2.0 (2016-09-20)
 ------------------
 
 - Support debug traces via HTTP header jaeger-debug-id.
