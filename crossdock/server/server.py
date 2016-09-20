@@ -85,7 +85,7 @@ def make_app(server):
             (r'/', MainHandler),
             (r'/start_trace', MainHandler, (dict(server=server, method=Server.start_trace))),
             (r'/join_trace', MainHandler, (dict(server=server, method=Server.join_trace))),
-        ], debug=True)
+        ], debug=True, autoreload=False)
 
 
 # HTTP Tracing Stuff

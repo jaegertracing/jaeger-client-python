@@ -32,7 +32,7 @@ from opentracing.ext import tags as ext_tags
 
 from . import constants
 from .codecs import TextCodec, ZipkinCodec, ZipkinSpanFormat, BinaryCodec
-from .span import Span, SAMPLED_FLAG
+from .span import Span, SAMPLED_FLAG, DEBUG_FLAG
 from .span_context import SpanContext
 from .thrift import ipv4_to_int
 from .metrics import Metrics
@@ -42,16 +42,30 @@ logger = logging.getLogger('jaeger_tracing')
 
 
 class Tracer(opentracing.Tracer):
-    def __init__(self, service_name, reporter, sampler, metrics=None):
+    def __init__(self, service_name, reporter, sampler, metrics=None,
+                 trace_id_header=constants.TRACE_ID_HEADER,
+                 baggage_header_prefix=constants.BAGGAGE_HEADER_PREFIX,
+                 debug_id_header=constants.DEBUG_ID_HEADER_KEY):
         self.service_name = service_name
         self.reporter = reporter
         self.sampler = sampler
         self.ip_address = ipv4_to_int(local_ip())
         self.metrics = metrics or Metrics()
         self.random = random.Random(time.time() * (os.getpid() or 1))
+        self.debug_id_header = debug_id_header
         self.codecs = {
-            Format.TEXT_MAP: TextCodec(url_encoding=False),
-            Format.HTTP_HEADERS: TextCodec(url_encoding=True),
+            Format.TEXT_MAP: TextCodec(
+                url_encoding=False,
+                trace_id_header=trace_id_header,
+                baggage_header_prefix=baggage_header_prefix,
+                debug_id_header=debug_id_header,
+            ),
+            Format.HTTP_HEADERS: TextCodec(
+                url_encoding=True,
+                trace_id_header=trace_id_header,
+                baggage_header_prefix=baggage_header_prefix,
+                debug_id_header=debug_id_header,
+            ),
             Format.BINARY: BinaryCodec(),
             ZipkinSpanFormat: ZipkinCodec(),
         }
@@ -102,17 +116,22 @@ class Tracer(opentracing.Tracer):
         rpc_server = tags and \
             tags.get(ext_tags.SPAN_KIND) == ext_tags.SPAN_KIND_RPC_SERVER
 
-        if parent is None:
+        if parent is None or parent.is_debug_id_container_only:
             trace_id = self.random_id()
             span_id = trace_id
             parent_id = None
             flags = 0
             baggage = None
-            if self.sampler.is_sampled(trace_id):
-                flags = SAMPLED_FLAG
+            if parent is None:
+                if self.sampler.is_sampled(trace_id):
+                    flags = SAMPLED_FLAG
+                    tags = tags or {}
+                    for k, v in self.sampler.tags.iteritems():
+                        tags[k] = v
+            else:  # have debug id
+                flags = SAMPLED_FLAG | DEBUG_FLAG
                 tags = tags or {}
-                for k, v in self.sampler.tags.iteritems():
-                    tags[k] = v
+                tags[self.debug_id_header] = parent.debug_id
         else:
             trace_id = parent.trace_id
             if rpc_server:

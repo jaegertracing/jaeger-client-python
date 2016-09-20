@@ -38,6 +38,12 @@ TRACE_ID_HEADER = b'uber-trace-id'
 # Prefix for HTTP headers used to record baggage items
 BAGGAGE_HEADER_PREFIX = b'uberctx-'
 
+# The name of HTTP header or a TextMap carrier key which, if found in the
+# carrier, forces the trace to be sampled as "debug" trace. The value of the
+# header is recorded as the tag on the # root span, so that the trace can
+# be found in the UI using this value as a correlation ID.
+DEBUG_ID_HEADER_KEY = 'jaeger-debug-id'
+
 JAEGER_CLIENT_VERSION = 'Python-%s' % __version__
 
 # Tracer-scoped tag that tells the version of Jaeger client library

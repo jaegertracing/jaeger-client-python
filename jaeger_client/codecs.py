@@ -22,9 +22,15 @@ from __future__ import absolute_import
 
 import urllib
 
-from opentracing import InvalidCarrierException
-from opentracing import SpanContextCorruptedException
-from .constants import TRACE_ID_HEADER, BAGGAGE_HEADER_PREFIX
+from opentracing import (
+    InvalidCarrierException,
+    SpanContextCorruptedException,
+)
+from .constants import (
+    TRACE_ID_HEADER,
+    BAGGAGE_HEADER_PREFIX,
+    DEBUG_ID_HEADER_KEY,
+)
 from .span_context import SpanContext
 
 
@@ -40,10 +46,12 @@ class TextCodec(Codec):
     def __init__(self,
                  url_encoding=False,
                  trace_id_header=TRACE_ID_HEADER,
-                 baggage_header_prefix=BAGGAGE_HEADER_PREFIX):
+                 baggage_header_prefix=BAGGAGE_HEADER_PREFIX,
+                 debug_id_header=DEBUG_ID_HEADER_KEY):
         self.url_encoding = url_encoding
         self.trace_id_header = trace_id_header.lower().replace('_', '-')
         self.baggage_prefix = baggage_header_prefix.lower().replace('_', '-')
+        self.debug_id_header = debug_id_header.lower().replace('_', '-')
         self.prefix_length = len(baggage_header_prefix)
 
     def inject(self, span_context, carrier):
@@ -68,6 +76,7 @@ class TextCodec(Codec):
             raise InvalidCarrierException('carrier not a collection')
         trace_id, span_id, parent_id, flags = None, None, None, None
         baggage = None
+        debug_id = None
         for key, value in carrier.iteritems():
             uc_key = key.lower()
             if uc_key == self.trace_id_header:
@@ -83,9 +92,15 @@ class TextCodec(Codec):
                     baggage = {attr_key.lower(): value}
                 else:
                     baggage[attr_key.lower()] = value
+            elif uc_key == self.debug_id_header:
+                if self.url_encoding:
+                    value = urllib.unquote(value)
+                debug_id = value
         if not trace_id and baggage:
             raise SpanContextCorruptedException('baggage without trace ctx')
         if not trace_id:
+            if debug_id is not None:
+                return SpanContext.with_debug_id(debug_id=debug_id)
             return None
         return SpanContext(trace_id=trace_id, span_id=span_id,
                            parent_id=parent_id, flags=flags,

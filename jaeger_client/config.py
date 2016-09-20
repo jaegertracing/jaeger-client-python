@@ -43,6 +43,9 @@ from .constants import (
     SAMPLER_TYPE_CONST,
     SAMPLER_TYPE_PROBABILISTIC,
     SAMPLER_TYPE_RATE_LIMITING,
+    TRACE_ID_HEADER,
+    BAGGAGE_HEADER_PREFIX,
+    DEBUG_ID_HEADER_KEY,
 )
 from .metrics import Metrics
 from .utils import get_boolean, ErrorReporter
@@ -94,11 +97,10 @@ class Config(object):
         if self._service_name is None:
             raise ValueError('service_name required in the config or param')
 
-        if self.logging:
-            self._error_reporter = ErrorReporter(
-                metrics=self.metrics, logger=logger)
-        else:
-            self._error_reporter = ErrorReporter(metrics=self.metrics)
+        self._error_reporter = ErrorReporter(
+            metrics=self.metrics,
+            logger=logger if self.logging else None,
+        )
 
     @property
     def service_name(self):
@@ -127,6 +129,32 @@ class Config(object):
     @property
     def logging(self):
         return get_boolean(self.config.get('logging', False), False)
+
+    @property
+    def trace_id_header(self):
+        """
+        :return: Returns the name of the HTTP header used to encode trace ID
+        """
+        return self.config.get('trace_id_header', TRACE_ID_HEADER)
+
+    @property
+    def baggage_header_prefix(self):
+        """
+        :return: Returns the prefix for HTTP headers used to record baggage
+        items
+        """
+        return self.config.get('baggage_header_prefix', BAGGAGE_HEADER_PREFIX)
+
+    @property
+    def debug_id_header(self):
+        """
+        :return: Returns the name of HTTP header or a TextMap carrier key
+        which, if found in the carrier, forces the trace to be sampled as
+        "debug" trace. The value of the header is recorded as the tag on the
+        root span, so that the trace can be found in the UI using this value
+        as a correlation ID.
+        """
+        return self.config.get('debug_id_header', DEBUG_ID_HEADER_KEY)
 
     @property
     def sampler(self):
@@ -226,14 +254,24 @@ class Config(object):
         if self.logging:
             reporter = CompositeReporter(reporter, LoggingReporter(logger))
 
-        tracer = Tracer(
-            service_name=self.service_name,
-            sampler=sampler,
+        tracer = self.create_tracer(
             reporter=reporter,
-            metrics=self.metrics)
+            sampler=sampler,
+        )
 
         self._initialize_global_tracer(tracer=tracer)
         return tracer
+
+    def create_tracer(self, reporter, sampler):
+        return Tracer(
+            service_name=self.service_name,
+            reporter=reporter,
+            sampler=sampler,
+            metrics=self.metrics,
+            trace_id_header=self.trace_id_header,
+            baggage_header_prefix=self.baggage_header_prefix,
+            debug_id_header=self.debug_id_header,
+        )
 
     def _initialize_global_tracer(self, tracer):
         opentracing.tracer = tracer

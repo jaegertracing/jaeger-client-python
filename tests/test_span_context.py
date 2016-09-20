@@ -20,20 +20,26 @@
 
 from __future__ import absolute_import
 
-import sys
+from jaeger_client import SpanContext
 
-# This is because thrift for python doesn't have 'package_prefix'.
-# The thrift compiled libraries refer to each other relative to their subdir.
-import jaeger_client.thrift_gen as modpath
-sys.path.append(modpath.__path__[0])
 
-__version__ = '3.2.0.dev0'
+def test_with_baggage_items():
+    baggage1 = {'x': 'y'}
+    ctx1 = SpanContext(trace_id=1, span_id=2, parent_id=3, flags=1,
+                       baggage=baggage1)
+    ctx2 = ctx1.with_baggage_item('a', 'b')
+    assert ctx1.trace_id == ctx2.trace_id
+    assert ctx1.span_id == ctx2.span_id
+    assert ctx1.parent_id == ctx2.parent_id
+    assert ctx1.flags == ctx2.flags
+    assert ctx1.baggage != ctx2.baggage
+    baggage1['a'] = 'b'
+    assert ctx1.baggage == ctx2.baggage
 
-from .tracer import Tracer  # noqa
-from .config import Config  # noqa
-from .span import Span  # noqa
-from .span_context import SpanContext  # noqa
-from .sampler import ConstSampler  # noqa
-from .sampler import ProbabilisticSampler  # noqa
-from .sampler import RateLimitingSampler  # noqa
-from .sampler import RemoteControlledSampler  # noqa
+
+def test_is_debug_id_container_only():
+    ctx = SpanContext.with_debug_id('value1')
+    assert ctx.is_debug_id_container_only
+    assert ctx.debug_id == 'value1'
+    ctx = SpanContext(trace_id=1, span_id=2, parent_id=3, flags=1)
+    assert not ctx.is_debug_id_container_only
