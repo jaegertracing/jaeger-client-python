@@ -25,15 +25,18 @@ from collections import namedtuple
 
 import mock
 import pytest
-from jaeger_client import Span, SpanContext
+from jaeger_client import Span, SpanContext, Tracer, ConstSampler
 from jaeger_client.codecs import (
     Codec, TextCodec, BinaryCodec, ZipkinCodec, ZipkinSpanFormat,
     span_context_from_string,
     span_context_to_string,
 )
+from jaeger_client.config import Config
+from jaeger_client.reporter import InMemoryReporter
 from opentracing import Format
 from opentracing.propagation import (
-    InvalidCarrierException, SpanContextCorruptedException
+    InvalidCarrierException,
+    SpanContextCorruptedException,
 )
 
 
@@ -155,18 +158,27 @@ class TestCodecs(unittest.TestCase):
             codec.extract(good_headers_bad_values)
 
     def test_context_from_readable_headers(self):
+        # provide headers all the way through Config object
+        config = Config(
+            service_name='test',
+            config={
+                'trace_id_header': 'Trace_ID',
+                'baggage_header_prefix': 'Trace-Attr-',
+            })
+        tracer = config.create_tracer(
+            reporter=InMemoryReporter(),
+            sampler=ConstSampler(True),
+        )
         for url_encoding in [False, True]:
-            codec = TextCodec(
-                url_encoding=url_encoding,
-                trace_id_header='Trace_ID',
-                baggage_header_prefix='Trace-Attr-')
             if url_encoding:
+                codec = tracer.codecs[Format.HTTP_HEADERS]
                 headers = {
                     'Trace-ID': '100%3A7f:0:1',
                     'trace-attr-Kiff': 'Amy%20Wang',
                     'trace-atTR-HERMES': 'LaBarbara%20Hermes'
                 }
             else:
+                codec = tracer.codecs[Format.HTTP_HEADERS]
                 headers = {
                     'Trace-ID': '100:7f:0:1',
                     'trace-attr-Kiff': 'Amy Wang',
@@ -289,3 +301,27 @@ def test_round_trip(tracer, fmt, carrier):
     context = tracer.extract(fmt, carrier)
     span2 = tracer.start_span('test-%s' % fmt, child_of=context)
     assert span.trace_id == span2.trace_id
+
+
+def test_debug_id():
+    debug_header = 'correlation-id'
+    tracer = Tracer(
+        service_name='test',
+        reporter=InMemoryReporter(),
+        sampler=ConstSampler(True),
+        debug_id_header=debug_header,
+    )
+    tracer.codecs[Format.TEXT_MAP] = TextCodec(
+        url_encoding=False,
+        debug_id_header=debug_header,
+    )
+    carrier = {debug_header: 'Coraline'}
+    context = tracer.extract(Format.TEXT_MAP, carrier)
+    assert context.is_debug_id_container_only
+    assert context.debug_id == 'Coraline'
+    span = tracer.start_span('test', child_of=context)
+    assert span.is_debug()
+    assert span.is_sampled()
+    tags = filter(lambda t: t.key == debug_header, span.tags)
+    assert len(tags) == 1
+    assert tags[0].value == 'Coraline'
