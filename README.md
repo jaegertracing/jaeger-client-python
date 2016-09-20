@@ -42,6 +42,40 @@ if __name__ == "__main__":
 
 See [Config class](jaeger_client/config.py).
 
+## Debug Traces (Forced Sampling)
+
+### Programmatically
+
+The OpenTracing API defines a `sampling.priority` standard tag that
+can be used to affect the sampling of a span and its children:
+
+```python
+from opentracing.ext import tags as ext_tags
+
+span.set_tag(ext_tags.SAMPLING_PRIORITY, 1)
+```
+
+### Via HTTP Headers
+
+Jaeger Tracer also understands a special HTTP Header `jaeger-debug-id`,
+which can be set in the incoming request, e.g.
+
+```sh
+curl -H "jaeger-debug-id: some-correlation-id" http://myhost.com
+```
+
+When Jaeger sees this header in the request that otherwise has no
+tracing context, it ensures that the new trace started for this
+request will be sampled in the "debug" mode (meaning it should survive
+all downsampling that might happen in the collection pipeline), and
+the root span will have a tag as if this statement was executed:
+
+```python
+span.set_tag('jaeger-debug-id', 'some-correlation-id')
+```
+
+This allows using Jaeger UI to find the trace by this tag.
+
 ## License
 
 [The MIT License](LICENSE).
