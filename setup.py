@@ -40,8 +40,12 @@ setup(
         # we want thrift>=0.9.2.post1,<0.9.3, but we let the users pin to that
         'thrift',
         'tornado>=4.3,<5',
-        'opentracing>=1.1,<1.2',
+        'opentracing>=1.2.2,<1.3',
     ],
+    # Uncomment below if need to test with unreleased version of opentracing
+    # dependency_links=[
+    #     'git+ssh://git@github.com/opentracing/opentracing-python.git@BRANCHNAME#egg=opentracing',
+    # ],
     test_suite='tests',
     extras_require={
         'tests': [

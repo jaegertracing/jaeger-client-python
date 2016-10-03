@@ -20,6 +20,7 @@
 
 from __future__ import absolute_import
 
+import json
 import threading
 import time
 
@@ -101,50 +102,53 @@ class Span(opentracing.Span):
                     self.tags.append(tag)
         return self
 
-    def info(self, message, payload):
-        self.log(event=message, is_error=False, payload=payload)
+    def info(self, message, payload=None):
+        """DEPRECATED"""
+        if payload:
+            self.log(event=message, payload=payload)
+        else:
+            self.log(event=message)
         return self
 
-    def error(self, message, payload):
-        self.log(event=message, is_error=True, payload=payload)
-        return self
-
-    def log_event(self, event, payload=None):
-        self.log(event=event, is_error=False, payload=payload)
+    def error(self, message, payload=None):
+        """DEPRECATED"""
+        self.set_tag('error', True)
+        if payload:
+            self.log(event=message, payload=payload)
+        else:
+            self.log(event=message)
         return self
 
     def log(self, **kwargs):
-        """
-        Record a generic Log event at an arbitrary timestamp.
+        """DEPRECATED"""
+        # TODO remove after upgrade
+        key_values = {}
+        if 'event' in kwargs:
+            key_values['event'] = kwargs['event']
+        if 'payload' in kwargs:
+            key_values['payload'] = kwargs['payload']
+        timestamp = None
+        if 'timestamp' in kwargs:
+            timestamp = kwargs['timestamp']
+        return self.log_kv(key_values, timestamp)
 
-        :param timestamp: the log timestamp as a unix timestamp per time.time()
-        :param event: an event name as a string
-        :param payload: an arbitrary structured payload. Implementations may
-            choose to ignore none, some, or all of the payload.
-        :return: returns the span itself, for chaining the calls
-        """
+    def log_kv(self, key_values, timestamp=None):
         if self.is_sampled():
-            ts = kwargs.get('timestamp', time.time())
-            event = kwargs.get('event', '')
-            log = thrift.make_event(ts, event)
-            # Since Zipkin format does not support logs with payloads,
-            # we convert the payload to a tag with the same name as log.
-            # Also, if the log was an error, we add error=true tag.
-            payload = kwargs.get('payload', None)
-            if payload:
-                tag = thrift.make_string_tag(event, str(payload))
+            timestamp = timestamp if timestamp else time.time()
+            event = key_values.get('event', None)
+            if event and len(key_values) == 1:
+                log = thrift.make_event(timestamp=timestamp, name=event)
             else:
-                tag = None
-            if kwargs.get('is_error', False):
-                err = thrift.make_string_tag('error', 'true')
-            else:
-                err = None
+                # Since Zipkin format does not support kv-logs,
+                # we convert key_values to JSON.
+                # TODO handle exception logging, 'python.exception.type' etc.
+                value = json.dumps(
+                    key_values,
+                    default=lambda x: '%s' % (x,)  # avoid exceptions
+                )
+                log = thrift.make_event(timestamp=timestamp, name=value)
             with self.update_lock:
                 self.logs.append(log)
-                if tag:
-                    self.tags.append(tag)
-                if err:
-                    self.tags.append(err)
         return self
 
     def set_baggage_item(self, key, value):

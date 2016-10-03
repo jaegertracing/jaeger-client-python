@@ -3,10 +3,10 @@
 History
 -------
 
-3.2.1 (unreleased)
+3.3.0 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Upgrade to opentracing 1.2 with KV logging.
 
 
 3.2.0 (2016-09-20)
