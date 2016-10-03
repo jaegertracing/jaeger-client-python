@@ -94,6 +94,13 @@ def test_span_logging(tracer):
         test(method='error',
              args=['msg', 'data'],
              expected=event_payload('msg', 'data'), error=True),
+        # deprecated log_event() method
+        test(method='log_event',
+             args=['msg'],
+             expected='msg'),
+        test(method='log_event',
+             args=['msg', 'data'],
+             expected=event_payload('msg', 'data')),
         # deprecated log() method
         test(method='log',
              kwargs={'event': 'msg'},
@@ -146,6 +153,8 @@ def test_span_logging(tracer):
             span.error(*test.args, **test.kwargs)
         elif test.method == 'log':
             span.log(*test.args, **test.kwargs)
+        elif test.method == 'log_event':
+            span.log_event(*test.args, **test.kwargs)
         elif test.method == 'log_kv':
             span.log_kv(*test.args, **test.kwargs)
         else:
