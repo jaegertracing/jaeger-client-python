@@ -119,19 +119,6 @@ class Span(opentracing.Span):
             self.log(event=message)
         return self
 
-    def log(self, **kwargs):
-        """DEPRECATED"""
-        # TODO remove after upgrade
-        key_values = {}
-        if 'event' in kwargs:
-            key_values['event'] = kwargs['event']
-        if 'payload' in kwargs:
-            key_values['payload'] = kwargs['payload']
-        timestamp = None
-        if 'timestamp' in kwargs:
-            timestamp = kwargs['timestamp']
-        return self.log_kv(key_values, timestamp)
-
     def log_kv(self, key_values, timestamp=None):
         if self.is_sampled():
             timestamp = timestamp if timestamp else time.time()
