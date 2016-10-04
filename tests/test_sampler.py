@@ -23,12 +23,21 @@ import mock
 import pytest
 
 from jaeger_client.sampler import (
+    Sampler,
     ConstSampler,
     ProbabilisticSampler,
     RateLimitingSampler,
     RemoteControlledSampler,
     DEFAULT_SAMPLING_PROBABILITY,
 )
+
+
+def test_abstract_sampler_errors():
+    sampler = Sampler()
+    with pytest.raises(NotImplementedError):
+        sampler.is_sampled(trace_id=123)
+    with pytest.raises(NotImplementedError):
+        sampler.close()
 
 
 def test_probabilistic_sampler_errors():
@@ -51,6 +60,7 @@ def test_probabilistic_sampler():
         'sampler.type': 'probabilistic',
         'sampler.param': 0.5,
     }
+    assert '%s' % sampler == 'ProbabilisticSampler(0.5)'
 
 
 def test_const_sampler():
@@ -64,6 +74,7 @@ def test_const_sampler():
         'sampler.type': 'const',
         'sampler.param': False,
     }
+    assert '%s' % sampler == 'ConstSampler(False)'
 
 
 def test_rate_limiting_sampler():
@@ -105,6 +116,7 @@ def test_rate_limiting_sampler():
         'sampler.type': 'ratelimiting',
         'sampler.param': 2,
     }
+    assert '%s' % sampler == 'RateLimitingSampler(2)'
 
 
 def test_sample_equality():
@@ -139,3 +151,24 @@ def test_remotely_controlled_sampler():
         'sampler.type': 'probabilistic',
         'sampler.param': DEFAULT_SAMPLING_PROBABILITY,
     }
+    init_sampler = mock.MagicMock()
+    init_sampler.is_sampled = mock.MagicMock()
+    channel = mock.MagicMock()
+    channel.io_loop = None
+    sampler = RemoteControlledSampler(
+        channel=channel,
+        service_name='x',
+        init_sampler=init_sampler,
+        logger=mock.MagicMock(),
+    )
+    assert init_sampler.is_sampled.call_count == 1
+
+    sampler.is_sampled(1)
+    assert init_sampler.is_sampled.call_count == 2
+
+    sampler.io_loop = mock.MagicMock()
+    # noinspection PyProtectedMember
+    sampler._init_polling()
+    # noinspection PyProtectedMember
+    sampler._delayed_polling()
+    sampler.close()

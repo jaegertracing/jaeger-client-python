@@ -281,7 +281,7 @@ class RemoteControlledSampler(Sampler):
             response = future.result()
             try:
                 sampler = parse_sampling_strategy(response.body)
-            except Exception, e:
+            except Exception as e:
                 self.error_reporter.error(
                     Metrics.SAMPLER_ERRORS, 1,
                     'Fail to parse sampling strategy '
