@@ -31,7 +31,7 @@ class SpanContext(opentracing.SpanContext):
     def __init__(self, trace_id, span_id, parent_id, flags, baggage=None):
         self.trace_id = trace_id
         self.span_id = span_id
-        self.parent_id = parent_id
+        self.parent_id = parent_id or None
         self.flags = flags
         self._baggage = baggage or opentracing.SpanContext.EMPTY_BAGGAGE
         self._debug_id = None

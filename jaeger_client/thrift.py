@@ -135,7 +135,7 @@ def make_zipkin_spans(spans):
                 trace_id=id_to_int(span.trace_id),
                 name=span.operation_name,
                 id=id_to_int(span.span_id),
-                parent_id=id_to_int(span.parent_id),
+                parent_id=id_to_int(span.parent_id) or None,
                 annotations=span.logs,
                 binary_annotations=span.tags,
                 debug=span.is_debug(),
