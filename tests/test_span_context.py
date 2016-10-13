@@ -23,6 +23,10 @@ from __future__ import absolute_import
 from jaeger_client import SpanContext
 
 
+def test_parent_id_to_none():
+    ctx1 = SpanContext(trace_id=1, span_id=2, parent_id=0, flags=1)
+    assert ctx1.parent_id is None
+
 def test_with_baggage_items():
     baggage1 = {'x': 'y'}
     ctx1 = SpanContext(trace_id=1, span_id=2, parent_id=3, flags=1,
