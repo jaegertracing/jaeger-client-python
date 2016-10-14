@@ -76,6 +76,20 @@ span.set_tag('jaeger-debug-id', 'some-correlation-id')
 
 This allows using Jaeger UI to find the trace by this tag.
 
+## Zipkin Compatibility
+
+This library internally uses Zipkin Thrift data model and conventions, 
+but if you want to use it directly with other Zipkin libraries & backend, 
+it needs:
+  1. different [wire codecs](./jaeger_client/codecs.py) to transmit 
+     trace context as `X-B3-*` headers
+  2. a reporter that will submit traces to Zipkin backend over Zipkin-supported 
+     transports like Kafka or HTTP
+
+Both of these things are easy to add (e.g. it was done in https://github.com/uber/jaeger-client-java/pull/34), 
+but it is not a priority for the Uber team since we are using a different backend.
+We will welcome PRs that provide that functionality.
+
 ## License
 
 [The MIT License](LICENSE).
