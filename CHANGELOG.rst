@@ -3,10 +3,10 @@
 History
 -------
 
-3.3.1 (unreleased)
+3.3.1 (2016-10-14)
 ------------------
 
-- Nothing changed yet.
+- Replace 0 parentID with None
 
 
 3.3.0 (2016-10-04)
