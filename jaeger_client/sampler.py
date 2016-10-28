@@ -52,15 +52,11 @@ class Sampler(object):
     def __init__(self, tags=None):
         self._tags = tags
 
-    def is_sampled(self, trace_id):
+    def is_sampled(self, trace_id, operation):
         raise NotImplementedError()
 
     def close(self):
         raise NotImplementedError()
-
-    @property
-    def tags(self):
-        return self._tags
 
     def __eq__(self, other):
         return (isinstance(other, self.__class__) and
@@ -82,8 +78,8 @@ class ConstSampler(Sampler):
         )
         self.decision = decision
 
-    def is_sampled(self, trace_id):
-        return self.decision
+    def is_sampled(self, trace_id, operation):
+        return self.decision, self._tags
 
     def close(self):
         pass
@@ -115,8 +111,8 @@ class ProbabilisticSampler(Sampler):
         self.max_number = 1 << MAX_ID_BITS
         self.boundary = rate * self.max_number
 
-    def is_sampled(self, trace_id):
-        return trace_id < self.boundary
+    def is_sampled(self, trace_id, operation):
+        return trace_id < self.boundary, self._tags
 
     def close(self):
         pass
@@ -148,7 +144,7 @@ class RateLimitingSampler(Sampler):
         self.last_tick = self.timestamp()
         self.item_cost = 1
 
-    def is_sampled(self, trace_id):
+    def is_sampled(self, trace_id, operation):
         current_time = self.timestamp()
         elapsed_time = current_time - self.last_tick
         self.last_tick = current_time
@@ -157,8 +153,8 @@ class RateLimitingSampler(Sampler):
             self.balance = self.credits_per_second
         if self.balance >= self.item_cost:
             self.balance -= self.item_cost
-            return True
-        return False
+            return True, self._tags
+        return False, self._tags
 
     def close(self):
         pass
@@ -227,14 +223,9 @@ class RemoteControlledSampler(Sampler):
             # unless already running in the loop, so we use `add_callback`
             self.io_loop.add_callback(self._init_polling)
 
-    def is_sampled(self, trace_id):
+    def is_sampled(self, trace_id, operation):
         with self.lock:
-            return self.sampler.is_sampled(trace_id)
-
-    @property
-    def tags(self):
-        with self.lock:
-            return self.sampler.tags
+            return self.sampler.is_sampled(trace_id), self.sampler._tags
 
     def _init_polling(self):
         """

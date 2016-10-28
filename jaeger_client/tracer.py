@@ -123,10 +123,11 @@ class Tracer(opentracing.Tracer):
             flags = 0
             baggage = None
             if parent is None:
-                if self.sampler.is_sampled(trace_id):
+                sampled, sampler_tags = self.sampler.is_sampled(trace_id)
+                if sampled:
                     flags = SAMPLED_FLAG
                     tags = tags or {}
-                    for k, v in self.sampler.tags.iteritems():
+                    for k, v in sampler_tags:
                         tags[k] = v
             else:  # have debug id
                 flags = SAMPLED_FLAG | DEBUG_FLAG
