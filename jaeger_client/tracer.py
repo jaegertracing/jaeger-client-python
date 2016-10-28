@@ -127,7 +127,7 @@ class Tracer(opentracing.Tracer):
                 if sampled:
                     flags = SAMPLED_FLAG
                     tags = tags or {}
-                    for k, v in sampler_tags:
+                    for k, v in sampler_tags.iteritems():
                         tags[k] = v
             else:  # have debug id
                 flags = SAMPLED_FLAG | DEBUG_FLAG

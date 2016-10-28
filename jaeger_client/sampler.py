@@ -52,7 +52,7 @@ class Sampler(object):
     def __init__(self, tags=None):
         self._tags = tags
 
-    def is_sampled(self, trace_id, operation):
+    def is_sampled(self, trace_id, operation=''):
         raise NotImplementedError()
 
     def close(self):
@@ -78,7 +78,7 @@ class ConstSampler(Sampler):
         )
         self.decision = decision
 
-    def is_sampled(self, trace_id, operation):
+    def is_sampled(self, trace_id, operation=''):
         return self.decision, self._tags
 
     def close(self):
@@ -111,7 +111,7 @@ class ProbabilisticSampler(Sampler):
         self.max_number = 1 << MAX_ID_BITS
         self.boundary = rate * self.max_number
 
-    def is_sampled(self, trace_id, operation):
+    def is_sampled(self, trace_id, operation=''):
         return trace_id < self.boundary, self._tags
 
     def close(self):
@@ -144,7 +144,7 @@ class RateLimitingSampler(Sampler):
         self.last_tick = self.timestamp()
         self.item_cost = 1
 
-    def is_sampled(self, trace_id, operation):
+    def is_sampled(self, trace_id, operation=''):
         current_time = self.timestamp()
         elapsed_time = current_time - self.last_tick
         self.last_tick = current_time
@@ -223,9 +223,9 @@ class RemoteControlledSampler(Sampler):
             # unless already running in the loop, so we use `add_callback`
             self.io_loop.add_callback(self._init_polling)
 
-    def is_sampled(self, trace_id, operation):
+    def is_sampled(self, trace_id, operation=''):
         with self.lock:
-            return self.sampler.is_sampled(trace_id), self.sampler._tags
+            return self.sampler.is_sampled(trace_id, operation), self.sampler._tags
 
     def _init_polling(self):
         """
