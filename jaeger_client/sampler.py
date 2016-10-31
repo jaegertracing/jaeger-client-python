@@ -31,10 +31,12 @@ from .constants import (
     SAMPLER_TYPE_CONST,
     SAMPLER_TYPE_PROBABILISTIC,
     SAMPLER_TYPE_RATE_LIMITING,
+    SAMPLER_TYPE_LOWER_BOUND,
 )
 from .metrics import Metrics
 from .utils import ErrorReporter
 from .local_agent_net import parse_sampling_strategy
+from .thrift_gen.sampling.ttypes import PerOperationSamplingStrategies
 
 default_logger = logging.getLogger('jaeger_tracing')
 
@@ -175,6 +177,100 @@ class RateLimitingSampler(Sampler):
 
     def __str__(self):
         return 'RateLimitingSampler(%s)' % self.credits_per_second
+
+
+class GuaranteedThroughputProbabilisticSampler(Sampler):
+    """
+    A sampler that leverages both ProbabilisticSampler and RateLimitingSampler.
+    The RateLimitingSampler is used as a guaranteed lower bound sampler such
+    that every operation is sampled at least once in a time interval defined by
+    the lower_bound. ie a lower_bound of 1.0 / (60 * 10) will sample an
+    operation at least once every 10 minutes.
+
+    The ProbabilisticSampler is given higher priority when tags are emitted,
+    ie. if is_sampled() for both samplers return true, the tags for
+    ProbabilisticSampler will be used.
+    """
+    def __init__(self, operation, lower_bound, rate):
+        super(GuaranteedThroughputProbabilisticSampler, self).__init__(
+                tags={
+                    SAMPLER_TYPE_TAG_KEY: SAMPLER_TYPE_LOWER_BOUND,
+                    SAMPLER_PARAM_TAG_KEY: rate,
+                }
+        )
+        self.probabilistic_sampler = ProbabilisticSampler(rate)
+        self.lower_bound_sampler = RateLimitingSampler(lower_bound)
+        self.operation = operation
+        self.rate = rate
+        self.lower_bound = lower_bound
+
+    def is_sampled(self, trace_id, operation=''):
+        sampled, tags = \
+            self.probabilistic_sampler.is_sampled(trace_id, operation)
+        if sampled:
+            self.lower_bound_sampler.is_sampled(trace_id, operation)
+            return True, tags
+        sampled, _ = self.lower_bound_sampler.is_sampled(trace_id, operation)
+        return sampled, self._tags
+
+    def close(self):
+        self.probabilistic_sampler.close()
+        self.lower_bound_sampler.close()
+
+    def __str__(self):
+        return 'GuaranteedThroughputProbabilisticSampler(%s, %s, %s)' \
+               % (self.operation, self.rate, self.lower_bound)
+
+
+class AdaptiveSampler(Sampler):
+    """
+    A sampler that leverages both ProbabilisticSampler and RateLimitingSampler
+    via the GuaranteedThroughputProbabilisticSampler. This sampler keeps track
+    of all operations and delegates calls the the respective
+    GuaranteedThroughputProbabilisticSampler.
+    """
+    def __init__(self, strategies, max_operations):
+        super(AdaptiveSampler, self).__init__()
+
+        samplers = {}
+        for strategy in strategies.perOperationStrategies:
+            sampler = GuaranteedThroughputProbabilisticSampler(
+                    strategy.operation,
+                    strategies.defaultLowerBoundTracesPerSecond,
+                    strategy.probabilisticSampling.samplingRate
+            )
+            samplers[strategy.operation] = sampler
+
+        self.samplers = samplers
+        self.default_sampler = \
+            ProbabilisticSampler(strategies.defaultSamplingProbability)
+        self.default_sampling_probability = \
+            strategies.defaultSamplingProbability
+        self.lower_bound = strategies.defaultLowerBoundTracesPerSecond
+        self.max_operations = max_operations
+
+    def is_sampled(self, trace_id, operation=''):
+        sampler = self.samplers.get(operation, None)
+        if sampler is None:
+            if len(self.samplers) >= self.max_operations:
+                return self.default_sampler.is_sampled(trace_id, operation)
+            sampler = GuaranteedThroughputProbabilisticSampler(
+                    operation,
+                    self.lower_bound,
+                    self.default_sampling_probability
+            )
+            self.samplers[operation] = sampler
+            return sampler.is_sampled(trace_id, operation)
+        return sampler.is_sampled(trace_id, operation)
+
+    def close(self):
+        for _, sampler in self.samplers:
+            sampler.close()
+
+    def __str__(self):
+        return 'AdaptiveSampler(%s, %s, %s)' \
+               % (self.default_sampling_probability, self.lower_bound,
+                  self.max_operations)
 
 
 class RemoteControlledSampler(Sampler):
