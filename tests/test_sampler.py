@@ -53,13 +53,15 @@ def test_probabilistic_sampler():
     # we hardcode that value here to make sure test is independent.
     id1 = 1L << 63  # second most significant bit, dividing full range in half
     assert id1 == 0x8000000000000000L
-    assert sampler.is_sampled(id1-10)
-    assert not sampler.is_sampled(id1+10)
-    sampler.close()
-    assert sampler.tags == {
+    sampled, tags = sampler.is_sampled(id1-10)
+    assert sampled
+    assert tags == {
         'sampler.type': 'probabilistic',
         'sampler.param': 0.5,
     }
+    sampled, _ = sampler.is_sampled(id1+10)
+    assert not sampled
+    sampler.close()
     assert '%s' % sampler == 'ProbabilisticSampler(0.5)'
 
 
@@ -68,9 +70,11 @@ def test_const_sampler():
     assert sampler.is_sampled(1)
     assert sampler.is_sampled(1 << 63)
     sampler = ConstSampler(False)
-    assert not sampler.is_sampled(1)
-    assert not sampler.is_sampled(1 << 63)
-    assert sampler.tags == {
+    sampled, tags = sampler.is_sampled(1)
+    assert not sampled
+    sampled, tags = sampler.is_sampled(1 << 63)
+    assert not sampled
+    assert tags == {
         'sampler.type': 'const',
         'sampler.param': False,
     }
@@ -89,17 +93,19 @@ def test_rate_limiting_sampler():
         assert sampler.timestamp() == ts
         assert sampler.is_sampled(0), 'initial balance allows first item'
         assert sampler.is_sampled(0), 'initial balance allows second item'
-        assert not sampler.is_sampled(0), 'initial balance exhausted'
+        sampled, _ = sampler.is_sampled(0)
+        assert not sampled, 'initial balance exhausted'
 
         # move time 250ms forward, not enough credits to pay for one sample
         mock_time.side_effect = lambda: ts + 0.25
-        assert not sampler.is_sampled(0), \
-            'not enough time passed for full item'
+        sampled, _ = sampler.is_sampled(0)
+        assert not sampled, 'not enough time passed for full item'
 
         # move time 500ms forward, now enough credits to pay for one sample
         mock_time.side_effect = lambda: ts + 0.5
         assert sampler.is_sampled(0), 'enough time for new item'
-        assert not sampler.is_sampled(0), 'no more balance'
+        sampled, _ = sampler.is_sampled(0)
+        assert not sampled, 'no more balance'
 
         # move time 5s forward, enough to accumulate credits for 10 samples,
         # but it should still be capped at 2
@@ -108,14 +114,13 @@ def test_rate_limiting_sampler():
         assert sampler.is_sampled(0), 'enough time for new item'
         assert sampler.is_sampled(0), 'enough time for second new item'
         for i in range(0, 3):
-            assert not sampler.is_sampled(0), \
-                'but no further, since time is stopped'
+            sampled, tags = sampler.is_sampled(0)
+            assert not sampled, 'but no further, since time is stopped'
+        assert tags == {
+            'sampler.type': 'ratelimiting',
+            'sampler.param': 2,
+        }
     sampler.close()
-    # noinspection SpellCheckingInspection
-    assert sampler.tags == {
-        'sampler.type': 'ratelimiting',
-        'sampler.param': 2,
-    }
     assert '%s' % sampler == 'RateLimitingSampler(2)'
 
 
@@ -147,10 +152,13 @@ def test_remotely_controlled_sampler():
         channel=mock.MagicMock(),
         service_name='x'
     )
-    assert sampler.tags == {
+    sampled, tags = sampler.is_sampled(1)
+    assert sampled
+    assert tags == {
         'sampler.type': 'probabilistic',
         'sampler.param': DEFAULT_SAMPLING_PROBABILITY,
     }
+
     init_sampler = mock.MagicMock()
     init_sampler.is_sampled = mock.MagicMock()
     channel = mock.MagicMock()
