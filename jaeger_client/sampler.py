@@ -36,7 +36,6 @@ from .constants import (
 from .metrics import Metrics
 from .utils import ErrorReporter
 from .local_agent_net import parse_sampling_strategy
-from .thrift_gen.sampling.ttypes import PerOperationSamplingStrategies
 
 default_logger = logging.getLogger('jaeger_tracing')
 
@@ -193,10 +192,10 @@ class GuaranteedThroughputProbabilisticSampler(Sampler):
     """
     def __init__(self, operation, lower_bound, rate):
         super(GuaranteedThroughputProbabilisticSampler, self).__init__(
-                tags={
-                    SAMPLER_TYPE_TAG_KEY: SAMPLER_TYPE_LOWER_BOUND,
-                    SAMPLER_PARAM_TAG_KEY: rate,
-                }
+            tags={
+                SAMPLER_TYPE_TAG_KEY: SAMPLER_TYPE_LOWER_BOUND,
+                SAMPLER_PARAM_TAG_KEY: rate,
+            }
         )
         self.probabilistic_sampler = ProbabilisticSampler(rate)
         self.lower_bound_sampler = RateLimitingSampler(lower_bound)
@@ -235,9 +234,9 @@ class AdaptiveSampler(Sampler):
         samplers = {}
         for strategy in strategies.perOperationStrategies:
             sampler = GuaranteedThroughputProbabilisticSampler(
-                    strategy.operation,
-                    strategies.defaultLowerBoundTracesPerSecond,
-                    strategy.probabilisticSampling.samplingRate
+                strategy.operation,
+                strategies.defaultLowerBoundTracesPerSecond,
+                strategy.probabilisticSampling.samplingRate
             )
             samplers[strategy.operation] = sampler
 
@@ -255,16 +254,16 @@ class AdaptiveSampler(Sampler):
             if len(self.samplers) >= self.max_operations:
                 return self.default_sampler.is_sampled(trace_id, operation)
             sampler = GuaranteedThroughputProbabilisticSampler(
-                    operation,
-                    self.lower_bound,
-                    self.default_sampling_probability
+                operation,
+                self.lower_bound,
+                self.default_sampling_probability
             )
             self.samplers[operation] = sampler
             return sampler.is_sampled(trace_id, operation)
         return sampler.is_sampled(trace_id, operation)
 
     def close(self):
-        for _, sampler in self.samplers:
+        for _, sampler in self.samplers.iteritems():
             sampler.close()
 
     def __str__(self):

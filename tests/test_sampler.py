@@ -28,9 +28,22 @@ from jaeger_client.sampler import (
     ProbabilisticSampler,
     RateLimitingSampler,
     RemoteControlledSampler,
+    GuaranteedThroughputProbabilisticSampler,
+    AdaptiveSampler,
     DEFAULT_SAMPLING_PROBABILITY,
 )
 
+from jaeger_client.thrift_gen.sampling.ttypes import (
+    PerOperationSamplingStrategies,
+    OperationSamplingStrategy,
+    ProbabilisticSamplingStrategy,
+)
+
+def get_tags(type, param):
+    return {
+        'sampler.type': type,
+        'sampler.param': param,
+    }
 
 def test_abstract_sampler_errors():
     sampler = Sampler()
@@ -55,10 +68,7 @@ def test_probabilistic_sampler():
     assert id1 == 0x8000000000000000L
     sampled, tags = sampler.is_sampled(id1-10)
     assert sampled
-    assert tags == {
-        'sampler.type': 'probabilistic',
-        'sampler.param': 0.5,
-    }
+    assert tags == get_tags('probabilistic', 0.5)
     sampled, _ = sampler.is_sampled(id1+10)
     assert not sampled
     sampler.close()
@@ -74,10 +84,7 @@ def test_const_sampler():
     assert not sampled
     sampled, tags = sampler.is_sampled(1 << 63)
     assert not sampled
-    assert tags == {
-        'sampler.type': 'const',
-        'sampler.param': False,
-    }
+    assert tags == get_tags('const', False)
     assert '%s' % sampler == 'ConstSampler(False)'
 
 
@@ -116,12 +123,54 @@ def test_rate_limiting_sampler():
         for i in range(0, 3):
             sampled, tags = sampler.is_sampled(0)
             assert not sampled, 'but no further, since time is stopped'
-        assert tags == {
-            'sampler.type': 'ratelimiting',
-            'sampler.param': 2,
-        }
+        assert tags == get_tags('ratelimiting', 2)
     sampler.close()
     assert '%s' % sampler == 'RateLimitingSampler(2)'
+
+
+def test_guaranteed_throughput_probabilistic_sampler():
+    sampler = GuaranteedThroughputProbabilisticSampler('op', 2, 0.5)
+    id1 = 1L << 63  # second most significant bit, dividing full range in half
+    assert id1 == 0x8000000000000000L
+    sampled, tags = sampler.is_sampled(id1-10)
+    assert sampled
+    assert tags == get_tags('probabilistic', 0.5)
+    sampled, tags = sampler.is_sampled(id1+10)
+    assert sampled
+    assert tags == get_tags('lowerbound', 0.5)
+    sampled, _ = sampler.is_sampled(id1+10)
+    assert not sampled
+
+    sampler.close()
+    assert '%s' % sampler == 'GuaranteedThroughputProbabilisticSampler(op, 0.5, 2)'
+
+
+def test_adaptive_sampler():
+    sampling_rates = [
+        OperationSamplingStrategy('op', ProbabilisticSamplingStrategy(0.5))
+    ]
+    strategies = PerOperationSamplingStrategies(0.51, 3, sampling_rates)
+
+    sampler = AdaptiveSampler(strategies, 2)
+    id1 = 1L << 63  # second most significant bit, dividing full range in half
+    assert id1 == 0x8000000000000000L
+    sampled, tags = sampler.is_sampled(id1-10, 'op')
+    assert sampled
+    assert tags == get_tags('probabilistic', 0.5)
+
+    # This operation is seen for the first time by the sampler
+    sampled, tags = sampler.is_sampled(id1-10, "new_op")
+    assert sampled
+    assert tags == get_tags('probabilistic', 0.51)
+
+    # This operation is seen for the first time by the sampler but surpasses
+    # max_operations of 2
+    sampled, tags = sampler.is_sampled(id1-10, "new_op_2")
+    assert sampled
+    assert tags == get_tags('probabilistic', 0.51)
+
+    sampler.close()
+    assert '%s' % sampler == 'AdaptiveSampler(0.51, 3, 2)'
 
 
 def test_sample_equality():
@@ -154,10 +203,7 @@ def test_remotely_controlled_sampler():
     )
     sampled, tags = sampler.is_sampled(1)
     assert sampled
-    assert tags == {
-        'sampler.type': 'probabilistic',
-        'sampler.param': DEFAULT_SAMPLING_PROBABILITY,
-    }
+    assert tags == get_tags('probabilistic', DEFAULT_SAMPLING_PROBABILITY)
 
     init_sampler = mock.MagicMock()
     init_sampler.is_sampled = mock.MagicMock()

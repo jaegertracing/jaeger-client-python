@@ -66,4 +66,4 @@ SAMPLER_TYPE_RATE_LIMITING = 'ratelimiting'
 # the type of sampler that samples only up to a fixed number
 # of traces per second.
 # noinspection SpellCheckingInspection
-SAMPLER_TYPE_LOWER_BOUND = "lowerbound"
+SAMPLER_TYPE_LOWER_BOUND = 'lowerbound'
