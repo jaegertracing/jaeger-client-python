@@ -28,9 +28,24 @@ from jaeger_client.sampler import (
     ProbabilisticSampler,
     RateLimitingSampler,
     RemoteControlledSampler,
+    GuaranteedThroughputProbabilisticSampler,
+    AdaptiveSampler,
     DEFAULT_SAMPLING_PROBABILITY,
 )
 
+from jaeger_client.thrift_gen.sampling.ttypes import (
+    PerOperationSamplingStrategies,
+    OperationSamplingStrategy,
+    ProbabilisticSamplingStrategy,
+)
+
+MAX_INT = 1L << 63
+
+def get_tags(type, param):
+    return {
+        'sampler.type': type,
+        'sampler.param': param,
+    }
 
 def test_abstract_sampler_errors():
     sampler = Sampler()
@@ -49,17 +64,11 @@ def test_probabilistic_sampler_errors():
 
 def test_probabilistic_sampler():
     sampler = ProbabilisticSampler(0.5)
-    # probabilistic sampler defines max ID as 64bit long.
-    # we hardcode that value here to make sure test is independent.
-    id1 = 1L << 63  # second most significant bit, dividing full range in half
-    assert id1 == 0x8000000000000000L
-    sampled, tags = sampler.is_sampled(id1-10)
+    assert MAX_INT == 0x8000000000000000L
+    sampled, tags = sampler.is_sampled(MAX_INT-10)
     assert sampled
-    assert tags == {
-        'sampler.type': 'probabilistic',
-        'sampler.param': 0.5,
-    }
-    sampled, _ = sampler.is_sampled(id1+10)
+    assert tags == get_tags('probabilistic', 0.5)
+    sampled, _ = sampler.is_sampled(MAX_INT+10)
     assert not sampled
     sampler.close()
     assert '%s' % sampler == 'ProbabilisticSampler(0.5)'
@@ -68,16 +77,13 @@ def test_probabilistic_sampler():
 def test_const_sampler():
     sampler = ConstSampler(True)
     assert sampler.is_sampled(1)
-    assert sampler.is_sampled(1 << 63)
+    assert sampler.is_sampled(MAX_INT)
     sampler = ConstSampler(False)
     sampled, tags = sampler.is_sampled(1)
     assert not sampled
-    sampled, tags = sampler.is_sampled(1 << 63)
+    sampled, tags = sampler.is_sampled(MAX_INT)
     assert not sampled
-    assert tags == {
-        'sampler.type': 'const',
-        'sampler.param': False,
-    }
+    assert tags == get_tags('const', False)
     assert '%s' % sampler == 'ConstSampler(False)'
 
 
@@ -116,12 +122,72 @@ def test_rate_limiting_sampler():
         for i in range(0, 3):
             sampled, tags = sampler.is_sampled(0)
             assert not sampled, 'but no further, since time is stopped'
-        assert tags == {
-            'sampler.type': 'ratelimiting',
-            'sampler.param': 2,
-        }
+        assert tags == get_tags('ratelimiting', 2)
     sampler.close()
     assert '%s' % sampler == 'RateLimitingSampler(2)'
+
+    # Test with rate limit of less than 1 second
+    sampler = RateLimitingSampler(0.1)
+    ts = time.time()
+    sampler.last_tick = ts
+    with mock.patch('jaeger_client.sampler.RateLimitingSampler.timestamp') \
+            as mock_time:
+        mock_time.side_effect = lambda: ts  # always return same time
+        assert sampler.timestamp() == ts
+        sampled, _ = sampler.is_sampled(0)
+        assert not sampled
+
+        # move time 110ms forward, enough credits to pay for one sample
+        mock_time.side_effect = lambda: ts + 0.11
+        assert sampler.is_sampled(0)
+    sampler.close()
+    assert '%s' % sampler == 'RateLimitingSampler(0.1)'
+
+
+def test_guaranteed_throughput_probabilistic_sampler():
+    sampler = GuaranteedThroughputProbabilisticSampler('op', 2, 0.5)
+    sampled, tags = sampler.is_sampled(MAX_INT-10)
+    assert sampled
+    assert tags == get_tags('probabilistic', 0.5)
+    sampled, tags = sampler.is_sampled(MAX_INT+10)
+    assert sampled
+    assert tags == get_tags('lowerbound', 0.5)
+    sampled, _ = sampler.is_sampled(MAX_INT+10)
+    assert not sampled
+
+    sampler.close()
+    assert '%s' % sampler == 'GuaranteedThroughputProbabilisticSampler(op, 0.5, 2)'
+
+
+def test_adaptive_sampler():
+    sampling_rates = [
+        OperationSamplingStrategy('op', ProbabilisticSamplingStrategy(0.5))
+    ]
+    strategies = PerOperationSamplingStrategies(0.51, 3, sampling_rates)
+
+    sampler = AdaptiveSampler(strategies, 2)
+    sampled, tags = sampler.is_sampled(MAX_INT-10, 'op')
+    assert sampled
+    assert tags == get_tags('probabilistic', 0.5)
+
+    # This operation is seen for the first time by the sampler
+    sampled, tags = sampler.is_sampled(MAX_INT-10, "new_op")
+    assert sampled
+    assert tags == get_tags('probabilistic', 0.51)
+    sampled, tags = sampler.is_sampled(MAX_INT+(MAX_INT/4), "new_op")
+    assert sampled
+    assert tags == get_tags('lowerbound', 0.51)
+
+    # This operation is seen for the first time by the sampler but surpasses
+    # max_operations of 2. The default probabilistic sampler will be used
+    sampled, tags = sampler.is_sampled(MAX_INT-10, "new_op_2")
+    assert sampled
+    assert tags == get_tags('probabilistic', 0.51)
+    sampled, _ = sampler.is_sampled(MAX_INT++(MAX_INT/4), "new_op_2")
+    assert not sampled
+
+    sampler.close()
+    assert '%s' % sampler == 'AdaptiveSampler(0.51, 3, 2)'
 
 
 def test_sample_equality():
@@ -154,10 +220,7 @@ def test_remotely_controlled_sampler():
     )
     sampled, tags = sampler.is_sampled(1)
     assert sampled
-    assert tags == {
-        'sampler.type': 'probabilistic',
-        'sampler.param': DEFAULT_SAMPLING_PROBABILITY,
-    }
+    assert tags == get_tags('probabilistic', DEFAULT_SAMPLING_PROBABILITY)
 
     init_sampler = mock.MagicMock()
     init_sampler.is_sampled = mock.MagicMock()
