@@ -127,6 +127,23 @@ def test_rate_limiting_sampler():
     sampler.close()
     assert '%s' % sampler == 'RateLimitingSampler(2)'
 
+    # Test with rate limit of less than 1 second
+    sampler = RateLimitingSampler(0.1)
+    ts = time.time()
+    sampler.last_tick = ts
+    with mock.patch('jaeger_client.sampler.RateLimitingSampler.timestamp') \
+            as mock_time:
+        mock_time.side_effect = lambda: ts  # always return same time
+        assert sampler.timestamp() == ts
+        sampled, _ = sampler.is_sampled(0)
+        assert not sampled
+
+        # move time 110ms forward, enough credits to pay for one sample
+        mock_time.side_effect = lambda: ts + 0.11
+        assert sampler.is_sampled(0)
+    sampler.close()
+    assert '%s' % sampler == 'RateLimitingSampler(0.1)'
+
 
 def test_guaranteed_throughput_probabilistic_sampler():
     sampler = GuaranteedThroughputProbabilisticSampler('op', 2, 0.5)
