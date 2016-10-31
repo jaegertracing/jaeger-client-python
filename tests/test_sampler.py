@@ -59,7 +59,7 @@ def test_probabilistic_sampler():
         'sampler.type': 'probabilistic',
         'sampler.param': 0.5,
     }
-    sampled, tags = sampler.is_sampled(id1+10)
+    sampled, _ = sampler.is_sampled(id1+10)
     assert not sampled
     sampler.close()
     assert '%s' % sampler == 'ProbabilisticSampler(0.5)'
@@ -93,18 +93,18 @@ def test_rate_limiting_sampler():
         assert sampler.timestamp() == ts
         assert sampler.is_sampled(0), 'initial balance allows first item'
         assert sampler.is_sampled(0), 'initial balance allows second item'
-        sampled, tags = sampler.is_sampled(0)
+        sampled, _ = sampler.is_sampled(0)
         assert not sampled, 'initial balance exhausted'
 
         # move time 250ms forward, not enough credits to pay for one sample
         mock_time.side_effect = lambda: ts + 0.25
-        sampled, tags = sampler.is_sampled(0)
+        sampled, _ = sampler.is_sampled(0)
         assert not sampled, 'not enough time passed for full item'
 
         # move time 500ms forward, now enough credits to pay for one sample
         mock_time.side_effect = lambda: ts + 0.5
         assert sampler.is_sampled(0), 'enough time for new item'
-        sampled, tags = sampler.is_sampled(0)
+        sampled, _ = sampler.is_sampled(0)
         assert not sampled, 'no more balance'
 
         # move time 5s forward, enough to accumulate credits for 10 samples,
@@ -152,6 +152,13 @@ def test_remotely_controlled_sampler():
         channel=mock.MagicMock(),
         service_name='x'
     )
+    sampled, tags = sampler.is_sampled(1)
+    assert sampled
+    assert tags == {
+        'sampler.type': 'probabilistic',
+        'sampler.param': DEFAULT_SAMPLING_PROBABILITY,
+    }
+
     init_sampler = mock.MagicMock()
     init_sampler.is_sampled = mock.MagicMock()
     channel = mock.MagicMock()
