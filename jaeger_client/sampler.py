@@ -58,6 +58,7 @@ MAX_TRACES_PER_SECOND_STR = 'maxTracesPerSecond'
 RATE_LIMITING_SAMPLING_STR = 'rateLimitingSampling'
 STRATEGY_TYPE_STR = 'strategyType'
 
+
 class Sampler(object):
     """
     Sampler is responsible for deciding if a particular span should be
@@ -459,14 +460,13 @@ class RemoteControlledSampler(Sampler):
                 return ProbabilisticSampler(rate=sampling_rate), None
             else:
                 raise ValueError(
-                        'Probabilistic sampling rate not in [0, 1] range: %s' %
-                        sampling_rate)
+                    'Probabilistic sampling rate not in [0, 1] range: %s' % sampling_rate)
         elif s_type == sampling_manager.SamplingStrategyType.RATE_LIMITING:
             mtps = response[RATE_LIMITING_SAMPLING_STR][MAX_TRACES_PER_SECOND_STR]
             if 0 <= mtps < 500:
                 return RateLimitingSampler(max_traces_per_second=mtps), None
             else:
                 raise ValueError(
-                        'Rate limiting parameter not in [0, 500] range: %s' % mtps)
+                    'Rate limiting parameter not in [0, 500] range: %s' % mtps)
         else:
             raise ValueError('Unsupported sampling strategy type: %s' % s_type)
