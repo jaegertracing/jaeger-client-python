@@ -212,6 +212,10 @@ class Config(object):
         except:
             return DEFAULT_REPORTING_PORT
 
+    @property
+    def max_operations(self):
+        return self.config.get('max_operations', None)
+
     @staticmethod
     def initialized():
         with Config._initialized_lock:

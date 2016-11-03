@@ -33,12 +33,6 @@ from jaeger_client.sampler import (
     DEFAULT_SAMPLING_PROBABILITY,
 )
 
-from jaeger_client.thrift_gen.sampling.ttypes import (
-    PerOperationSamplingStrategies,
-    OperationSamplingStrategy,
-    ProbabilisticSamplingStrategy,
-)
-
 MAX_INT = 1L << 63
 
 def get_tags(type, param):
@@ -169,11 +163,19 @@ def test_guaranteed_throughput_probabilistic_sampler():
 
 
 def test_adaptive_sampler():
-    sampling_rates = [
-        OperationSamplingStrategy('op', ProbabilisticSamplingStrategy(0.5))
-    ]
-    strategies = PerOperationSamplingStrategies(0.51, 3, sampling_rates)
-
+    strategies = {
+        "defaultSamplingProbability":0.51,
+        "defaultLowerBoundTracesPerSecond":3,
+        "perOperationStrategies":
+        [
+            {
+                "operation":"op",
+                "probabilisticSampling":{
+                    "samplingRate":0.5
+                }
+            }
+        ]
+    }
     sampler = AdaptiveSampler(strategies, 2)
     sampled, tags = sampler.is_sampled(MAX_INT-10, 'op')
     assert sampled
@@ -197,11 +199,25 @@ def test_adaptive_sampler():
     assert '%s' % sampler == 'AdaptiveSampler(0.51, 3, 2)'
 
     # Update the strategies
-    sampling_rates = [
-        OperationSamplingStrategy('op', ProbabilisticSamplingStrategy(0.52)),
-        OperationSamplingStrategy('new_op_3', ProbabilisticSamplingStrategy(0.53))
-    ]
-    strategies = PerOperationSamplingStrategies(0.52, 4, sampling_rates)
+    strategies = {
+        "defaultSamplingProbability":0.52,
+        "defaultLowerBoundTracesPerSecond":4,
+        "perOperationStrategies":
+        [
+            {
+                "operation":"op",
+                "probabilisticSampling":{
+                    "samplingRate":0.52
+                }
+            },
+            {
+                "operation":"new_op_3",
+                "probabilisticSampling":{
+                    "samplingRate":0.53
+                }
+            }
+        ]
+    }
     sampler.update(strategies)
 
     # The probability for op has been updated
@@ -271,3 +287,70 @@ def test_remotely_controlled_sampler():
     # noinspection PyProtectedMember
     sampler._delayed_polling()
     sampler.close()
+
+
+def test_parse_sampling_strategy():
+    sampler = RemoteControlledSampler(
+        channel=mock.MagicMock(),
+        service_name='x',
+        max_operations=10
+    )
+    s, strategies = sampler.parse_sampling_strategy(None, '{"strategyType":0,"probabilisticSampling":{"samplingRate":0.001}}')
+    assert '%s' % s == 'ProbabilisticSampler(0.001)'
+    assert not strategies
+
+    with pytest.raises(ValueError):
+        sampler.parse_sampling_strategy(None,'{"strategyType":0,"probabilisticSampling":{"samplingRate":2}}')
+
+    s, strategies = sampler.parse_sampling_strategy(None, '{"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":10}}')
+    assert '%s' % s == 'RateLimitingSampler(10)'
+    assert not strategies
+
+    with pytest.raises(ValueError):
+        sampler.parse_sampling_strategy(None, '{"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":-10}}')
+
+    with pytest.raises(ValueError):
+        sampler.parse_sampling_strategy(None, '{"strategyType":2}')
+
+    response = """
+    {
+        "strategyType":1,
+        "operationSampling":
+        {
+            "defaultSamplingProbability":0.001,
+            "defaultLowerBoundTracesPerSecond":2,
+            "perOperationStrategies":
+            [
+                {
+                    "operation":"op",
+                    "probabilisticSampling":{
+                        "samplingRate":0.002
+                    }
+                }
+            ]
+        }
+    }
+    """
+    s, strategies = sampler.parse_sampling_strategy(None, response)
+    assert '%s' % s == 'AdaptiveSampler(0.001, 2, 10)'
+    assert strategies
+
+    existing_strategies = {
+        "defaultSamplingProbability":0.51,
+        "defaultLowerBoundTracesPerSecond":3,
+        "perOperationStrategies":
+            [
+                {
+                    "operation":"op",
+                    "probabilisticSampling":{
+                        "samplingRate":0.5
+                    }
+                }
+            ]
+    }
+    existing_sampler = AdaptiveSampler(existing_strategies, 2)
+    assert '%s' % existing_sampler == 'AdaptiveSampler(0.51, 3, 2)'
+
+    s, strategies = sampler.parse_sampling_strategy(existing_sampler, response)
+    assert '%s' % existing_sampler == 'AdaptiveSampler(0.51, 3, 2)'
+    assert strategies
