@@ -154,9 +154,18 @@ def test_guaranteed_throughput_probabilistic_sampler():
     assert tags == get_tags('lowerbound', 0.5)
     sampled, _ = sampler.is_sampled(MAX_INT+10)
     assert not sampled
-
-    sampler.close()
     assert '%s' % sampler == 'GuaranteedThroughputProbabilisticSampler(op, 0.5, 2)'
+
+    sampler.update(3, 0.51)
+    sampled, tags = sampler.is_sampled(MAX_INT-10)
+    assert sampled
+    assert tags == get_tags('probabilistic', 0.51)
+    sampled, tags = sampler.is_sampled(MAX_INT+(MAX_INT/4))
+    assert sampled
+    assert tags == get_tags('lowerbound', 0.51)
+
+    assert '%s' % sampler == 'GuaranteedThroughputProbabilisticSampler(op, 0.51, 3)'
+    sampler.close()
 
 
 def test_adaptive_sampler():
@@ -183,11 +192,30 @@ def test_adaptive_sampler():
     sampled, tags = sampler.is_sampled(MAX_INT-10, "new_op_2")
     assert sampled
     assert tags == get_tags('probabilistic', 0.51)
-    sampled, _ = sampler.is_sampled(MAX_INT++(MAX_INT/4), "new_op_2")
+    sampled, _ = sampler.is_sampled(MAX_INT+(MAX_INT/4), "new_op_2")
     assert not sampled
+    assert '%s' % sampler == 'AdaptiveSampler(0.51, 3, 2)'
+
+    # Update the strategies
+    sampling_rates = [
+        OperationSamplingStrategy('op', ProbabilisticSamplingStrategy(0.52)),
+        OperationSamplingStrategy('new_op_3', ProbabilisticSamplingStrategy(0.53))
+    ]
+    strategies = PerOperationSamplingStrategies(0.52, 4, sampling_rates)
+    sampler.update(strategies)
+
+    # The probability for op has been updated
+    sampled, tags = sampler.is_sampled(MAX_INT-10, 'op')
+    assert sampled
+    assert tags == get_tags('probabilistic', 0.52)
+
+    # A new operation has been added
+    sampled, tags = sampler.is_sampled(MAX_INT-10, 'new_op_3')
+    assert sampled
+    assert tags == get_tags('probabilistic', 0.53)
+    assert '%s' % sampler == 'AdaptiveSampler(0.52, 4, 2)'
 
     sampler.close()
-    assert '%s' % sampler == 'AdaptiveSampler(0.51, 3, 2)'
 
 
 def test_sample_equality():

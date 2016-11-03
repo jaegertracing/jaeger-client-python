@@ -216,6 +216,19 @@ class GuaranteedThroughputProbabilisticSampler(Sampler):
         self.probabilistic_sampler.close()
         self.lower_bound_sampler.close()
 
+    def update(self, lower_bound, rate):
+        # (NB) This function should only be called while holding a Write lock.
+        if self.rate != rate:
+            self.probabilistic_sampler = ProbabilisticSampler(rate)
+            self.rate = rate
+            self._tags = {
+                SAMPLER_TYPE_TAG_KEY: SAMPLER_TYPE_LOWER_BOUND,
+                SAMPLER_PARAM_TAG_KEY: rate,
+            }
+        if self.lower_bound != lower_bound:
+            self.lower_bound_sampler = RateLimitingSampler(lower_bound)
+            self.lower_bound = lower_bound
+
     def __str__(self):
         return 'GuaranteedThroughputProbabilisticSampler(%s, %s, %s)' \
                % (self.operation, self.rate, self.lower_bound)
@@ -261,6 +274,26 @@ class AdaptiveSampler(Sampler):
             self.samplers[operation] = sampler
             return sampler.is_sampled(trace_id, operation)
         return sampler.is_sampled(trace_id, operation)
+
+    def update(self, strategies):
+        # (NB) This function should only be called while holding a Write lock.
+        for strategy in strategies.perOperationStrategies:
+            operation = strategy.operation
+            lower_bound = strategies.defaultLowerBoundTracesPerSecond
+            sampling_rate = strategy.probabilisticSampling.samplingRate
+            sampler = self.samplers.get(operation, None)
+            if sampler is None:
+                sampler = GuaranteedThroughputProbabilisticSampler(
+                    operation,
+                    lower_bound,
+                    sampling_rate
+                )
+                self.samplers[operation] = sampler
+            else:
+                sampler.update(lower_bound, sampling_rate)
+        self.lower_bound = strategies.defaultLowerBoundTracesPerSecond
+        self.default_sampling_probability = \
+            strategies.defaultSamplingProbability
 
     def close(self):
         for _, sampler in self.samplers.iteritems():
