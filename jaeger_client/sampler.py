@@ -411,9 +411,9 @@ class RemoteControlledSampler(Sampler):
         exception = future.exception()
         if exception:
             self.error_reporter.error(
-                    Metrics.SAMPLER_ERRORS, 1,
-                    'Fail to get sampling strategy from jaeger-agent: %s',
-                    exception)
+                Metrics.SAMPLER_ERRORS, 1,
+                'Fail to get sampling strategy from jaeger-agent: %s',
+                exception)
             return
 
         response = future.result()
@@ -422,9 +422,9 @@ class RemoteControlledSampler(Sampler):
                 self._parse_sampling_strategy(self.sampler, response.body)
         except Exception as e:
             self.error_reporter.error(
-                    Metrics.SAMPLER_ERRORS, 1,
-                    'Fail to parse sampling strategy '
-                    'from jaeger-agent: %s [%s]', e, response.body)
+                Metrics.SAMPLER_ERRORS, 1,
+                'Fail to parse sampling strategy '
+                'from jaeger-agent: %s [%s]', e, response.body)
             return
 
         with self.lock:
