@@ -37,7 +37,7 @@ from .constants import (
 from .metrics import Metrics
 from .utils import ErrorReporter
 from jaeger_client.thrift_gen.sampling import (
-    SamplingManager as sampling_manager  # TODO why need to rename
+    SamplingManager
 )
 
 default_logger = logging.getLogger('jaeger_tracing')
@@ -455,14 +455,14 @@ class RemoteControlledSampler(Sampler):
             if isinstance(sampler, AdaptiveSampler):
                 return sampler, operation_strategies
             return AdaptiveSampler(operation_strategies, self.max_operations), operation_strategies
-        if s_type == sampling_manager.SamplingStrategyType.PROBABILISTIC:
+        if s_type == SamplingManager.SamplingStrategyType.PROBABILISTIC:
             sampling_rate = response[PROBABILISTIC_SAMPLING_STR][SAMPLING_RATE_STR]
             if 0 <= sampling_rate <= 1.0:
                 return ProbabilisticSampler(rate=sampling_rate), None
             else:
                 raise ValueError(
                     'Probabilistic sampling rate not in [0, 1] range: %s' % sampling_rate)
-        elif s_type == sampling_manager.SamplingStrategyType.RATE_LIMITING:
+        elif s_type == SamplingManager.SamplingStrategyType.RATE_LIMITING:
             mtps = response[RATE_LIMITING_SAMPLING_STR][MAX_TRACES_PER_SECOND_STR]
             if 0 <= mtps < 500:
                 return RateLimitingSampler(max_traces_per_second=mtps), None
