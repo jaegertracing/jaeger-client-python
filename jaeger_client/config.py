@@ -243,7 +243,8 @@ class Config(object):
                 logger=logger,
                 metrics=self.metrics,
                 error_reporter=self.error_reporter,
-                sampling_refresh_interval=self.sampling_refresh_interval)
+                sampling_refresh_interval=self.sampling_refresh_interval,
+                max_operations=self.max_operations)
         logger.info('Using sampler %s', sampler)
 
         reporter = Reporter(

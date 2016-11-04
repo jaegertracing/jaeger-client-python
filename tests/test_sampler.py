@@ -32,6 +32,7 @@ from jaeger_client.sampler import (
     AdaptiveSampler,
     DEFAULT_SAMPLING_PROBABILITY,
 )
+from tornado.concurrent import Future
 
 MAX_INT = 1L << 63
 
@@ -289,28 +290,104 @@ def test_remotely_controlled_sampler():
     sampler.close()
 
 
+def test_sampling_request_callback():
+    channel = mock.MagicMock()
+    channel.io_loop = mock.MagicMock()
+    error_reporter = mock.MagicMock()
+    error_reporter.error = mock.MagicMock()
+    sampler = RemoteControlledSampler(
+        channel=channel,
+        service_name='x',
+        error_reporter=error_reporter,
+        max_operations=10,
+    )
+
+    return_value = mock.MagicMock()
+    return_value.exception = lambda *args: False
+    return_value.result = lambda *args: type('obj', (object,), {'body': 'bad_json'})()
+
+    # noinspection PyProtectedMember
+    sampler._sampling_request_callback(return_value)
+    assert error_reporter.error.call_count == 1
+
+    # Strategy has changed to new probabilistic sampler
+    return_value.result = lambda *args: \
+        type('obj', (object,), {'body': '{"strategyType":0,"probabilisticSampling":{"samplingRate":0.002}}'})()
+    # noinspection PyProtectedMember
+    sampler._sampling_request_callback(return_value)
+    assert '%s' % sampler.sampler == 'ProbabilisticSampler(0.002)'
+
+    # Strategy hasn't changed
+    # noinspection PyProtectedMember
+    sampler._sampling_request_callback(return_value)
+    assert '%s' % sampler.sampler == 'ProbabilisticSampler(0.002)'
+
+    # Strategy changed to AdaptiveSampler
+    strategy = """
+    {
+        "strategyType":1,
+        "operationSampling":
+        {
+            "defaultSamplingProbability":0.001,
+            "defaultLowerBoundTracesPerSecond":2,
+            "perOperationStrategies":
+            [
+                {
+                    "operation":"op",
+                    "probabilisticSampling":{
+                        "samplingRate":0.002
+                    }
+                }
+            ]
+        }
+    }
+    """
+    return_value.result = lambda *args: \
+        type('obj', (object,), {'body': strategy})()
+    # noinspection PyProtectedMember
+    sampler._sampling_request_callback(return_value)
+    assert '%s' % sampler.sampler == 'AdaptiveSampler(0.001, 2, 10)'
+
+    # Strategy hasn't changed
+    # noinspection PyProtectedMember
+    sampler._sampling_request_callback(return_value)
+    assert '%s' % sampler.sampler == 'AdaptiveSampler(0.001, 2, 10)'
+
+    return_value.exception = lambda *args: True
+    # noinspection PyProtectedMember
+    sampler._sampling_request_callback(return_value)
+    assert error_reporter.error.call_count == 2
+
+    sampler.close()
+
+
 def test_parse_sampling_strategy():
     sampler = RemoteControlledSampler(
         channel=mock.MagicMock(),
         service_name='x',
         max_operations=10
     )
-    s, strategies = sampler.parse_sampling_strategy(None, '{"strategyType":0,"probabilisticSampling":{"samplingRate":0.001}}')
+    # noinspection PyProtectedMember
+    s, strategies = sampler._parse_sampling_strategy(None, '{"strategyType":0,"probabilisticSampling":{"samplingRate":0.001}}')
     assert '%s' % s == 'ProbabilisticSampler(0.001)'
     assert not strategies
 
     with pytest.raises(ValueError):
-        sampler.parse_sampling_strategy(None,'{"strategyType":0,"probabilisticSampling":{"samplingRate":2}}')
+        # noinspection PyProtectedMember
+        sampler._parse_sampling_strategy(None,'{"strategyType":0,"probabilisticSampling":{"samplingRate":2}}')
 
-    s, strategies = sampler.parse_sampling_strategy(None, '{"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":10}}')
+    # noinspection PyProtectedMember
+    s, strategies = sampler._parse_sampling_strategy(None, '{"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":10}}')
     assert '%s' % s == 'RateLimitingSampler(10)'
     assert not strategies
 
     with pytest.raises(ValueError):
-        sampler.parse_sampling_strategy(None, '{"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":-10}}')
+        # noinspection PyProtectedMember
+        sampler._parse_sampling_strategy(None, '{"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":-10}}')
 
     with pytest.raises(ValueError):
-        sampler.parse_sampling_strategy(None, '{"strategyType":2}')
+        # noinspection PyProtectedMember
+        sampler._parse_sampling_strategy(None, '{"strategyType":2}')
 
     response = """
     {
@@ -331,7 +408,8 @@ def test_parse_sampling_strategy():
         }
     }
     """
-    s, strategies = sampler.parse_sampling_strategy(None, response)
+    # noinspection PyProtectedMember
+    s, strategies = sampler._parse_sampling_strategy(None, response)
     assert '%s' % s == 'AdaptiveSampler(0.001, 2, 10)'
     assert strategies
 
@@ -351,6 +429,9 @@ def test_parse_sampling_strategy():
     existing_sampler = AdaptiveSampler(existing_strategies, 2)
     assert '%s' % existing_sampler == 'AdaptiveSampler(0.51, 3, 2)'
 
-    s, strategies = sampler.parse_sampling_strategy(existing_sampler, response)
+    # noinspection PyProtectedMember
+    s, strategies = sampler._parse_sampling_strategy(existing_sampler, response)
     assert '%s' % existing_sampler == 'AdaptiveSampler(0.51, 3, 2)'
     assert strategies
+
+    sampler.close()

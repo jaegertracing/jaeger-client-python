@@ -394,11 +394,11 @@ class RemoteControlledSampler(Sampler):
 
     def _delayed_polling(self):
         periodic = PeriodicCallback(
-            callback=self.poll_sampling_manager,
+            callback=self._poll_sampling_manager,
             # convert interval to milliseconds
             callback_time=self.sampling_refresh_interval * 1000,
             io_loop=self.io_loop)
-        self.poll_sampling_manager()  # Initial sample now
+        self._poll_sampling_manager()  # Initial sample now
         with self.lock:
             if self.running:
                 self.periodic = periodic
@@ -407,39 +407,39 @@ class RemoteControlledSampler(Sampler):
                     'Tracing sampler started with sampling refresh '
                     'interval %d sec', self.sampling_refresh_interval)
 
-    def poll_sampling_manager(self):
-
-        def submit_callback(future):
-            exception = future.exception()
-            if exception:
-                self.error_reporter.error(
+    def _sampling_request_callback(self, future):
+        exception = future.exception()
+        if exception:
+            self.error_reporter.error(
                     Metrics.SAMPLER_ERRORS, 1,
                     'Fail to get sampling strategy from jaeger-agent: %s',
                     exception)
-                return
+            return
 
-            response = future.result()
-            try:
-                sampler, strategies = self.parse_sampling_strategy(response.body)
-            except Exception as e:
-                self.error_reporter.error(
+        response = future.result()
+        try:
+            sampler, strategies = \
+                self._parse_sampling_strategy(self.sampler, response.body)
+        except Exception as e:
+            self.error_reporter.error(
                     Metrics.SAMPLER_ERRORS, 1,
                     'Fail to parse sampling strategy '
                     'from jaeger-agent: %s [%s]', e, response.body)
+            return
+
+        with self.lock:
+            if isinstance(sampler, AdaptiveSampler):
+                sampler.update(strategies)
+            elif self.sampler == sampler:
                 return
+            self.sampler = sampler
+        self.logger.debug('Tracing sampler set to %s', sampler)
 
-            with self.lock:
-                if isinstance(sampler, AdaptiveSampler):
-                    sampler.update(strategies)
-                elif self.sampler == sampler:
-                    return
-                self.sampler = sampler
-            self.logger.debug('Tracing sampler set to %s', sampler)
-
+    def _poll_sampling_manager(self):
         self.logger.debug('Requesting tracing sampler refresh')
         fut = self._channel.request_sampling_strategy(
             self.service_name, timeout=15)
-        fut.add_done_callback(submit_callback)
+        fut.add_done_callback(self._sampling_request_callback)
 
     def close(self):
         with self.lock:
@@ -447,13 +447,14 @@ class RemoteControlledSampler(Sampler):
             if self.periodic is not None:
                 self.periodic.stop()
 
-    def parse_sampling_strategy(self, sampler, body):
+    def _parse_sampling_strategy(self, sampler, body):
         response = json.loads(body)
         s_type = response[STRATEGY_TYPE_STR]
-        if response.get(OPERATION_SAMPLING_STR):
+        operation_strategies = response.get(OPERATION_SAMPLING_STR)
+        if operation_strategies:
             if isinstance(sampler, AdaptiveSampler):
-                return sampler, response
-            return AdaptiveSampler(response[OPERATION_SAMPLING_STR], self.max_operations), response
+                return sampler, operation_strategies
+            return AdaptiveSampler(operation_strategies, self.max_operations), operation_strategies
         if s_type == sampling_manager.SamplingStrategyType.PROBABILISTIC:
             sampling_rate = response[PROBABILISTIC_SAMPLING_STR][SAMPLING_RATE_STR]
             if 0 <= sampling_rate <= 1.0:
