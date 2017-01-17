@@ -24,10 +24,12 @@ import mock
 import json
 import pytest
 import opentracing
+from mock import MagicMock
 from crossdock.server import server
 from tornado.httpclient import HTTPRequest
 from jaeger_client import Tracer, ConstSampler
 from jaeger_client.reporter import InMemoryReporter
+from crossdock.server.endtoend import EndToEndHandler
 
 tchannel_port = "9999"
 
@@ -37,7 +39,7 @@ def app():
     """Required by pytest-tornado's http_server fixture"""
     s = server.Server(int(tchannel_port))
     s.tchannel.listen()
-    return server.make_app(s)
+    return server.make_app(s, EndToEndHandler())
 
 
 # noinspection PyShadowingNames
@@ -61,6 +63,7 @@ for s2 in ["HTTP", "TCHANNEL"]:
             PERMUTATIONS.append((s2, s3, sampled))
 
 
+# noinspection PyShadowingNames
 @pytest.mark.parametrize('s2_transport,s3_transport,sampled', PERMUTATIONS)
 @pytest.mark.gen_test
 def test_trace_propagation(
@@ -121,3 +124,24 @@ def test_trace_propagation(
         assert tr.downstream.downstream.span.baggage == level1.get("baggage")
         assert tr.downstream.downstream.span.sampled == sampled
         assert tr.downstream.downstream.span.traceId == tr.span.traceId
+
+
+# noinspection PyShadowingNames
+@pytest.mark.gen_test
+def test_endtoend_handler(tracer):
+    payload = dict()
+    payload["operation"] = "Zoidberg"
+    payload["count"] = 2
+    payload["tags"] = {"key":"value"}
+    body = json.dumps(payload)
+
+    h = EndToEndHandler()
+    request = MagicMock(body=body)
+    response_writer = MagicMock()
+    response_writer.finish.return_value = None
+
+    h.tracer = tracer
+    h.generate_traces(request, response_writer)
+
+    spans = tracer.reporter.get_spans()
+    assert len(spans) == 2
