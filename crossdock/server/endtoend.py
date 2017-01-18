@@ -23,6 +23,21 @@ config = {
 }
 
 class EndToEndHandler(object):
+    """
+    Handler that creates traces from a http request.
+
+    json: {
+        "operation": "operationName",
+        "count": 2,
+        "tags": {
+            "key": "value"
+        }
+    }
+
+    Given the above json payload, the handler will create 2 traces for the "operationName"
+    operation with the tags: {"key":"value"}. These traces are reported to the agent with
+    the hostname "test_driver".
+    """
 
     def __init__(self):
         cfg = Config(config)
