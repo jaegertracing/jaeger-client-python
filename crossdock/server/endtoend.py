@@ -22,6 +22,7 @@ config = {
     'sampling_refresh_interval': 5,
 }
 
+
 class EndToEndHandler(object):
     """
     Handler that creates traces from a http request.

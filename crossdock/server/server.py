@@ -87,7 +87,8 @@ def make_app(server, endtoend_handler):
             (r'/', MainHandler),
             (r'/start_trace', MainHandler, (dict(server=server, method=Server.start_trace))),
             (r'/join_trace', MainHandler, (dict(server=server, method=Server.join_trace))),
-            (r'/create_traces', MainHandler, (dict(server=endtoend_handler, method=EndToEndHandler.generate_traces))),
+            (r'/create_traces', MainHandler, (dict(server=endtoend_handler,
+                                                   method=EndToEndHandler.generate_traces))),
         ], debug=True, autoreload=False)
 
 
