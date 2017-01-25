@@ -9,6 +9,7 @@ from jaeger_client import Tracer, ConstSampler
 from jaeger_client.reporter import NullReporter
 import crossdock.server.constants as constants
 import crossdock.server.serializer as serializer
+from crossdock.server.endtoend import EndToEndHandler
 from opentracing_instrumentation import http_client, http_server, get_current_span, request_context
 from opentracing_instrumentation.client_hooks import tornado_http
 import opentracing.ext.tags as ext_tags
@@ -48,7 +49,8 @@ def serve():
     logging.getLogger().setLevel(logging.DEBUG)
     logging.info('Python Tornado Crossdock Server Running ...')
     server = Server(DefaultServerPortTChannel)
-    app = make_app(server)
+    endtoend_handler = EndToEndHandler()
+    app = make_app(server, endtoend_handler)
     app.listen(DefaultClientPortHTTP)
     app.listen(DefaultServerPortHTTP)
     server.tchannel.listen()
@@ -79,12 +81,14 @@ class MainHandler(tornado.web.RequestHandler):
         pass
 
 
-def make_app(server):
+def make_app(server, endtoend_handler):
     return tornado.web.Application(
         [
             (r'/', MainHandler),
             (r'/start_trace', MainHandler, (dict(server=server, method=Server.start_trace))),
             (r'/join_trace', MainHandler, (dict(server=server, method=Server.join_trace))),
+            (r'/create_traces', MainHandler, (dict(server=endtoend_handler,
+                                                   method=EndToEndHandler.generate_traces))),
         ], debug=True, autoreload=False)
 
 
