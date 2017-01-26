@@ -55,6 +55,9 @@ JAEGER_HOSTNAME_TAG_KEY = 'jaeger.hostname'
 # the type of sampler that always makes the same decision.
 SAMPLER_TYPE_CONST = 'const'
 
+# the type of sampler that polls Jaeger agent for sampling strategy.
+SAMPLER_TYPE_REMOTE = 'remote'
+
 # the type of sampler that samples traces with a certain fixed probability.
 SAMPLER_TYPE_PROBABILISTIC = 'probabilistic'
 

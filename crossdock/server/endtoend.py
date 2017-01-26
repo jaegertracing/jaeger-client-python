@@ -7,7 +7,11 @@ from jaeger_client.config import (
     DEFAULT_SAMPLING_PORT,
     DEFAULT_REPORTING_PORT,
 )
-from jaeger_client.sampler import RemoteControlledSampler
+from jaeger_client.constants import (
+    SAMPLER_TYPE_CONST,
+    SAMPLER_TYPE_REMOTE,
+)
+from jaeger_client.sampler import RemoteControlledSampler, ConstSampler
 from jaeger_client.reporter import Reporter
 from jaeger_client.tracer import Tracer
 
@@ -28,6 +32,7 @@ class EndToEndHandler(object):
     Handler that creates traces from a http request.
 
     json: {
+        "type": "remote"
         "operation": "operationName",
         "count": 2,
         "tags": {
@@ -35,9 +40,9 @@ class EndToEndHandler(object):
         }
     }
 
-    Given the above json payload, the handler will create 2 traces for the "operationName"
-    operation with the tags: {"key":"value"}. These traces are reported to the agent with
-    the hostname "test_driver".
+    Given the above json payload, the handler will use a tracer with the RemoteControlledSampler
+    to create 2 traces for the "operationName" operation with the tags: {"key":"value"}. These
+    traces are reported to the agent with the hostname "test_driver".
     """
 
     def __init__(self):
@@ -45,28 +50,39 @@ class EndToEndHandler(object):
         init_sampler = cfg.sampler
         channel = self.local_agent_sender
 
-        sampler = RemoteControlledSampler(
+        reporter = Reporter(
+            channel=channel,
+            flush_interval=cfg.reporter_flush_interval)
+
+        remote_sampler = RemoteControlledSampler(
             channel=channel,
             service_name=cfg.service_name,
             sampling_refresh_interval=cfg.sampling_refresh_interval,
             init_sampler=init_sampler)
 
-        reporter = Reporter(
-            channel=channel,
-            flush_interval=cfg.reporter_flush_interval)
-
-        self._tracer = Tracer(
+        remote_tracer = Tracer(
             service_name=cfg.service_name,
             reporter=reporter,
-            sampler=sampler)
+            sampler=remote_sampler)
+
+        const_tracer = Tracer(
+            service_name=cfg.service_name,
+            reporter=reporter,
+            sampler=ConstSampler(decision=True)
+        )
+
+        self._tracers = {
+            SAMPLER_TYPE_CONST: const_tracer,
+            SAMPLER_TYPE_REMOTE: remote_tracer
+        }
 
     @property
-    def tracer(self):
-        return self._tracer
+    def tracers(self):
+        return self._tracers
 
-    @tracer.setter
-    def tracer(self, tracer):
-        self._tracer = tracer
+    @tracers.setter
+    def tracers(self, tracers):
+        self._tracers = tracers
 
     @property
     def local_agent_sender(self):
@@ -79,8 +95,10 @@ class EndToEndHandler(object):
     @tornado.gen.coroutine
     def generate_traces(self, request, response_writer):
         req = json.loads(request.body)
+        sampler_type = req.get('type', 'remote')
+        tracer = self.tracers[sampler_type]
         for _ in range(req.get('count', 0)):
-            span = self.tracer.start_span(req['operation'])
+            span = tracer.start_span(req['operation'])
             for k, v in req.get('tags', {}).iteritems():
                 span.set_tag(k, v)
             span.finish()
