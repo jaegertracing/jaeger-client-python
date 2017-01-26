@@ -43,7 +43,7 @@ class LocalAgentHTTP(object):
             defaults=dict(request_timeout=timeout))
         # Properly url encode the params
         url = url_concat(
-            'http://%s:%d/' % (self.agent_http_host, self.agent_http_port),
+            'http://%s:%d/sampling' % (self.agent_http_host, self.agent_http_port),
             [('service', service_name)])
         return http_client.fetch(url)
 
