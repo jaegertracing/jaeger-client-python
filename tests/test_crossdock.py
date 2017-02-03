@@ -140,7 +140,7 @@ def test_endtoend_handler(tracer):
     response_writer = MagicMock()
     response_writer.finish.return_value = None
 
-    h.tracer = tracer
+    h.tracers = {"remote": tracer}
     h.generate_traces(request, response_writer)
 
     spans = tracer.reporter.get_spans()
