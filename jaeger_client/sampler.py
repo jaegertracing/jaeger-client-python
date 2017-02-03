@@ -398,7 +398,7 @@ class RemoteControlledSampler(Sampler):
             # convert interval to milliseconds
             callback_time=self.sampling_refresh_interval * 1000,
             io_loop=self.io_loop)
-        self._poll_sampling_manager()  # Initial sample now
+        self._poll_sampling_manager()  # Initialize sampler now
         with self.lock:
             if self.running:
                 self.periodic = periodic
