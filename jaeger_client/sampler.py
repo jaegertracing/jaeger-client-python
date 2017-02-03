@@ -22,6 +22,7 @@ from __future__ import absolute_import
 import logging
 import random
 import time
+import json
 
 from threading import Lock
 from tornado.ioloop import PeriodicCallback
@@ -35,13 +36,27 @@ from .constants import (
 )
 from .metrics import Metrics
 from .utils import ErrorReporter
-from .local_agent_net import parse_sampling_strategy
+from jaeger_client.thrift_gen.sampling import (
+    SamplingManager
+)
 
 default_logger = logging.getLogger('jaeger_tracing')
 
 SAMPLER_TYPE_TAG_KEY = 'sampler.type'
 SAMPLER_PARAM_TAG_KEY = 'sampler.param'
 DEFAULT_SAMPLING_PROBABILITY = 0.001
+DEFAULT_MAX_OPERATIONS = 2000
+
+STRATEGIES_STR = 'perOperationStrategies'
+OPERATION_STR = 'operation'
+DEFAULT_LOWER_BOUND_STR = 'defaultLowerBoundTracesPerSecond'
+PROBABILISTIC_SAMPLING_STR = 'probabilisticSampling'
+SAMPLING_RATE_STR = 'samplingRate'
+DEFAULT_SAMPLING_PROBABILITY_STR = 'defaultSamplingProbability'
+OPERATION_SAMPLING_STR = 'operationSampling'
+MAX_TRACES_PER_SECOND_STR = 'maxTracesPerSecond'
+RATE_LIMITING_SAMPLING_STR = 'rateLimitingSampling'
+STRATEGY_TYPE_STR = 'strategyType'
 
 
 class Sampler(object):
@@ -216,6 +231,19 @@ class GuaranteedThroughputProbabilisticSampler(Sampler):
         self.probabilistic_sampler.close()
         self.lower_bound_sampler.close()
 
+    def update(self, lower_bound, rate):
+        # (NB) This function should only be called while holding a Write lock.
+        if self.rate != rate:
+            self.probabilistic_sampler = ProbabilisticSampler(rate)
+            self.rate = rate
+            self._tags = {
+                SAMPLER_TYPE_TAG_KEY: SAMPLER_TYPE_LOWER_BOUND,
+                SAMPLER_PARAM_TAG_KEY: rate,
+            }
+        if self.lower_bound != lower_bound:
+            self.lower_bound_sampler = RateLimitingSampler(lower_bound)
+            self.lower_bound = lower_bound
+
     def __str__(self):
         return 'GuaranteedThroughputProbabilisticSampler(%s, %s, %s)' \
                % (self.operation, self.rate, self.lower_bound)
@@ -232,20 +260,20 @@ class AdaptiveSampler(Sampler):
         super(AdaptiveSampler, self).__init__()
 
         samplers = {}
-        for strategy in strategies.perOperationStrategies:
+        for strategy in strategies[STRATEGIES_STR]:
             sampler = GuaranteedThroughputProbabilisticSampler(
-                strategy.operation,
-                strategies.defaultLowerBoundTracesPerSecond,
-                strategy.probabilisticSampling.samplingRate
+                strategy[OPERATION_STR],
+                strategies[DEFAULT_LOWER_BOUND_STR],
+                strategy[PROBABILISTIC_SAMPLING_STR][SAMPLING_RATE_STR]
             )
-            samplers[strategy.operation] = sampler
+            samplers[strategy[OPERATION_STR]] = sampler
 
         self.samplers = samplers
         self.default_sampler = \
-            ProbabilisticSampler(strategies.defaultSamplingProbability)
+            ProbabilisticSampler(strategies[DEFAULT_SAMPLING_PROBABILITY_STR])
         self.default_sampling_probability = \
-            strategies.defaultSamplingProbability
-        self.lower_bound = strategies.defaultLowerBoundTracesPerSecond
+            strategies[DEFAULT_SAMPLING_PROBABILITY_STR]
+        self.lower_bound = strategies[DEFAULT_LOWER_BOUND_STR]
         self.max_operations = max_operations
 
     def is_sampled(self, trace_id, operation=''):
@@ -261,6 +289,29 @@ class AdaptiveSampler(Sampler):
             self.samplers[operation] = sampler
             return sampler.is_sampled(trace_id, operation)
         return sampler.is_sampled(trace_id, operation)
+
+    def update(self, strategies):
+        # (NB) This function should only be called while holding a Write lock.
+        for strategy in strategies[STRATEGIES_STR]:
+            operation = strategy[OPERATION_STR]
+            lower_bound = strategies[DEFAULT_LOWER_BOUND_STR]
+            sampling_rate = strategy[PROBABILISTIC_SAMPLING_STR][SAMPLING_RATE_STR]
+            sampler = self.samplers.get(operation, None)
+            if sampler is None:
+                sampler = GuaranteedThroughputProbabilisticSampler(
+                    operation,
+                    lower_bound,
+                    sampling_rate
+                )
+                self.samplers[operation] = sampler
+            else:
+                sampler.update(lower_bound, sampling_rate)
+        self.lower_bound = strategies[DEFAULT_LOWER_BOUND_STR]
+        if self.default_sampling_probability != strategies[DEFAULT_SAMPLING_PROBABILITY_STR]:
+            self.default_sampling_probability = \
+                strategies[DEFAULT_SAMPLING_PROBABILITY_STR]
+            self.default_sampler = \
+                ProbabilisticSampler(self.default_sampling_probability)
 
     def close(self):
         for _, sampler in self.samplers.iteritems():
@@ -286,6 +337,8 @@ class RemoteControlledSampler(Sampler):
             - logger:
             - metrics: metrics facade, used to emit metrics on errors
             - error_reporter: ErrorReporter instance
+            - max_operations: maximum number of unique operations the
+              AdaptiveSampler will keep track of
         :param init:
         :return:
         """
@@ -299,6 +352,7 @@ class RemoteControlledSampler(Sampler):
         self.metrics = kwargs.get('metrics', None) or Metrics()
         self.error_reporter = kwargs.get('error_reporter') or \
             ErrorReporter(metrics=self.metrics)
+        self.max_operations = kwargs.get('max_operations', DEFAULT_MAX_OPERATIONS)
 
         if self.sampler is None:
             self.sampler = ProbabilisticSampler(DEFAULT_SAMPLING_PROBABILITY)
@@ -340,11 +394,11 @@ class RemoteControlledSampler(Sampler):
 
     def _delayed_polling(self):
         periodic = PeriodicCallback(
-            callback=self.poll_sampling_manager,
+            callback=self._poll_sampling_manager,
             # convert interval to milliseconds
             callback_time=self.sampling_refresh_interval * 1000,
             io_loop=self.io_loop)
-        self.poll_sampling_manager()  # Initial sample now
+        self._poll_sampling_manager()  # Initialize sampler now
         with self.lock:
             if self.running:
                 self.periodic = periodic
@@ -353,40 +407,67 @@ class RemoteControlledSampler(Sampler):
                     'Tracing sampler started with sampling refresh '
                     'interval %d sec', self.sampling_refresh_interval)
 
-    def poll_sampling_manager(self):
+    def _sampling_request_callback(self, future):
+        exception = future.exception()
+        if exception:
+            self.error_reporter.error(
+                Metrics.SAMPLER_ERRORS, 1,
+                'Fail to get sampling strategy from jaeger-agent: %s',
+                exception)
+            return
 
-        def submit_callback(future):
-            exception = future.exception()
-            if exception:
-                self.error_reporter.error(
-                    Metrics.SAMPLER_ERRORS, 1,
-                    'Fail to get sampling strategy from jaeger-agent: %s',
-                    exception)
+        response = future.result()
+        try:
+            sampler, strategies = \
+                self._parse_sampling_strategy(self.sampler, response.body)
+        except Exception as e:
+            self.error_reporter.error(
+                Metrics.SAMPLER_ERRORS, 1,
+                'Fail to parse sampling strategy '
+                'from jaeger-agent: %s [%s]', e, response.body)
+            return
+
+        with self.lock:
+            if isinstance(sampler, AdaptiveSampler):
+                sampler.update(strategies)
+            elif self.sampler == sampler:
                 return
+            self.sampler = sampler
+        self.logger.debug('Tracing sampler set to %s', sampler)
 
-            response = future.result()
-            try:
-                sampler = parse_sampling_strategy(response.body)
-            except Exception as e:
-                self.error_reporter.error(
-                    Metrics.SAMPLER_ERRORS, 1,
-                    'Fail to parse sampling strategy '
-                    'from jaeger-agent: %s [%s]', e, response.body)
-                return
-
-            with self.lock:
-                if self.sampler == sampler:
-                    return
-                self.sampler = sampler
-            self.logger.debug('Tracing sampler set to %s', sampler)
-
+    def _poll_sampling_manager(self):
         self.logger.debug('Requesting tracing sampler refresh')
         fut = self._channel.request_sampling_strategy(
             self.service_name, timeout=15)
-        fut.add_done_callback(submit_callback)
+        fut.add_done_callback(self._sampling_request_callback)
 
     def close(self):
         with self.lock:
             self.running = False
             if self.periodic is not None:
                 self.periodic.stop()
+
+    def _parse_sampling_strategy(self, sampler, body):
+        response = json.loads(body)
+        s_type = response[STRATEGY_TYPE_STR]
+        operation_strategies = response.get(OPERATION_SAMPLING_STR)
+        if operation_strategies:
+            if isinstance(sampler, AdaptiveSampler):
+                return sampler, operation_strategies
+            return AdaptiveSampler(operation_strategies, self.max_operations), operation_strategies
+        if s_type == SamplingManager.SamplingStrategyType.PROBABILISTIC:
+            sampling_rate = response[PROBABILISTIC_SAMPLING_STR][SAMPLING_RATE_STR]
+            if 0 <= sampling_rate <= 1.0:
+                return ProbabilisticSampler(rate=sampling_rate), None
+            else:
+                raise ValueError(
+                    'Probabilistic sampling rate not in [0, 1] range: %s' % sampling_rate)
+        elif s_type == SamplingManager.SamplingStrategyType.RATE_LIMITING:
+            mtps = response[RATE_LIMITING_SAMPLING_STR][MAX_TRACES_PER_SECOND_STR]
+            if 0 <= mtps < 500:
+                return RateLimitingSampler(max_traces_per_second=mtps), None
+            else:
+                raise ValueError(
+                    'Rate limiting parameter not in [0, 500] range: %s' % mtps)
+        else:
+            raise ValueError('Unsupported sampling strategy type: %s' % s_type)

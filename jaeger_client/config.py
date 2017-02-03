@@ -212,6 +212,10 @@ class Config(object):
         except:
             return DEFAULT_REPORTING_PORT
 
+    @property
+    def max_operations(self):
+        return self.config.get('max_operations', None)
+
     @staticmethod
     def initialized():
         with Config._initialized_lock:
@@ -239,7 +243,8 @@ class Config(object):
                 logger=logger,
                 metrics=self.metrics,
                 error_reporter=self.error_reporter,
-                sampling_refresh_interval=self.sampling_refresh_interval)
+                sampling_refresh_interval=self.sampling_refresh_interval,
+                max_operations=self.max_operations)
         logger.info('Using sampler %s', sampler)
 
         reporter = Reporter(
