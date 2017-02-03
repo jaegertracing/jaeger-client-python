@@ -374,7 +374,7 @@ class RemoteControlledSampler(Sampler):
 
     def is_sampled(self, trace_id, operation=''):
         with self.lock:
-            return self.sampler.is_sampled(trace_id, operation), self.sampler._tags
+            return self.sampler.is_sampled(trace_id, operation)
 
     def _init_polling(self):
         """
