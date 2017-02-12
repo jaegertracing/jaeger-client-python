@@ -46,7 +46,7 @@ class Tracer(opentracing.Tracer):
                  trace_id_header=constants.TRACE_ID_HEADER,
                  baggage_header_prefix=constants.BAGGAGE_HEADER_PREFIX,
                  debug_id_header=constants.DEBUG_ID_HEADER_KEY,
-                 one_span_per_rpc=True):
+                 one_span_per_rpc=True, extra_codecs=None):
         self.service_name = service_name
         self.reporter = reporter
         self.sampler = sampler
@@ -70,6 +70,8 @@ class Tracer(opentracing.Tracer):
             Format.BINARY: BinaryCodec(),
             ZipkinSpanFormat: ZipkinCodec(),
         }
+        if extra_codecs:
+            self.codecs.update(extra_codecs)
         self.tags = {
             constants.JAEGER_VERSION_TAG_KEY: constants.JAEGER_CLIENT_VERSION,
         }
