@@ -47,5 +47,5 @@ after_success:
   - $DOCKER build -f crossdock/Dockerfile -t $REPO:$COMMIT .
   - $DOCKER tag $REPO:$COMMIT $REPO:$TAG
   - $DOCKER tag $REPO:$COMMIT $REPO:travis-$TRAVIS_BUILD_NUMBER
-  - $DOCKERpush $REPO
+  - $DOCKER push $REPO
 
