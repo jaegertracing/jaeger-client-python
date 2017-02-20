@@ -41,9 +41,10 @@ after_success:
   - export BRANCH=$(if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then echo $TRAVIS_BRANCH; else echo `curl -s $PR | jq -r .head.ref`; fi)
   - export TAG=`if [ "$BRANCH" == "master" ]; then echo "latest"; else echo $BRANCH; fi`
   - echo "TRAVIS_BRANCH=$TRAVIS_BRANCH, REPO=$REPO, PR=$PR, BRANCH=$BRANCH, TAG=$TAG"
-  - docker login -u $DOCKER_USER -p $DOCKER_PASS
-  - docker build -f crossdock/Dockerfile -t $REPO:$COMMIT .
-  - docker tag $REPO:$COMMIT $REPO:$TAG
-  - docker tag $REPO:$COMMIT $REPO:travis-$TRAVIS_BUILD_NUMBER
-  - docker push $REPO
+  - export DOCKER=$(if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then echo docker; else echo 'skip docker upload for PR; true'; fi)
+  - $DOCKER login -u $DOCKER_USER -p $DOCKER_PASS
+  - $DOCKER build -f crossdock/Dockerfile -t $REPO:$COMMIT .
+  - $DOCKER tag $REPO:$COMMIT $REPO:$TAG
+  - $DOCKER tag $REPO:$COMMIT $REPO:travis-$TRAVIS_BUILD_NUMBER
+  - $DOCKERpush $REPO
 
