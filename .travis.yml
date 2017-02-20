@@ -9,7 +9,6 @@ services:
 
 env:
   global:
-    - DOCKER_VERSION=1.10.1-0~trusty
     - DOCKER_COMPOSE_VERSION=1.6.0
     - COMMIT=${TRAVIS_COMMIT::8}
     # DOCKER_USER
