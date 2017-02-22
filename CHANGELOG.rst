@@ -6,7 +6,7 @@ History
 3.3.2 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Allow overriding one-span-per-rpc behavior
 
 
 3.3.1 (2016-10-14)
