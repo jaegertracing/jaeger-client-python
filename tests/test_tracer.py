@@ -238,3 +238,20 @@ def test_tracer_tags_on_root_span(span_type, expected_tags):
             )
             assert found_tag.value == value, \
                 'test (%s): expecting tag %s=%s' % (span_type, key, value)
+
+
+def test_tracer_override_codecs():
+    reporter = mock.MagicMock()
+    sampler = ConstSampler(True)
+    codecs = {
+        'extra_codec': "codec_placeholder",
+        Format.BINARY: "overridden_binary_codec"
+
+    }
+    with mock.patch('socket.gethostname', return_value='dream-host.com'):
+        tracer = Tracer(service_name='x', reporter=reporter, sampler=sampler,
+                        extra_codecs=codecs)
+        assert tracer.codecs['extra_codec'] == "codec_placeholder",\
+                "Extra codec not found"
+        assert tracer.codecs[Format.BINARY] == "overridden_binary_codec",\
+                "Binary format codec not overridden"
