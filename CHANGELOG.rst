@@ -7,6 +7,7 @@ History
 ------------------
 
 - Allow overriding one-span-per-rpc behavior
+- Allow overriding codecs in tracer initialization
 
 
 3.3.1 (2016-10-14)
