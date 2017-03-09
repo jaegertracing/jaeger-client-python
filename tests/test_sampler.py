@@ -71,8 +71,10 @@ def test_probabilistic_sampler():
 
 def test_const_sampler():
     sampler = ConstSampler(True)
-    assert sampler.is_sampled(1)
-    assert sampler.is_sampled(MAX_INT)
+    sampled, _ = sampler.is_sampled(1)
+    assert sampled
+    sampled, _ = sampler.is_sampled(MAX_INT)
+    assert sampled
     sampler = ConstSampler(False)
     sampled, tags = sampler.is_sampled(1)
     assert not sampled
@@ -92,8 +94,10 @@ def test_rate_limiting_sampler():
             as mock_time:
         mock_time.side_effect = lambda: ts  # always return same time
         assert sampler.timestamp() == ts
-        assert sampler.is_sampled(0), 'initial balance allows first item'
-        assert sampler.is_sampled(0), 'initial balance allows second item'
+        sampled, _ = sampler.is_sampled(0)
+        assert sampled, 'initial balance allows first item'
+        sampled, _ = sampler.is_sampled(0)
+        assert sampled, 'initial balance allows second item'
         sampled, _ = sampler.is_sampled(0)
         assert not sampled, 'initial balance exhausted'
 
@@ -104,7 +108,8 @@ def test_rate_limiting_sampler():
 
         # move time 500ms forward, now enough credits to pay for one sample
         mock_time.side_effect = lambda: ts + 0.5
-        assert sampler.is_sampled(0), 'enough time for new item'
+        sampled, _ = sampler.is_sampled(0)
+        assert sampled, 'enough time for new item'
         sampled, _ = sampler.is_sampled(0)
         assert not sampled, 'no more balance'
 
@@ -112,8 +117,10 @@ def test_rate_limiting_sampler():
         # but it should still be capped at 2
         sampler.last_tick = ts  # reset the timer
         mock_time.side_effect = lambda: ts + 5
-        assert sampler.is_sampled(0), 'enough time for new item'
-        assert sampler.is_sampled(0), 'enough time for second new item'
+        sampled, _ = sampler.is_sampled(0)
+        assert sampled, 'enough time for new item'
+        sampled, _ = sampler.is_sampled(0)
+        assert sampled, 'enough time for second new item'
         for i in range(0, 3):
             sampled, tags = sampler.is_sampled(0)
             assert not sampled, 'but no further, since time is stopped'
@@ -121,7 +128,7 @@ def test_rate_limiting_sampler():
     sampler.close()
     assert '%s' % sampler == 'RateLimitingSampler(2)'
 
-    # Test with rate limit of less than 1 second
+    # Test with rate limit of greater than 1 second
     sampler = RateLimitingSampler(0.1)
     ts = time.time()
     sampler.last_tick = ts
@@ -130,11 +137,14 @@ def test_rate_limiting_sampler():
         mock_time.side_effect = lambda: ts  # always return same time
         assert sampler.timestamp() == ts
         sampled, _ = sampler.is_sampled(0)
-        assert not sampled
+        assert sampled, 'initial balance allows first item'
+        sampled, _ = sampler.is_sampled(0)
+        assert not sampled, 'initial balance exhausted'
 
-        # move time 110ms forward, enough credits to pay for one sample
-        mock_time.side_effect = lambda: ts + 0.11
-        assert sampler.is_sampled(0)
+        # move time 11s forward, enough credits to pay for one sample
+        mock_time.side_effect = lambda: ts + 11
+        sampled, _ = sampler.is_sampled(0)
+        assert sampled
     sampler.close()
     assert '%s' % sampler == 'RateLimitingSampler(0.1)'
 

@@ -156,17 +156,20 @@ class RateLimitingSampler(Sampler):
         assert max_traces_per_second >= 0, \
             'max_traces_per_second must not be negative'
         self.credits_per_second = max_traces_per_second
-        self.balance = max_traces_per_second
+        self.max_balance = max_traces_per_second
+        if self.max_balance < 1.0:
+            self.max_balance = 1.0
+        self.balance = self.max_balance
         self.last_tick = self.timestamp()
-        self.item_cost = 1
+        self.item_cost = 1.0
 
     def is_sampled(self, trace_id, operation=''):
         current_time = self.timestamp()
         elapsed_time = current_time - self.last_tick
         self.last_tick = current_time
         self.balance += elapsed_time * self.credits_per_second
-        if self.balance > self.credits_per_second:
-            self.balance = self.credits_per_second
+        if self.balance > self.max_balance:
+            self.balance = self.max_balance
         if self.balance >= self.item_cost:
             self.balance -= self.item_cost
             return True, self._tags
