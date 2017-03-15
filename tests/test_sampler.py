@@ -147,6 +147,12 @@ def test_rate_limiting_sampler():
     sampler.close()
     assert '%s' % sampler == 'RateLimitingSampler(0.1)'
 
+    sampler.update(0.2)
+    assert '%s' % sampler == 'RateLimitingSampler(0.2)'
+
+    with pytest.raises(AssertionError):
+        sampler.update(-1)
+
 
 def test_guaranteed_throughput_probabilistic_sampler():
     sampler = GuaranteedThroughputProbabilisticSampler('op', 2, 0.5)
@@ -329,10 +335,11 @@ def test_sampling_request_callback():
     # noinspection PyProtectedMember
     sampler._sampling_request_callback(return_value)
     assert '%s' % sampler.sampler == 'ProbabilisticSampler(0.002)', 'sampler should have changed to probabilistic'
+    prev_sampler = sampler.sampler
 
     # noinspection PyProtectedMember
     sampler._sampling_request_callback(return_value)
-    assert '%s' % sampler.sampler == 'ProbabilisticSampler(0.002)', "strategy hasn't changed so sampler should not change"
+    assert prev_sampler == sampler.sampler, "strategy hasn't changed so sampler should not change"
 
     adaptive_sampling_strategy = """
     {
@@ -358,16 +365,17 @@ def test_sampling_request_callback():
     # noinspection PyProtectedMember
     sampler._sampling_request_callback(return_value)
     assert '%s' % sampler.sampler == 'AdaptiveSampler(0.001, 2, 10)', 'sampler should have changed to adaptive'
+    prev_sampler = sampler.sampler
 
     # noinspection PyProtectedMember
     sampler._sampling_request_callback(return_value)
-    assert '%s' % sampler.sampler == 'AdaptiveSampler(0.001, 2, 10)', "strategy hasn't changed so sampler should not change"
+    assert prev_sampler == sampler.sampler, "strategy hasn't changed so sampler should not change"
 
     return_value.exception = lambda *args: True
     # noinspection PyProtectedMember
     sampler._sampling_request_callback(return_value)
     assert error_reporter.error.call_count == 1
-    assert '%s' % sampler.sampler == 'AdaptiveSampler(0.001, 2, 10)', 'error fetching strategy should not update the sampler'
+    assert prev_sampler == sampler.sampler,'error fetching strategy should not update the sampler'
 
     return_value.exception = lambda *args: False
     return_value.result = lambda *args: type('obj', (object,), {'body': 'bad_json'})()
@@ -375,7 +383,7 @@ def test_sampling_request_callback():
     # noinspection PyProtectedMember
     sampler._sampling_request_callback(return_value)
     assert error_reporter.error.call_count == 2
-    assert '%s' % sampler.sampler == 'AdaptiveSampler(0.001, 2, 10)', 'error updating sampler should not update the sampler'
+    assert prev_sampler == sampler.sampler, 'error updating sampler should not update the sampler'
 
     return_value.result = lambda *args: \
         type('obj', (object,), {'body': probabilistic_strategy})()
@@ -398,20 +406,26 @@ def test_update_sampler():
     # noinspection PyProtectedMember
     remote_sampler._update_sampler({"strategyType":0,"probabilisticSampling":{"samplingRate":0.003}})
     assert '%s' % remote_sampler.sampler == 'ProbabilisticSampler(0.003)'
+    prev_sampler = remote_sampler.sampler
 
     # noinspection PyProtectedMember
     remote_sampler._update_sampler({"strategyType":0,"probabilisticSampling":{"samplingRate":400}})
-    assert '%s' % remote_sampler.sampler == 'ProbabilisticSampler(0.003)', 'sampler should remain the same'
+    assert prev_sampler == remote_sampler.sampler, 'sampler should remain the same'
     assert error_reporter.error.call_count == 1
 
     # noinspection PyProtectedMember
     remote_sampler._update_sampler({"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":10}})
     assert '%s' % remote_sampler.sampler == 'RateLimitingSampler(10)'
+    prev_sampler = remote_sampler.sampler
 
     # noinspection PyProtectedMember
     remote_sampler._update_sampler({"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":-10}})
-    assert '%s' % remote_sampler.sampler == 'RateLimitingSampler(10)', 'sampler should remain the same'
+    assert prev_sampler == remote_sampler.sampler, 'sampler should remain the same'
     assert error_reporter.error.call_count == 2
+
+    # noinspection PyProtectedMember
+    remote_sampler._update_sampler({"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":20}})
+    assert prev_sampler is remote_sampler.sampler, 'rate limiting sampler should update'
 
     # noinspection PyProtectedMember
     remote_sampler._update_sampler({})
