@@ -455,22 +455,19 @@ class RemoteControlledSampler(Sampler):
         s_type = response[STRATEGY_TYPE_STR]
         if s_type == SamplingManager.SamplingStrategyType.PROBABILISTIC:
             sampling_rate = response[PROBABILISTIC_SAMPLING_STR][SAMPLING_RATE_STR]
-            if 0 <= sampling_rate <= 1.0:
-                self.sampler = ProbabilisticSampler(rate=sampling_rate)
-            else:
-                raise ValueError(
-                    'Probabilistic sampling rate not in [0, 1] range: %s' % sampling_rate)
+            new_sampler = ProbabilisticSampler(rate=sampling_rate)
         elif s_type == SamplingManager.SamplingStrategyType.RATE_LIMITING:
             mtps = response[RATE_LIMITING_SAMPLING_STR][MAX_TRACES_PER_SECOND_STR]
             if 0 <= mtps < 500:
                 new_sampler = RateLimitingSampler(max_traces_per_second=mtps)
-                if not self.sampler.__eq__(new_sampler):
-                    self.sampler = new_sampler
             else:
                 raise ValueError(
                     'Rate limiting parameter not in [0, 500] range: %s' % mtps)
         else:
             raise ValueError('Unsupported sampling strategy type: %s' % s_type)
+
+        if self.sampler != new_sampler:
+            self.sampler = new_sampler
 
     def _poll_sampling_manager(self):
         self.logger.debug('Requesting tracing sampler refresh')
