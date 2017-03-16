@@ -153,9 +153,6 @@ class RateLimitingSampler(Sampler):
                 SAMPLER_PARAM_TAG_KEY: max_traces_per_second,
             }
         )
-        self._init_rate_limiter(max_traces_per_second)
-
-    def _init_rate_limiter(self, max_traces_per_second):
         assert max_traces_per_second >= 0, \
             'max_traces_per_second must not be negative'
         self.credits_per_second = max_traces_per_second
@@ -194,13 +191,6 @@ class RateLimitingSampler(Sampler):
         d1['balance'] = d2['balance']
         d1['last_tick'] = d2['last_tick']
         return d1 == d2
-
-    def update(self, max_traces_per_second):
-        # (NB) This function should only be called while holding a Write lock.
-        if self.credits_per_second == max_traces_per_second:
-            return
-        # only create a new rate limiter when the credits_per_second is changed
-        self._init_rate_limiter(max_traces_per_second)
 
     def __str__(self):
         return 'RateLimitingSampler(%s)' % self.credits_per_second
@@ -253,8 +243,9 @@ class GuaranteedThroughputProbabilisticSampler(Sampler):
                 SAMPLER_TYPE_TAG_KEY: SAMPLER_TYPE_LOWER_BOUND,
                 SAMPLER_PARAM_TAG_KEY: rate,
             }
-        self.lower_bound_sampler.update(lower_bound)
-        self.lower_bound = lower_bound
+        if self.lower_bound != lower_bound:
+            self.lower_bound_sampler = RateLimitingSampler(lower_bound)
+            self.lower_bound = lower_bound
 
     def __str__(self):
         return 'GuaranteedThroughputProbabilisticSampler(%s, %s, %s)' \
@@ -443,17 +434,16 @@ class RemoteControlledSampler(Sampler):
 
     def _update_sampler(self, response):
         with self.lock:
-            if response.get(OPERATION_SAMPLING_STR):
-                self._update_adaptive_sampler(response.get(OPERATION_SAMPLING_STR))
-            else:
-                try:
+            try:
+                if response.get(OPERATION_SAMPLING_STR):
+                    self._update_adaptive_sampler(response.get(OPERATION_SAMPLING_STR))
+                else:
                     self._update_rate_limiting_or_probabilistic_sampler(response)
-                except Exception as e:
-                    self.error_reporter.error(
-                        Metrics.SAMPLER_ERRORS, 1,
-                        'Fail to update sampler'
-                        'from jaeger-agent: %s [%s]', e, response)
-                    return
+            except Exception as e:
+                self.error_reporter.error(
+                    Metrics.SAMPLER_ERRORS, 1,
+                    'Fail to update sampler'
+                    'from jaeger-agent: %s [%s]', e, response)
 
     def _update_adaptive_sampler(self, per_operation_strategies):
         if isinstance(self.sampler, AdaptiveSampler):
@@ -473,10 +463,9 @@ class RemoteControlledSampler(Sampler):
         elif s_type == SamplingManager.SamplingStrategyType.RATE_LIMITING:
             mtps = response[RATE_LIMITING_SAMPLING_STR][MAX_TRACES_PER_SECOND_STR]
             if 0 <= mtps < 500:
-                if isinstance(self.sampler, RateLimitingSampler):
-                    self.sampler.update(max_traces_per_second=mtps)
-                else:
-                    self.sampler = RateLimitingSampler(max_traces_per_second=mtps)
+                new_sampler = RateLimitingSampler(max_traces_per_second=mtps)
+                if not self.sampler.__eq__(new_sampler):
+                    self.sampler = new_sampler
             else:
                 raise ValueError(
                     'Rate limiting parameter not in [0, 500] range: %s' % mtps)

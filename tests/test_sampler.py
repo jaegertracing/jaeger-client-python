@@ -147,12 +147,6 @@ def test_rate_limiting_sampler():
     sampler.close()
     assert '%s' % sampler == 'RateLimitingSampler(0.1)'
 
-    sampler.update(0.2)
-    assert '%s' % sampler == 'RateLimitingSampler(0.2)'
-
-    with pytest.raises(AssertionError):
-        sampler.update(-1)
-
 
 def test_guaranteed_throughput_probabilistic_sampler():
     sampler = GuaranteedThroughputProbabilisticSampler('op', 2, 0.5)
@@ -419,13 +413,17 @@ def test_update_sampler():
     prev_sampler = remote_sampler.sampler
 
     # noinspection PyProtectedMember
+    remote_sampler._update_sampler({"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":10}})
+    assert prev_sampler == remote_sampler.sampler, 'sampler should remain the same with the same strategy'
+
+    # noinspection PyProtectedMember
     remote_sampler._update_sampler({"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":-10}})
-    assert prev_sampler == remote_sampler.sampler, 'sampler should remain the same'
+    assert prev_sampler == remote_sampler.sampler, 'sampler should remain the same if strategy is invalid'
     assert error_reporter.error.call_count == 2
 
     # noinspection PyProtectedMember
     remote_sampler._update_sampler({"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":20}})
-    assert prev_sampler is remote_sampler.sampler, 'rate limiting sampler should update'
+    assert '%s' % remote_sampler.sampler == 'RateLimitingSampler(20)'
 
     # noinspection PyProtectedMember
     remote_sampler._update_sampler({})
