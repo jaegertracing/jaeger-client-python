@@ -299,6 +299,7 @@ def test_remotely_controlled_sampler():
     sampler.close()
 
 
+# noinspection PyProtectedMember
 def test_sampling_request_callback():
     channel = mock.MagicMock()
     channel.io_loop = mock.MagicMock()
@@ -326,12 +327,10 @@ def test_sampling_request_callback():
 
     return_value.result = lambda *args: \
         type('obj', (object,), {'body': probabilistic_strategy})()
-    # noinspection PyProtectedMember
     sampler._sampling_request_callback(return_value)
     assert '%s' % sampler.sampler == 'ProbabilisticSampler(0.002)', 'sampler should have changed to probabilistic'
     prev_sampler = sampler.sampler
 
-    # noinspection PyProtectedMember
     sampler._sampling_request_callback(return_value)
     assert prev_sampler is sampler.sampler, "strategy hasn't changed so sampler should not change"
 
@@ -356,17 +355,14 @@ def test_sampling_request_callback():
     """
     return_value.result = lambda *args: \
         type('obj', (object,), {'body': adaptive_sampling_strategy})()
-    # noinspection PyProtectedMember
     sampler._sampling_request_callback(return_value)
     assert '%s' % sampler.sampler == 'AdaptiveSampler(0.001, 2, 10)', 'sampler should have changed to adaptive'
     prev_sampler = sampler.sampler
 
-    # noinspection PyProtectedMember
     sampler._sampling_request_callback(return_value)
     assert prev_sampler is sampler.sampler, "strategy hasn't changed so sampler should not change"
 
     return_value.exception = lambda *args: True
-    # noinspection PyProtectedMember
     sampler._sampling_request_callback(return_value)
     assert error_reporter.error.call_count == 1
     assert prev_sampler is sampler.sampler, 'error fetching strategy should not update the sampler'
@@ -374,14 +370,12 @@ def test_sampling_request_callback():
     return_value.exception = lambda *args: False
     return_value.result = lambda *args: type('obj', (object,), {'body': 'bad_json'})()
 
-    # noinspection PyProtectedMember
     sampler._sampling_request_callback(return_value)
     assert error_reporter.error.call_count == 2
     assert prev_sampler is sampler.sampler, 'error updating sampler should not update the sampler'
 
     return_value.result = lambda *args: \
         type('obj', (object,), {'body': probabilistic_strategy})()
-    # noinspection PyProtectedMember
     sampler._sampling_request_callback(return_value)
     assert '%s' % sampler.sampler == 'ProbabilisticSampler(0.002)', 'updating sampler from adaptive to probabilistic should work'
 
@@ -489,6 +483,7 @@ def test_update_sampler(response, init_sampler, expected_sampler, err_count, err
     remote_sampler.close()
 
 
+# noinspection PyProtectedMember
 def test_update_sampler_adaptive_sampler():
     error_reporter = mock.MagicMock()
     error_reporter.error = mock.MagicMock()
@@ -517,7 +512,6 @@ def test_update_sampler_adaptive_sampler():
         }
     }
 
-    # noinspection PyProtectedMember
     remote_sampler._update_sampler(response)
     assert '%s' % remote_sampler.sampler == 'AdaptiveSampler(0.001, 2, 10)'
 
@@ -539,11 +533,9 @@ def test_update_sampler_adaptive_sampler():
         }
     }
 
-    # noinspection PyProtectedMember
     remote_sampler._update_sampler(new_response)
     assert '%s' % remote_sampler.sampler == 'AdaptiveSampler(0.51, 3, 10)'
 
-    # noinspection PyProtectedMember
     remote_sampler._update_sampler({"strategyType":0,"probabilisticSampling":{"samplingRate":0.004}})
     assert '%s' % remote_sampler.sampler == 'ProbabilisticSampler(0.004)', \
         'should not fail going from adaptive sampler to probabilistic sampler'
