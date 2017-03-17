@@ -388,50 +388,116 @@ def test_sampling_request_callback():
     sampler.close()
 
 
-def test_update_sampler():
+probabilistic_sampler = ProbabilisticSampler(0.002)
+other_probabilistic_sampler = ProbabilisticSampler(0.003)
+rate_limiting_sampler = RateLimitingSampler(10)
+other_rate_limiting_sampler = RateLimitingSampler(20)
+
+@pytest.mark.parametrize("response,init_sampler,expected_sampler,err_count,err_msg,reference_equivalence", [
+    (
+        {"strategyType":0,"probabilisticSampling":{"samplingRate":0.003}},
+        probabilistic_sampler,
+        other_probabilistic_sampler,
+        0,
+        'sampler should update to new probabilistic sampler',
+        False,
+    ),
+    (
+        {"strategyType":0,"probabilisticSampling":{"samplingRate":400}},
+        probabilistic_sampler,
+        probabilistic_sampler,
+        1,
+        'sampler should remain the same if strategy is invalid',
+        True,
+    ),
+    (
+        {"strategyType":0,"probabilisticSampling":{"samplingRate":0.002}},
+        probabilistic_sampler,
+        probabilistic_sampler,
+        0,
+        'sampler should remain the same with the same strategy',
+        True,
+    ),
+    (
+        {"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":10}},
+        probabilistic_sampler,
+        rate_limiting_sampler,
+        0,
+        'sampler should update to new rate limiting sampler',
+        False,
+    ),
+    (
+        {"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":10}},
+        rate_limiting_sampler,
+        rate_limiting_sampler,
+        0,
+        'sampler should remain the same with the same strategy',
+        True,
+    ),
+    (
+        {"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":-10}},
+        rate_limiting_sampler,
+        rate_limiting_sampler,
+        1,
+        'sampler should remain the same if strategy is invalid',
+        True,
+    ),
+    (
+        {"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":20}},
+        rate_limiting_sampler,
+        other_rate_limiting_sampler,
+        0,
+        'sampler should update to new rate limiting sampler',
+        False,
+    ),
+    (
+        {},
+        rate_limiting_sampler,
+        rate_limiting_sampler,
+        1,
+        'sampler should remain the same if strategy is empty',
+        True,
+    ),
+    (
+        {"strategyType":2},
+        rate_limiting_sampler,
+        rate_limiting_sampler,
+        1,
+        'sampler should remain the same if strategy is invalid',
+        True,
+    ),
+])
+def test_update_sampler(response, init_sampler, expected_sampler, err_count, err_msg, reference_equivalence):
     error_reporter = mock.MagicMock()
     error_reporter.error = mock.MagicMock()
     remote_sampler = RemoteControlledSampler(
         channel=mock.MagicMock(),
         service_name='x',
         error_reporter=error_reporter,
-        max_operations=10
+        max_operations=10,
+        init_sampler=init_sampler,
     )
-    # noinspection PyProtectedMember
-    remote_sampler._update_sampler({"strategyType":0,"probabilisticSampling":{"samplingRate":0.003}})
-    assert '%s' % remote_sampler.sampler == 'ProbabilisticSampler(0.003)'
-    prev_sampler = remote_sampler.sampler
 
     # noinspection PyProtectedMember
-    remote_sampler._update_sampler({"strategyType":0,"probabilisticSampling":{"samplingRate":400}})
-    assert prev_sampler is remote_sampler.sampler, 'sampler should remain the same'
-    assert error_reporter.error.call_count == 1
+    remote_sampler._update_sampler(response)
+    assert error_reporter.error.call_count == err_count
+    if reference_equivalence:
+        assert remote_sampler.sampler is expected_sampler, err_msg
+    else:
+        assert remote_sampler.sampler == expected_sampler, err_msg
 
-    # noinspection PyProtectedMember
-    remote_sampler._update_sampler({"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":10}})
-    assert '%s' % remote_sampler.sampler == 'RateLimitingSampler(10)'
-    prev_sampler = remote_sampler.sampler
+    remote_sampler.close()
 
-    # noinspection PyProtectedMember
-    remote_sampler._update_sampler({"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":10}})
-    assert prev_sampler is remote_sampler.sampler, 'sampler should remain the same with the same strategy'
 
-    # noinspection PyProtectedMember
-    remote_sampler._update_sampler({"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":-10}})
-    assert prev_sampler is remote_sampler.sampler, 'sampler should remain the same if strategy is invalid'
-    assert error_reporter.error.call_count == 2
-
-    # noinspection PyProtectedMember
-    remote_sampler._update_sampler({"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":20}})
-    assert '%s' % remote_sampler.sampler == 'RateLimitingSampler(20)'
-
-    # noinspection PyProtectedMember
-    remote_sampler._update_sampler({})
-    assert error_reporter.error.call_count == 3
-
-    # noinspection PyProtectedMember
-    remote_sampler._update_sampler({"strategyType":2})
-    assert error_reporter.error.call_count == 4
+def test_update_sampler_adaptive_sampler():
+    error_reporter = mock.MagicMock()
+    error_reporter.error = mock.MagicMock()
+    remote_sampler = RemoteControlledSampler(
+        channel=mock.MagicMock(),
+        service_name='x',
+        error_reporter=error_reporter,
+        max_operations=10,
+    )
 
     response = {
         "strategyType":1,
