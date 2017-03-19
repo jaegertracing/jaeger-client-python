@@ -421,8 +421,7 @@ class RemoteControlledSampler(Sampler):
 
         response = future.result()
         try:
-            sampler, strategies = \
-                self._parse_sampling_strategy(self.sampler, response.body)
+            sampling_strategies_response = json.loads(response.body)
         except Exception as e:
             self.error_reporter.error(
                 Metrics.SAMPLER_ERRORS, 1,
@@ -430,13 +429,45 @@ class RemoteControlledSampler(Sampler):
                 'from jaeger-agent: %s [%s]', e, response.body)
             return
 
+        self._update_sampler(sampling_strategies_response)
+        self.logger.debug('Tracing sampler set to %s', self.sampler)
+
+    def _update_sampler(self, response):
         with self.lock:
-            if isinstance(sampler, AdaptiveSampler):
-                sampler.update(strategies)
-            elif self.sampler == sampler:
-                return
-            self.sampler = sampler
-        self.logger.debug('Tracing sampler set to %s', sampler)
+            try:
+                if response.get(OPERATION_SAMPLING_STR):
+                    self._update_adaptive_sampler(response.get(OPERATION_SAMPLING_STR))
+                else:
+                    self._update_rate_limiting_or_probabilistic_sampler(response)
+            except Exception as e:
+                self.error_reporter.error(
+                    Metrics.SAMPLER_ERRORS, 1,
+                    'Fail to update sampler'
+                    'from jaeger-agent: %s [%s]', e, response)
+
+    def _update_adaptive_sampler(self, per_operation_strategies):
+        if isinstance(self.sampler, AdaptiveSampler):
+            self.sampler.update(per_operation_strategies)
+        else:
+            self.sampler = AdaptiveSampler(per_operation_strategies, self.max_operations)
+
+    def _update_rate_limiting_or_probabilistic_sampler(self, response):
+        s_type = response[STRATEGY_TYPE_STR]
+        if s_type == SamplingManager.SamplingStrategyType.PROBABILISTIC:
+            sampling_rate = response[PROBABILISTIC_SAMPLING_STR][SAMPLING_RATE_STR]
+            new_sampler = ProbabilisticSampler(rate=sampling_rate)
+        elif s_type == SamplingManager.SamplingStrategyType.RATE_LIMITING:
+            mtps = response[RATE_LIMITING_SAMPLING_STR][MAX_TRACES_PER_SECOND_STR]
+            if 0 <= mtps < 500:
+                new_sampler = RateLimitingSampler(max_traces_per_second=mtps)
+            else:
+                raise ValueError(
+                    'Rate limiting parameter not in [0, 500] range: %s' % mtps)
+        else:
+            raise ValueError('Unsupported sampling strategy type: %s' % s_type)
+
+        if self.sampler != new_sampler:
+            self.sampler = new_sampler
 
     def _poll_sampling_manager(self):
         self.logger.debug('Requesting tracing sampler refresh')
@@ -449,28 +480,3 @@ class RemoteControlledSampler(Sampler):
             self.running = False
             if self.periodic is not None:
                 self.periodic.stop()
-
-    def _parse_sampling_strategy(self, sampler, body):
-        response = json.loads(body)
-        s_type = response[STRATEGY_TYPE_STR]
-        operation_strategies = response.get(OPERATION_SAMPLING_STR)
-        if operation_strategies:
-            if isinstance(sampler, AdaptiveSampler):
-                return sampler, operation_strategies
-            return AdaptiveSampler(operation_strategies, self.max_operations), operation_strategies
-        if s_type == SamplingManager.SamplingStrategyType.PROBABILISTIC:
-            sampling_rate = response[PROBABILISTIC_SAMPLING_STR][SAMPLING_RATE_STR]
-            if 0 <= sampling_rate <= 1.0:
-                return ProbabilisticSampler(rate=sampling_rate), None
-            else:
-                raise ValueError(
-                    'Probabilistic sampling rate not in [0, 1] range: %s' % sampling_rate)
-        elif s_type == SamplingManager.SamplingStrategyType.RATE_LIMITING:
-            mtps = response[RATE_LIMITING_SAMPLING_STR][MAX_TRACES_PER_SECOND_STR]
-            if 0 <= mtps < 500:
-                return RateLimitingSampler(max_traces_per_second=mtps), None
-            else:
-                raise ValueError(
-                    'Rate limiting parameter not in [0, 500] range: %s' % mtps)
-        else:
-            raise ValueError('Unsupported sampling strategy type: %s' % s_type)
