@@ -3,9 +3,10 @@
 History
 -------
 
-3.3.2 (unreleased)
+3.4.0 (2017-03-20)
 ------------------
 
+- Add adaptive sampler
 - Allow overriding one-span-per-rpc behavior
 - Allow overriding codecs in tracer initialization
 

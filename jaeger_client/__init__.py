@@ -27,7 +27,7 @@ import sys
 import jaeger_client.thrift_gen as modpath
 sys.path.append(modpath.__path__[0])
 
-__version__ = '3.3.2.dev0'
+__version__ = '3.4.0'
 
 from .tracer import Tracer  # noqa
 from .config import Config  # noqa
