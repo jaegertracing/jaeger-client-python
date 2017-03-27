@@ -31,6 +31,8 @@ from jaeger_client.sampler import (
     GuaranteedThroughputProbabilisticSampler,
     AdaptiveSampler,
     DEFAULT_SAMPLING_PROBABILITY,
+    get_sampling_probability,
+    get_rate_limit,
 )
 
 MAX_INT = 1L << 63
@@ -241,7 +243,41 @@ def test_adaptive_sampler():
     assert tags == get_tags('probabilistic', 0.53)
     assert '%s' % sampler == 'AdaptiveSampler(0.52, 4, 2)'
 
-    sampler.close()
+
+def test_adaptive_sampler_default_values():
+    adaptive_sampler = AdaptiveSampler({}, 2)
+    assert '%s' % adaptive_sampler == 'AdaptiveSampler(0.001, 0.0016666, 2)', 'sampler should use default values'
+
+    sampled, tags = adaptive_sampler.is_sampled(0, 'op')
+    assert sampled
+    assert tags == get_tags('probabilistic', 0.001), 'should use default probability'
+    assert '%s' % adaptive_sampler.samplers['op'] == 'GuaranteedThroughputProbabilisticSampler(op, 0.001, 0.0016666)'
+
+    adaptive_sampler.update(strategies = {
+        "defaultLowerBoundTracesPerSecond":4,
+        "perOperationStrategies":
+            [
+                {
+                    "operation":"new_op",
+                    "probabilisticSampling":{
+                        "samplingRate":0.002
+                    }
+                }
+            ]
+    })
+    assert '%s' % adaptive_sampler == 'AdaptiveSampler(0.001, 4, 2)'
+
+    sampled, tags = adaptive_sampler.is_sampled(0, 'new_op')
+    assert sampled
+    assert tags == get_tags('probabilistic', 0.002)
+    assert '%s' % adaptive_sampler.samplers['new_op'] == 'GuaranteedThroughputProbabilisticSampler(new_op, 0.002, 4)'
+
+    sampled, tags = adaptive_sampler.is_sampled(0, 'op')
+    assert sampled
+    assert tags == get_tags('probabilistic', 0.001)
+    # TODO ruh roh, the lowerbound isn't changed if the operation isn't included in perOperationStrategies
+    assert '%s' % adaptive_sampler.samplers['op'] == 'GuaranteedThroughputProbabilisticSampler(op, 0.001, 0.0016666)'
+
 
 
 def test_sampler_equality():
@@ -540,4 +576,29 @@ def test_update_sampler_adaptive_sampler():
     assert '%s' % remote_sampler.sampler == 'ProbabilisticSampler(0.004)', \
         'should not fail going from adaptive sampler to probabilistic sampler'
 
+    remote_sampler._update_sampler({"strategyType":1,"operationSampling":{"defaultSamplingProbability":0.4}})
+    assert '%s' % remote_sampler.sampler == 'AdaptiveSampler(0.4, 0.0016666, 10)'
+
     remote_sampler.close()
+
+
+@pytest.mark.parametrize("strategy,expected", [
+    ({"probabilisticSampling":{"samplingRate":0.003}}, 0.003),
+    ({}, 0.001),
+    (None, 0.001),
+    ({"probabilisticSampling":{}}, 0.001),
+    ({"probabilisticSampling":None}, 0.001),
+])
+def test_get_sampling_probability(strategy, expected):
+    assert expected == get_sampling_probability(strategy)
+
+
+@pytest.mark.parametrize("strategy,expected", [
+    ({"rateLimitingSampling":{"maxTracesPerSecond":1}}, 1),
+    ({}, 0.0016666),
+    (None, 0.0016666),
+    ({"rateLimitingSampling":{}}, 0.0016666),
+    ({"rateLimitingSampling":None}, 0.0016666),
+])
+def test_get_rate_limit(strategy, expected):
+    assert expected == get_rate_limit(strategy)

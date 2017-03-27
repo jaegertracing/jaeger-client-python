@@ -45,6 +45,7 @@ default_logger = logging.getLogger('jaeger_tracing')
 SAMPLER_TYPE_TAG_KEY = 'sampler.type'
 SAMPLER_PARAM_TAG_KEY = 'sampler.param'
 DEFAULT_SAMPLING_PROBABILITY = 0.001
+DEFAULT_LOWER_BOUND = 0.0016666 # sample once every 10 minutes
 DEFAULT_MAX_OPERATIONS = 2000
 
 STRATEGIES_STR = 'perOperationStrategies'
@@ -263,20 +264,21 @@ class AdaptiveSampler(Sampler):
         super(AdaptiveSampler, self).__init__()
 
         samplers = {}
-        for strategy in strategies[STRATEGIES_STR]:
+        for strategy in strategies.get(STRATEGIES_STR, []):
+            operation = strategy.get(OPERATION_STR)
             sampler = GuaranteedThroughputProbabilisticSampler(
-                strategy[OPERATION_STR],
-                strategies[DEFAULT_LOWER_BOUND_STR],
-                strategy[PROBABILISTIC_SAMPLING_STR][SAMPLING_RATE_STR]
+                operation,
+                strategies.get(DEFAULT_LOWER_BOUND_STR, DEFAULT_LOWER_BOUND),
+                get_sampling_probability(strategy)
             )
-            samplers[strategy[OPERATION_STR]] = sampler
+            samplers[operation] = sampler
 
         self.samplers = samplers
         self.default_sampler = \
-            ProbabilisticSampler(strategies[DEFAULT_SAMPLING_PROBABILITY_STR])
+            ProbabilisticSampler(strategies.get(DEFAULT_SAMPLING_PROBABILITY_STR, DEFAULT_SAMPLING_PROBABILITY))
         self.default_sampling_probability = \
-            strategies[DEFAULT_SAMPLING_PROBABILITY_STR]
-        self.lower_bound = strategies[DEFAULT_LOWER_BOUND_STR]
+            strategies.get(DEFAULT_SAMPLING_PROBABILITY_STR, DEFAULT_SAMPLING_PROBABILITY)
+        self.lower_bound = strategies.get(DEFAULT_LOWER_BOUND_STR, DEFAULT_LOWER_BOUND)
         self.max_operations = max_operations
 
     def is_sampled(self, trace_id, operation=''):
@@ -295,10 +297,10 @@ class AdaptiveSampler(Sampler):
 
     def update(self, strategies):
         # (NB) This function should only be called while holding a Write lock.
-        for strategy in strategies[STRATEGIES_STR]:
-            operation = strategy[OPERATION_STR]
-            lower_bound = strategies[DEFAULT_LOWER_BOUND_STR]
-            sampling_rate = strategy[PROBABILISTIC_SAMPLING_STR][SAMPLING_RATE_STR]
+        for strategy in strategies.get(STRATEGIES_STR, []):
+            operation = strategy.get(OPERATION_STR)
+            lower_bound = strategies.get(DEFAULT_LOWER_BOUND_STR, DEFAULT_LOWER_BOUND)
+            sampling_rate = get_sampling_probability(strategy)
             sampler = self.samplers.get(operation, None)
             if sampler is None:
                 sampler = GuaranteedThroughputProbabilisticSampler(
@@ -309,10 +311,10 @@ class AdaptiveSampler(Sampler):
                 self.samplers[operation] = sampler
             else:
                 sampler.update(lower_bound, sampling_rate)
-        self.lower_bound = strategies[DEFAULT_LOWER_BOUND_STR]
-        if self.default_sampling_probability != strategies[DEFAULT_SAMPLING_PROBABILITY_STR]:
+        self.lower_bound = strategies.get(DEFAULT_LOWER_BOUND_STR, DEFAULT_LOWER_BOUND)
+        if self.default_sampling_probability != strategies.get(DEFAULT_SAMPLING_PROBABILITY_STR, DEFAULT_SAMPLING_PROBABILITY):
             self.default_sampling_probability = \
-                strategies[DEFAULT_SAMPLING_PROBABILITY_STR]
+                strategies.get(DEFAULT_SAMPLING_PROBABILITY_STR, DEFAULT_SAMPLING_PROBABILITY)
             self.default_sampler = \
                 ProbabilisticSampler(self.default_sampling_probability)
 
@@ -452,12 +454,12 @@ class RemoteControlledSampler(Sampler):
             self.sampler = AdaptiveSampler(per_operation_strategies, self.max_operations)
 
     def _update_rate_limiting_or_probabilistic_sampler(self, response):
-        s_type = response[STRATEGY_TYPE_STR]
+        s_type = response.get(STRATEGY_TYPE_STR)
         if s_type == SamplingManager.SamplingStrategyType.PROBABILISTIC:
-            sampling_rate = response[PROBABILISTIC_SAMPLING_STR][SAMPLING_RATE_STR]
+            sampling_rate = get_sampling_probability(response)
             new_sampler = ProbabilisticSampler(rate=sampling_rate)
         elif s_type == SamplingManager.SamplingStrategyType.RATE_LIMITING:
-            mtps = response[RATE_LIMITING_SAMPLING_STR][MAX_TRACES_PER_SECOND_STR]
+            mtps = get_rate_limit(response)
             if 0 <= mtps < 500:
                 new_sampler = RateLimitingSampler(max_traces_per_second=mtps)
             else:
@@ -480,3 +482,21 @@ class RemoteControlledSampler(Sampler):
             self.running = False
             if self.periodic is not None:
                 self.periodic.stop()
+
+
+def get_sampling_probability(strategy=None):
+    if not strategy:
+        strategy = {}
+    probability_strategy = strategy.get(PROBABILISTIC_SAMPLING_STR)
+    if not probability_strategy:
+        probability_strategy = {SAMPLING_RATE_STR: DEFAULT_SAMPLING_PROBABILITY}
+    return probability_strategy.get(SAMPLING_RATE_STR, DEFAULT_SAMPLING_PROBABILITY)
+
+
+def get_rate_limit(strategy=None):
+    if not strategy:
+        strategy = {}
+    rate_limit_strategy = strategy.get(RATE_LIMITING_SAMPLING_STR)
+    if not rate_limit_strategy:
+        rate_limit_strategy = {MAX_TRACES_PER_SECOND_STR: DEFAULT_LOWER_BOUND}
+    return rate_limit_strategy.get(MAX_TRACES_PER_SECOND_STR, DEFAULT_LOWER_BOUND)
