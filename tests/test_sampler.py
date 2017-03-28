@@ -244,6 +244,8 @@ def test_adaptive_sampler():
     assert tags == get_tags('probabilistic', 0.53)
     assert '%s' % sampler == 'AdaptiveSampler(0.52, 4, 2)'
 
+    sampler.close()
+
 
 def test_adaptive_sampler_default_values():
     adaptive_sampler = AdaptiveSampler({}, 2)
