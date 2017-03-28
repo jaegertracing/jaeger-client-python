@@ -19,6 +19,7 @@
 # THE SOFTWARE.
 
 import time
+import math
 import mock
 import pytest
 
@@ -246,12 +247,12 @@ def test_adaptive_sampler():
 
 def test_adaptive_sampler_default_values():
     adaptive_sampler = AdaptiveSampler({}, 2)
-    assert '%s' % adaptive_sampler == 'AdaptiveSampler(0.001, 0.0016666, 2)', 'sampler should use default values'
+    assert '%s' % adaptive_sampler == 'AdaptiveSampler(0.001, 0.00166666666667, 2)', 'sampler should use default values'
 
     sampled, tags = adaptive_sampler.is_sampled(0, 'op')
     assert sampled
     assert tags == get_tags('probabilistic', 0.001), 'should use default probability'
-    assert '%s' % adaptive_sampler.samplers['op'] == 'GuaranteedThroughputProbabilisticSampler(op, 0.001, 0.0016666)'
+    assert '%s' % adaptive_sampler.samplers['op'] == 'GuaranteedThroughputProbabilisticSampler(op, 0.001, 0.00166666666667)'
 
     adaptive_sampler.update(strategies = {
         "defaultLowerBoundTracesPerSecond":4,
@@ -276,7 +277,7 @@ def test_adaptive_sampler_default_values():
     assert sampled
     assert tags == get_tags('probabilistic', 0.001)
     # TODO ruh roh, the lowerbound isn't changed if the operation isn't included in perOperationStrategies
-    assert '%s' % adaptive_sampler.samplers['op'] == 'GuaranteedThroughputProbabilisticSampler(op, 0.001, 0.0016666)'
+    assert '%s' % adaptive_sampler.samplers['op'] == 'GuaranteedThroughputProbabilisticSampler(op, 0.001, 0.00166666666667)'
 
 
 
@@ -577,7 +578,7 @@ def test_update_sampler_adaptive_sampler():
         'should not fail going from adaptive sampler to probabilistic sampler'
 
     remote_sampler._update_sampler({"strategyType":1,"operationSampling":{"defaultSamplingProbability":0.4}})
-    assert '%s' % remote_sampler.sampler == 'AdaptiveSampler(0.4, 0.0016666, 10)'
+    assert '%s' % remote_sampler.sampler == 'AdaptiveSampler(0.4, 0.00166666666667, 10)'
 
     remote_sampler.close()
 
@@ -601,4 +602,4 @@ def test_get_sampling_probability(strategy, expected):
     ({"rateLimitingSampling":None}, 0.0016666),
 ])
 def test_get_rate_limit(strategy, expected):
-    assert expected == get_rate_limit(strategy)
+    assert math.fabs(expected - get_rate_limit(strategy)) < 0.0001

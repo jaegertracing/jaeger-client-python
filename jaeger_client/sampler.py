@@ -45,7 +45,7 @@ default_logger = logging.getLogger('jaeger_tracing')
 SAMPLER_TYPE_TAG_KEY = 'sampler.type'
 SAMPLER_PARAM_TAG_KEY = 'sampler.param'
 DEFAULT_SAMPLING_PROBABILITY = 0.001
-DEFAULT_LOWER_BOUND = 0.0016666 # sample once every 10 minutes
+DEFAULT_LOWER_BOUND = 1.0 / (10.0 * 60.0)  # sample once every 10 minutes
 DEFAULT_MAX_OPERATIONS = 2000
 
 STRATEGIES_STR = 'perOperationStrategies'
@@ -275,7 +275,8 @@ class AdaptiveSampler(Sampler):
 
         self.samplers = samplers
         self.default_sampler = \
-            ProbabilisticSampler(strategies.get(DEFAULT_SAMPLING_PROBABILITY_STR, DEFAULT_SAMPLING_PROBABILITY))
+            ProbabilisticSampler(strategies.get(DEFAULT_SAMPLING_PROBABILITY_STR,
+                                                DEFAULT_SAMPLING_PROBABILITY))
         self.default_sampling_probability = \
             strategies.get(DEFAULT_SAMPLING_PROBABILITY_STR, DEFAULT_SAMPLING_PROBABILITY)
         self.lower_bound = strategies.get(DEFAULT_LOWER_BOUND_STR, DEFAULT_LOWER_BOUND)
@@ -312,7 +313,8 @@ class AdaptiveSampler(Sampler):
             else:
                 sampler.update(lower_bound, sampling_rate)
         self.lower_bound = strategies.get(DEFAULT_LOWER_BOUND_STR, DEFAULT_LOWER_BOUND)
-        if self.default_sampling_probability != strategies.get(DEFAULT_SAMPLING_PROBABILITY_STR, DEFAULT_SAMPLING_PROBABILITY):
+        if self.default_sampling_probability != strategies.get(DEFAULT_SAMPLING_PROBABILITY_STR,
+                                                               DEFAULT_SAMPLING_PROBABILITY):
             self.default_sampling_probability = \
                 strategies.get(DEFAULT_SAMPLING_PROBABILITY_STR, DEFAULT_SAMPLING_PROBABILITY)
             self.default_sampler = \
@@ -486,17 +488,17 @@ class RemoteControlledSampler(Sampler):
 
 def get_sampling_probability(strategy=None):
     if not strategy:
-        strategy = {}
+        return DEFAULT_SAMPLING_PROBABILITY
     probability_strategy = strategy.get(PROBABILISTIC_SAMPLING_STR)
     if not probability_strategy:
-        probability_strategy = {SAMPLING_RATE_STR: DEFAULT_SAMPLING_PROBABILITY}
+        return DEFAULT_SAMPLING_PROBABILITY
     return probability_strategy.get(SAMPLING_RATE_STR, DEFAULT_SAMPLING_PROBABILITY)
 
 
 def get_rate_limit(strategy=None):
     if not strategy:
-        strategy = {}
+        return DEFAULT_LOWER_BOUND
     rate_limit_strategy = strategy.get(RATE_LIMITING_SAMPLING_STR)
     if not rate_limit_strategy:
-        rate_limit_strategy = {MAX_TRACES_PER_SECOND_STR: DEFAULT_LOWER_BOUND}
+        return DEFAULT_LOWER_BOUND
     return rate_limit_strategy.get(MAX_TRACES_PER_SECOND_STR, DEFAULT_LOWER_BOUND)
