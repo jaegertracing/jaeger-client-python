@@ -1,15 +1,19 @@
 sudo: required
 
-dist: trusty
-
 language: python
 
 matrix:
   include:
   - python: '2.7'
     env: COVER=1
+    sudo: required
+    services:
+      - docker
   - python: '2.7'
     env: CROSSDOCK=1
+    sudo: required
+    services:
+      - docker
 
 services:
   - docker
