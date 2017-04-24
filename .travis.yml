@@ -1,8 +1,19 @@
 sudo: required
 
 language: python
-python: 
-  - "2.7"
+
+matrix:
+  include:
+  - python: '2.7'
+    env: COVER=1
+    sudo: required
+    services:
+      - docker
+  - python: '2.7'
+    env: CROSSDOCK=1
+    sudo: required
+    services:
+      - docker
 
 services:
   - docker
@@ -18,31 +29,27 @@ env:
 
 before_install:
   - docker version
-  - sudo rm -rf /usr/local/bin/docker-compose
-  - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
-  - chmod +x docker-compose
-  - sudo mv docker-compose /usr/local/bin
-  - docker-compose version
+  - if [ "$CROSSDOCK" = "1" ]; then make install_docker_ci ; fi
 
 install:
   - make bootstrap
 
 script:
-  - make test_ci
-  - make crossdock
+  - if [ "$CROSSDOCK" != "1" ]; then make test_ci ; fi
+  - if [ "$COVER" = "1" ]; then coveralls -v ; fi
+  - if [ "$CROSSDOCK" = "1" ]; then make crossdock ; fi
 
 after_failure:
-  - timeout 5 docker-compose -f crossdock/docker-compose.yml logs
+  - timeout 5 if [ "$CROSSDOCK" = "1" ]; then docker-compose -f crossdock/docker-compose.yml logs ; fi
 
 after_success:
-  - coveralls -v
   - export REPO=jaegertracing/xdock-py
   - export PR=https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls/$TRAVIS_PULL_REQUEST
   - export BRANCH=$(if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then echo $TRAVIS_BRANCH; else echo `curl -s $PR | jq -r .head.ref`; fi)
   - export TAG=`if [ "$BRANCH" == "master" ]; then echo "latest"; else echo $BRANCH; fi`
   - echo "TRAVIS_BRANCH=$TRAVIS_BRANCH, REPO=$REPO, PR=$PR, BRANCH=$BRANCH, TAG=$TAG"
-  - if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then echo 'upload to Docker Hub'; else echo 'skip docker upload for PR'; fi
-  - export DOCKER=$(if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then echo docker; else echo true; fi)
+  - if [ "$BRANCH" == "master" ] && [ "$CROSSDOCK" == "1" ]; then echo 'upload to Docker Hub'; else echo 'skip docker upload for PR'; fi
+  - export DOCKER=$(if [ "$BRANCH" == "master" ] && [ "$CROSSDOCK" == "1" ]; then echo docker; else echo true; fi)
   - $DOCKER login -u $DOCKER_USER -p $DOCKER_PASS
   - $DOCKER build -f crossdock/Dockerfile -t $REPO:$COMMIT .
   - $DOCKER tag $REPO:$COMMIT $REPO:$TAG
