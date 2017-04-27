@@ -21,7 +21,6 @@
 from __future__ import absolute_import
 import logging
 import random
-import time
 import json
 
 from threading import Lock
@@ -36,6 +35,7 @@ from .constants import (
 )
 from .metrics import Metrics
 from .utils import ErrorReporter
+from .rate_limiter import RateLimiter
 from jaeger_client.thrift_gen.sampling import (
     SamplingManager
 )
@@ -156,45 +156,30 @@ class RateLimitingSampler(Sampler):
         )
         assert max_traces_per_second >= 0, \
             'max_traces_per_second must not be negative'
-        self.credits_per_second = max_traces_per_second
-        self.max_balance = max_traces_per_second
-        if self.max_balance < 1.0:
-            self.max_balance = 1.0
-        self.balance = self.max_balance
-        self.last_tick = self.timestamp()
-        self.item_cost = 1.0
+        self.traces_per_second = max_traces_per_second
+        self.rate_limiter = RateLimiter(
+            credits_per_second=self.traces_per_second,
+            max_balance=self.traces_per_second if self.traces_per_second > 1.0 else 1.0
+        )
 
     def is_sampled(self, trace_id, operation=''):
-        current_time = self.timestamp()
-        elapsed_time = current_time - self.last_tick
-        self.last_tick = current_time
-        self.balance += elapsed_time * self.credits_per_second
-        if self.balance > self.max_balance:
-            self.balance = self.max_balance
-        if self.balance >= self.item_cost:
-            self.balance -= self.item_cost
-            return True, self._tags
-        return False, self._tags
+        return self.rate_limiter.check_credit(1.0), self._tags
 
     def close(self):
         pass
-
-    @staticmethod
-    def timestamp():
-        return time.time()
 
     def __eq__(self, other):
         """The last_tick and balance fields can be different"""
         if not isinstance(other, self.__class__):
             return False
-        d1 = dict(self.__dict__)
-        d2 = dict(other.__dict__)
+        d1 = dict(self.rate_limiter.__dict__)
+        d2 = dict(other.rate_limiter.__dict__)
         d1['balance'] = d2['balance']
         d1['last_tick'] = d2['last_tick']
         return d1 == d2
 
     def __str__(self):
-        return 'RateLimitingSampler(%s)' % self.credits_per_second
+        return 'RateLimitingSampler(%s)' % self.traces_per_second
 
 
 class GuaranteedThroughputProbabilisticSampler(Sampler):
