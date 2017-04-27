@@ -67,7 +67,7 @@ class ConfigTests(unittest.TestCase):
         c = Config({'sampler': {'type': 'rate_limiting', 'param': 1234}},
                    service_name='x')
         assert type(c.sampler) is RateLimitingSampler
-        assert c.sampler.credits_per_second == 1234
+        assert c.sampler.traces_per_second == 1234
 
     def test_bad_sampler(self):
         c = Config({'sampler': {'type': 'bad-sampler'}}, service_name='x')

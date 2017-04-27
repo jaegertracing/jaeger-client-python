@@ -26,7 +26,7 @@ class RateLimiter(object):
     RateLimiter is based on leaky bucket algorithm, formulated in terms
     of a credits balance that is replenished every time check_credit()
     method is called (tick) by the amount proportional to the time
-    elapsed since the last tick, up to max of credits_per_second. A call
+    elapsed since the last tick, up to the max_balance. A call
     to check_credit() takes a cost of an item we want to pay with the
     balance. If the balance exceeds the cost of the item, the item is
     "purchased" and the balance reduced, indicated by returned value of
@@ -42,7 +42,7 @@ class RateLimiter(object):
     check_credit() with the actual message size.
     """
 
-    def __init__(self, credits_per_second=10.0, max_balance=10.0):
+    def __init__(self, credits_per_second, max_balance):
         self.credits_per_second = credits_per_second
         self.max_balance = max_balance
         self.balance = self.max_balance
@@ -52,7 +52,7 @@ class RateLimiter(object):
     def timestamp():
         return time.time()
 
-    def check_credit(self, item_cost=1.0):
+    def check_credit(self, item_cost):
         current_time = self.timestamp()
         elapsed_time = current_time - self.last_tick
         self.last_tick = current_time

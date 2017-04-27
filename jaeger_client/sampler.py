@@ -156,10 +156,10 @@ class RateLimitingSampler(Sampler):
         )
         assert max_traces_per_second >= 0, \
             'max_traces_per_second must not be negative'
-        self.credits_per_second = max_traces_per_second
+        self.traces_per_second = max_traces_per_second
         self.rate_limiter = RateLimiter(
-            self.credits_per_second,
-            self.credits_per_second if self.credits_per_second > 1.0 else 1.0
+            credits_per_second=self.traces_per_second,
+            max_balance=self.traces_per_second if self.traces_per_second > 1.0 else 1.0
         )
 
     def is_sampled(self, trace_id, operation=''):
@@ -179,7 +179,7 @@ class RateLimitingSampler(Sampler):
         return d1 == d2
 
     def __str__(self):
-        return 'RateLimitingSampler(%s)' % self.credits_per_second
+        return 'RateLimitingSampler(%s)' % self.traces_per_second
 
 
 class GuaranteedThroughputProbabilisticSampler(Sampler):
