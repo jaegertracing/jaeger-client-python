@@ -91,11 +91,11 @@ def test_rate_limiting_sampler():
     # stop time by overwriting timestamp() function to always return
     # the same time
     ts = time.time()
-    sampler.last_tick = ts
-    with mock.patch('jaeger_client.sampler.RateLimitingSampler.timestamp') \
+    sampler.rate_limiter.last_tick = ts
+    with mock.patch('jaeger_client.rate_limiter.RateLimiter.timestamp') \
             as mock_time:
         mock_time.side_effect = lambda: ts  # always return same time
-        assert sampler.timestamp() == ts
+        assert sampler.rate_limiter.timestamp() == ts
         sampled, _ = sampler.is_sampled(0)
         assert sampled, 'initial balance allows first item'
         sampled, _ = sampler.is_sampled(0)
@@ -123,7 +123,7 @@ def test_rate_limiting_sampler():
         assert sampled, 'enough time for new item'
         sampled, _ = sampler.is_sampled(0)
         assert sampled, 'enough time for second new item'
-        for i in range(0, 3):
+        for i in range(0, 8):
             sampled, tags = sampler.is_sampled(0)
             assert not sampled, 'but no further, since time is stopped'
         assert tags == get_tags('ratelimiting', 2)
@@ -133,11 +133,11 @@ def test_rate_limiting_sampler():
     # Test with rate limit of greater than 1 second
     sampler = RateLimitingSampler(0.1)
     ts = time.time()
-    sampler.last_tick = ts
-    with mock.patch('jaeger_client.sampler.RateLimitingSampler.timestamp') \
+    sampler.rate_limiter.last_tick = ts
+    with mock.patch('jaeger_client.rate_limiter.RateLimiter.timestamp') \
             as mock_time:
         mock_time.side_effect = lambda: ts  # always return same time
-        assert sampler.timestamp() == ts
+        assert sampler.rate_limiter.timestamp() == ts
         sampled, _ = sampler.is_sampled(0)
         assert sampled, 'initial balance allows first item'
         sampled, _ = sampler.is_sampled(0)
