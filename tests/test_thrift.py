@@ -1,3 +1,5 @@
+from future import standard_library
+standard_library.install_aliases()
 # Copyright (c) 2016 Uber Technologies, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -18,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-from cStringIO import StringIO
+from io import StringIO
 
 import jaeger_client.thrift_gen.zipkincore.ZipkinCollector as zipkin_collector
 import jaeger_client.thrift_gen.sampling.SamplingManager as sampling_manager
@@ -120,8 +122,8 @@ def test_large_ids(tracer):
     trace_id = 0x97fd53dc6b437681
     serialize(trace_id)
 
-    trace_id = (1L << 64) - 1
-    assert trace_id == 0xffffffffffffffffL
+    trace_id = (1 << 64) - 1
+    assert trace_id == 0xffffffffffffffff
     serialize(trace_id)
     assert thrift.id_to_int(trace_id) == -1
 

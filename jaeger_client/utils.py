@@ -1,3 +1,6 @@
+from builtins import str
+from builtins import range
+from builtins import object
 # Copyright (c) 2016 Uber Technologies, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -74,7 +77,7 @@ def local_ip():
     if ip.startswith('127.'):
         # Check eth0, eth1, eth2, en0, ...
         interfaces = [
-            i + str(n) for i in ('eth', 'en', 'wlan') for n in xrange(3)
+            i + str(n) for i in ('eth', 'en', 'wlan') for n in range(3)
         ]  # :(
         for interface in interfaces:
             try:

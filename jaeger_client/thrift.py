@@ -1,3 +1,4 @@
+from past.builtins import basestring
 # Copyright (c) 2016 Uber Technologies, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -30,8 +31,8 @@ from .thrift_gen.zipkincore.constants import LOCAL_COMPONENT
 
 _max_signed_port = (1 << 15) - 1
 _max_unsigned_port = (1 << 16)
-_max_signed_id = (1L << 63) - 1
-_max_unsigned_id = (1L << 64)
+_max_signed_id = (1 << 63) - 1
+_max_unsigned_id = (1 << 64)
 
 
 def ipv4_to_int(ipv4):
@@ -117,7 +118,7 @@ def timestamp_micros(ts):
     :param ts:
     :return:
     """
-    return long(ts * 1000000)
+    return int(ts * 1000000)
 
 
 def make_zipkin_spans(spans):

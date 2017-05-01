@@ -84,8 +84,8 @@ class TestCodecs(unittest.TestCase):
         from_string = span_context_from_string
 
         tests = [
-            [(256L, 127L, None, 1), '100:7f:0:1'],
-            [(256L, 127L, 256L, 0), '100:7f:100:0'],
+            [(256, 127, None, 1), '100:7f:0:1'],
+            [(256, 127, 256, 0), '100:7f:100:0'],
         ]
         for test in tests:
             ctx = test[0]
@@ -95,13 +95,13 @@ class TestCodecs(unittest.TestCase):
             self.assertEqual(ctx_rev, ctx)
 
         ctx_rev = from_string(['100:7f:100:0'])
-        assert ctx_rev == (256L, 127L, 256L, 0), 'Array is acceptable'
+        assert ctx_rev == (256, 127, 256, 0), 'Array is acceptable'
 
         with self.assertRaises(SpanContextCorruptedException):
             from_string(['100:7f:100:0', 'garbage'])
 
         ctx_rev = from_string(u'100:7f:100:0')
-        assert ctx_rev == (256L, 127L, 256L, 0), 'Unicode is acceptable'
+        assert ctx_rev == (256, 127, 256, 0), 'Unicode is acceptable'
 
     def test_context_to_readable_headers(self):
         for url_encoding in [False, True]:
@@ -215,14 +215,14 @@ class TestCodecs(unittest.TestCase):
             'Trace-ID': 'FFFFFFFFFFFFFFFF:FFFFFFFFFFFFFFFF:FFFFFFFFFFFFFFFF:1',
         }
         context = codec.extract(headers)
-        assert context.trace_id == 0xFFFFFFFFFFFFFFFFL
-        assert context.trace_id == (1L << 64) - 1
+        assert context.trace_id == 0xFFFFFFFFFFFFFFFF
+        assert context.trace_id == (1 << 64) - 1
         assert context.trace_id > 0
-        assert context.span_id == 0xFFFFFFFFFFFFFFFFL
-        assert context.span_id == (1L << 64) - 1
+        assert context.span_id == 0xFFFFFFFFFFFFFFFF
+        assert context.span_id == (1 << 64) - 1
         assert context.span_id > 0
-        assert context.parent_id == 0xFFFFFFFFFFFFFFFFL
-        assert context.parent_id == (1L << 64) - 1
+        assert context.parent_id == 0xFFFFFFFFFFFFFFFF
+        assert context.parent_id == (1 << 64) - 1
         assert context.parent_id > 0
 
     def test_zipkin_codec_extract(self):
@@ -322,6 +322,6 @@ def test_debug_id():
     span = tracer.start_span('test', child_of=context)
     assert span.is_debug()
     assert span.is_sampled()
-    tags = filter(lambda t: t.key == debug_header, span.tags)
+    tags = [t for t in span.tags if t.key == debug_header]
     assert len(tags) == 1
     assert tags[0].value == 'Coraline'
