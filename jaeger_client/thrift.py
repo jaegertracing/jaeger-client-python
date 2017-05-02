@@ -21,6 +21,7 @@ from past.builtins import basestring
 
 import socket
 import struct
+import sys
 
 import jaeger_client.thrift_gen.zipkincore.ZipkinCollector as zipkin_collector
 import jaeger_client.thrift_gen.sampling.SamplingManager as sampling_manager
@@ -33,6 +34,10 @@ _max_signed_port = (1 << 15) - 1
 _max_unsigned_port = (1 << 16)
 _max_signed_id = (1 << 63) - 1
 _max_unsigned_id = (1 << 64)
+
+
+def str_to_binary(value):
+    return value if sys.version_info[0] == 2 else value.encode('utf-8')
 
 
 def ipv4_to_int(ipv4):
@@ -62,6 +67,12 @@ def port_to_int(port):
 def id_to_int(big_id):
     # zipkincore.thrift defines ID fields as i64, which is signed,
     # therefore we convert large IDs (> 2^63) to negative longs
+
+    # In Python 2, expression None > 1 is legal and has a value of False
+    # In Python 3, this expression is illegal - so we need to have an additional check
+    if big_id is None:
+        return None
+
     if big_id > _max_signed_id:
         big_id -= _max_unsigned_id
     return big_id
@@ -79,8 +90,9 @@ def make_endpoint(ipv4, port, service_name):
 def make_string_tag(key, value):
     if len(value) > 256:
         value = value[:256]
+
     return zipkin_collector.BinaryAnnotation(
-        key, value, zipkin_collector.AnnotationType.STRING)
+        key, str_to_binary(value), zipkin_collector.AnnotationType.STRING)
 
 
 def make_peer_address_tag(key, host):
@@ -91,7 +103,7 @@ def make_peer_address_tag(key, host):
     :param host:
     """
     return zipkin_collector.BinaryAnnotation(
-        key, '0x01', zipkin_collector.AnnotationType.BOOL, host)
+        key, str_to_binary('0x01'), zipkin_collector.AnnotationType.BOOL, host)
 
 
 def make_local_component_tag(component_name, endpoint):
@@ -101,7 +113,7 @@ def make_local_component_tag(component_name, endpoint):
     :param endpoint:
     """
     return zipkin_collector.BinaryAnnotation(
-        key=LOCAL_COMPONENT, value=component_name,
+        key=LOCAL_COMPONENT, value=str_to_binary(component_name),
         annotation_type=zipkin_collector.AnnotationType.STRING,
         host=endpoint)
 

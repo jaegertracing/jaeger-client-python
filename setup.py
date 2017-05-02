@@ -35,6 +35,7 @@ setup(
         'Programming Language :: Python :: 2.7',
     ],
     install_requires=[
+        'future',
         'futures',
         'threadloop>=1,<2',
         # we want thrift>=0.9.2.post1,<0.9.3, but we let the users pin to that

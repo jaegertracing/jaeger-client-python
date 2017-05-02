@@ -238,7 +238,7 @@ class GuaranteedThroughputProbabilisticSampler(Sampler):
 
     def __str__(self):
         return 'GuaranteedThroughputProbabilisticSampler(%s, %s, %s)' \
-               % (self.operation, self.rate, self.lower_bound)
+               % (self.operation, self.rate, round(float(self.lower_bound), 14))
 
 
 class AdaptiveSampler(Sampler):
@@ -314,7 +314,7 @@ class AdaptiveSampler(Sampler):
 
     def __str__(self):
         return 'AdaptiveSampler(%s, %s, %s)' \
-               % (self.default_sampling_probability, self.lower_bound,
+               % (self.default_sampling_probability, round(float(self.lower_bound), 14),
                   self.max_operations)
 
 

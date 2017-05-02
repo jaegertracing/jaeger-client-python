@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 from jaeger_client.local_agent_net import LocalAgentSender
 from jaeger_client.config import DEFAULT_REPORTING_PORT
 
-test_strategy = """
+test_strategy = b"""
     {
         "strategyType":0,
         "probabilisticSampling":

@@ -29,7 +29,7 @@ from opentracing.ext import tags as ext_tags
 from jaeger_client import ConstSampler, Tracer
 from jaeger_client import constants as c
 from jaeger_client.thrift_gen.zipkincore import constants as g
-from jaeger_client.thrift import add_zipkin_annotations
+from jaeger_client.thrift import add_zipkin_annotations, str_to_binary
 
 
 def log_exists(span, value):
@@ -236,7 +236,7 @@ def test_tracer_tags_on_root_span(span_type, expected_tags):
             assert found_tag is not None, 'test (%s): expecting tag %s' % (
                 span_type, key
             )
-            assert found_tag.value == value, \
+            assert found_tag.value == str_to_binary(value), \
                 'test (%s): expecting tag %s=%s' % (span_type, key, value)
 
 
