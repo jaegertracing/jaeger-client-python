@@ -20,7 +20,6 @@ setup(
         ]
     },
     install_requires=[
-        # most of dependencies are included in tchannel already
-        'six'
+        # all dependencies are included in tchannel already
     ],
 )
