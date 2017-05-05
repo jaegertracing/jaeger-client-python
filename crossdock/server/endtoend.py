@@ -2,6 +2,7 @@ from builtins import range
 from builtins import object
 import tornado.web
 import json
+import six
 
 from jaeger_client.local_agent_net import LocalAgentSender
 from jaeger_client.config import (
@@ -101,7 +102,7 @@ class EndToEndHandler(object):
         tracer = self.tracers[sampler_type]
         for _ in range(req.get('count', 0)):
             span = tracer.start_span(req['operation'])
-            for k, v in req.get('tags', {}).items():
+            for k, v in six.iteritems(req.get('tags', {})):
                 span.set_tag(k, v)
             span.finish()
         response_writer.finish()

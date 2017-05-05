@@ -38,6 +38,7 @@ setup(
     install_requires=[
         'future',
         'futures',
+        'six',
         'threadloop>=1,<2',
         'thrift>=0.10.0',
         'tornado>=4.3,<5',

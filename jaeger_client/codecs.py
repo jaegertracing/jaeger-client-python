@@ -25,6 +25,7 @@ from past.builtins import basestring
 from builtins import object
 
 import urllib.request, urllib.parse, urllib.error
+import six
 
 from opentracing import (
     InvalidCarrierException,
@@ -68,7 +69,7 @@ class TextCodec(Codec):
             parent_id=span_context.parent_id, flags=span_context.flags)
         baggage = span_context.baggage
         if baggage:
-            for key, value in baggage.items():
+            for key, value in six.iteritems(baggage):
                 if self.url_encoding:
                     encoded_value = urllib.parse.quote(value)
                 else:
@@ -81,7 +82,7 @@ class TextCodec(Codec):
         trace_id, span_id, parent_id, flags = None, None, None, None
         baggage = None
         debug_id = None
-        for key, value in carrier.items():
+        for key, value in six.iteritems(carrier):
             uc_key = key.lower()
             if uc_key == self.trace_id_header:
                 if self.url_encoding:
