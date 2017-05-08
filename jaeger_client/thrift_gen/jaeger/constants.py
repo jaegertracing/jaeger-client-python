@@ -7,15 +7,5 @@
 #
 
 from thrift.Thrift import TType, TMessageType, TException, TApplicationException
-import jaeger.ttypes
-import zipkincore.ttypes
-
-
-from thrift.transport import TTransport
-from thrift.protocol import TBinaryProtocol, TProtocol
-try:
-  from thrift.protocol import fastbinary
-except:
-  fastbinary = None
-
+from ttypes import *
 

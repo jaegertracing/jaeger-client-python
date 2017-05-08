@@ -22,17 +22,10 @@ from tornado import concurrent
 from thrift.transport import TTransport
 
 class Iface(object):
-  def emitZipkinBatch(self, spans):
+  def submitBatches(self, batches):
     """
     Parameters:
-     - spans
-    """
-    pass
-
-  def emitBatch(self, batch):
-    """
-    Parameters:
-     - batch
+     - batches
     """
     pass
 
@@ -72,45 +65,44 @@ class Client(Iface):
       else:
         future.set_result(result)
 
-  def emitZipkinBatch(self, spans):
+  def submitBatches(self, batches):
     """
     Parameters:
-     - spans
+     - batches
     """
     self._seqid += 1
-    self.send_emitZipkinBatch(spans)
+    future = self._reqs[self._seqid] = concurrent.Future()
+    self.send_submitBatches(batches)
+    return future
 
-  def send_emitZipkinBatch(self, spans):
+  def send_submitBatches(self, batches):
     oprot = self._oprot_factory.getProtocol(self._transport)
-    oprot.writeMessageBegin('emitZipkinBatch', TMessageType.ONEWAY, self._seqid)
-    args = emitZipkinBatch_args()
-    args.spans = spans
+    oprot.writeMessageBegin('submitBatches', TMessageType.CALL, self._seqid)
+    args = submitBatches_args()
+    args.batches = batches
     args.write(oprot)
     oprot.writeMessageEnd()
     oprot.trans.flush()
-  def emitBatch(self, batch):
-    """
-    Parameters:
-     - batch
-    """
-    self._seqid += 1
-    self.send_emitBatch(batch)
 
-  def send_emitBatch(self, batch):
-    oprot = self._oprot_factory.getProtocol(self._transport)
-    oprot.writeMessageBegin('emitBatch', TMessageType.ONEWAY, self._seqid)
-    args = emitBatch_args()
-    args.batch = batch
-    args.write(oprot)
-    oprot.writeMessageEnd()
-    oprot.trans.flush()
+  def recv_submitBatches(self, iprot, mtype, rseqid):
+    if mtype == TMessageType.EXCEPTION:
+      x = TApplicationException()
+      x.read(iprot)
+      iprot.readMessageEnd()
+      raise x
+    result = submitBatches_result()
+    result.read(iprot)
+    iprot.readMessageEnd()
+    if result.success is not None:
+      return result.success
+    raise TApplicationException(TApplicationException.MISSING_RESULT, "submitBatches failed: unknown result")
+
 
 class Processor(Iface, TProcessor):
   def __init__(self, handler):
     self._handler = handler
     self._processMap = {}
-    self._processMap["emitZipkinBatch"] = Processor.process_emitZipkinBatch
-    self._processMap["emitBatch"] = Processor.process_emitBatch
+    self._processMap["submitBatches"] = Processor.process_submitBatches
 
   def process(self, iprot, oprot):
     (name, type, seqid) = iprot.readMessageBegin()
@@ -127,35 +119,33 @@ class Processor(Iface, TProcessor):
       return self._processMap[name](self, seqid, iprot, oprot)
 
   @gen.coroutine
-  def process_emitZipkinBatch(self, seqid, iprot, oprot):
-    args = emitZipkinBatch_args()
+  def process_submitBatches(self, seqid, iprot, oprot):
+    args = submitBatches_args()
     args.read(iprot)
     iprot.readMessageEnd()
-    yield gen.maybe_future(self._handler.emitZipkinBatch(args.spans))
-
-  @gen.coroutine
-  def process_emitBatch(self, seqid, iprot, oprot):
-    args = emitBatch_args()
-    args.read(iprot)
-    iprot.readMessageEnd()
-    yield gen.maybe_future(self._handler.emitBatch(args.batch))
+    result = submitBatches_result()
+    result.success = yield gen.maybe_future(self._handler.submitBatches(args.batches))
+    oprot.writeMessageBegin("submitBatches", TMessageType.REPLY, seqid)
+    result.write(oprot)
+    oprot.writeMessageEnd()
+    oprot.trans.flush()
 
 
 # HELPER FUNCTIONS AND STRUCTURES
 
-class emitZipkinBatch_args(object):
+class submitBatches_args(object):
   """
   Attributes:
-   - spans
+   - batches
   """
 
   thrift_spec = (
     None, # 0
-    (1, TType.LIST, 'spans', (TType.STRUCT,(zipkincore.ttypes.Span, zipkincore.ttypes.Span.thrift_spec)), None, ), # 1
+    (1, TType.LIST, 'batches', (TType.STRUCT,(Batch, Batch.thrift_spec)), None, ), # 1
   )
 
-  def __init__(self, spans=None,):
-    self.spans = spans
+  def __init__(self, batches=None,):
+    self.batches = batches
 
   def read(self, iprot):
     if iprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None and fastbinary is not None:
@@ -168,12 +158,12 @@ class emitZipkinBatch_args(object):
         break
       if fid == 1:
         if ftype == TType.LIST:
-          self.spans = []
-          (_etype3, _size0) = iprot.readListBegin()
-          for _i4 in xrange(_size0):
-            _elem5 = zipkincore.ttypes.Span()
-            _elem5.read(iprot)
-            self.spans.append(_elem5)
+          self.batches = []
+          (_etype45, _size42) = iprot.readListBegin()
+          for _i46 in xrange(_size42):
+            _elem47 = Batch()
+            _elem47.read(iprot)
+            self.batches.append(_elem47)
           iprot.readListEnd()
         else:
           iprot.skip(ftype)
@@ -186,12 +176,12 @@ class emitZipkinBatch_args(object):
     if oprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and self.thrift_spec is not None and fastbinary is not None:
       oprot.trans.write(fastbinary.encode_binary(self, (self.__class__, self.thrift_spec)))
       return
-    oprot.writeStructBegin('emitZipkinBatch_args')
-    if self.spans is not None:
-      oprot.writeFieldBegin('spans', TType.LIST, 1)
-      oprot.writeListBegin(TType.STRUCT, len(self.spans))
-      for iter6 in self.spans:
-        iter6.write(oprot)
+    oprot.writeStructBegin('submitBatches_args')
+    if self.batches is not None:
+      oprot.writeFieldBegin('batches', TType.LIST, 1)
+      oprot.writeListBegin(TType.STRUCT, len(self.batches))
+      for iter48 in self.batches:
+        iter48.write(oprot)
       oprot.writeListEnd()
       oprot.writeFieldEnd()
     oprot.writeFieldStop()
@@ -203,7 +193,7 @@ class emitZipkinBatch_args(object):
 
   def __hash__(self):
     value = 17
-    value = (value * 31) ^ hash(self.spans)
+    value = (value * 31) ^ hash(self.batches)
     return value
 
   def __repr__(self):
@@ -217,19 +207,18 @@ class emitZipkinBatch_args(object):
   def __ne__(self, other):
     return not (self == other)
 
-class emitBatch_args(object):
+class submitBatches_result(object):
   """
   Attributes:
-   - batch
+   - success
   """
 
   thrift_spec = (
-    None, # 0
-    (1, TType.STRUCT, 'batch', (jaeger.ttypes.Batch, jaeger.ttypes.Batch.thrift_spec), None, ), # 1
+    (0, TType.LIST, 'success', (TType.STRUCT,(BatchSubmitResponse, BatchSubmitResponse.thrift_spec)), None, ), # 0
   )
 
-  def __init__(self, batch=None,):
-    self.batch = batch
+  def __init__(self, success=None,):
+    self.success = success
 
   def read(self, iprot):
     if iprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None and fastbinary is not None:
@@ -240,10 +229,15 @@ class emitBatch_args(object):
       (fname, ftype, fid) = iprot.readFieldBegin()
       if ftype == TType.STOP:
         break
-      if fid == 1:
-        if ftype == TType.STRUCT:
-          self.batch = jaeger.ttypes.Batch()
-          self.batch.read(iprot)
+      if fid == 0:
+        if ftype == TType.LIST:
+          self.success = []
+          (_etype52, _size49) = iprot.readListBegin()
+          for _i53 in xrange(_size49):
+            _elem54 = BatchSubmitResponse()
+            _elem54.read(iprot)
+            self.success.append(_elem54)
+          iprot.readListEnd()
         else:
           iprot.skip(ftype)
       else:
@@ -255,10 +249,13 @@ class emitBatch_args(object):
     if oprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and self.thrift_spec is not None and fastbinary is not None:
       oprot.trans.write(fastbinary.encode_binary(self, (self.__class__, self.thrift_spec)))
       return
-    oprot.writeStructBegin('emitBatch_args')
-    if self.batch is not None:
-      oprot.writeFieldBegin('batch', TType.STRUCT, 1)
-      self.batch.write(oprot)
+    oprot.writeStructBegin('submitBatches_result')
+    if self.success is not None:
+      oprot.writeFieldBegin('success', TType.LIST, 0)
+      oprot.writeListBegin(TType.STRUCT, len(self.success))
+      for iter55 in self.success:
+        iter55.write(oprot)
+      oprot.writeListEnd()
       oprot.writeFieldEnd()
     oprot.writeFieldStop()
     oprot.writeStructEnd()
@@ -269,7 +266,7 @@ class emitBatch_args(object):
 
   def __hash__(self):
     value = 17
-    value = (value * 31) ^ hash(self.batch)
+    value = (value * 31) ^ hash(self.success)
     return value
 
   def __repr__(self):

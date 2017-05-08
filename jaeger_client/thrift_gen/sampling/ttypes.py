@@ -254,6 +254,7 @@ class PerOperationSamplingStrategies(object):
    - defaultSamplingProbability
    - defaultLowerBoundTracesPerSecond
    - perOperationStrategies
+   - defaultUpperBoundTracesPerSecond
   """
 
   thrift_spec = (
@@ -261,12 +262,14 @@ class PerOperationSamplingStrategies(object):
     (1, TType.DOUBLE, 'defaultSamplingProbability', None, None, ), # 1
     (2, TType.DOUBLE, 'defaultLowerBoundTracesPerSecond', None, None, ), # 2
     (3, TType.LIST, 'perOperationStrategies', (TType.STRUCT,(OperationSamplingStrategy, OperationSamplingStrategy.thrift_spec)), None, ), # 3
+    (4, TType.DOUBLE, 'defaultUpperBoundTracesPerSecond', None, None, ), # 4
   )
 
-  def __init__(self, defaultSamplingProbability=None, defaultLowerBoundTracesPerSecond=None, perOperationStrategies=None,):
+  def __init__(self, defaultSamplingProbability=None, defaultLowerBoundTracesPerSecond=None, perOperationStrategies=None, defaultUpperBoundTracesPerSecond=None,):
     self.defaultSamplingProbability = defaultSamplingProbability
     self.defaultLowerBoundTracesPerSecond = defaultLowerBoundTracesPerSecond
     self.perOperationStrategies = perOperationStrategies
+    self.defaultUpperBoundTracesPerSecond = defaultUpperBoundTracesPerSecond
 
   def read(self, iprot):
     if iprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None and fastbinary is not None:
@@ -298,6 +301,11 @@ class PerOperationSamplingStrategies(object):
           iprot.readListEnd()
         else:
           iprot.skip(ftype)
+      elif fid == 4:
+        if ftype == TType.DOUBLE:
+          self.defaultUpperBoundTracesPerSecond = iprot.readDouble()
+        else:
+          iprot.skip(ftype)
       else:
         iprot.skip(ftype)
       iprot.readFieldEnd()
@@ -323,6 +331,10 @@ class PerOperationSamplingStrategies(object):
         iter6.write(oprot)
       oprot.writeListEnd()
       oprot.writeFieldEnd()
+    if self.defaultUpperBoundTracesPerSecond is not None:
+      oprot.writeFieldBegin('defaultUpperBoundTracesPerSecond', TType.DOUBLE, 4)
+      oprot.writeDouble(self.defaultUpperBoundTracesPerSecond)
+      oprot.writeFieldEnd()
     oprot.writeFieldStop()
     oprot.writeStructEnd()
 
@@ -341,6 +353,7 @@ class PerOperationSamplingStrategies(object):
     value = (value * 31) ^ hash(self.defaultSamplingProbability)
     value = (value * 31) ^ hash(self.defaultLowerBoundTracesPerSecond)
     value = (value * 31) ^ hash(self.perOperationStrategies)
+    value = (value * 31) ^ hash(self.defaultUpperBoundTracesPerSecond)
     return value
 
   def __repr__(self):
