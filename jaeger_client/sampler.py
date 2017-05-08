@@ -249,19 +249,21 @@ class GuaranteedThroughputProbabilisticSampler(Sampler):
         self.probabilistic_sampler.close()
         self.lower_bound_sampler.close()
 
-    def  update(self, rate, min_samples_per_second, max_samples_per_second):
+    def update(self, rate, min_samples_per_second, max_samples_per_second):
         # (NB) This function should only be called while holding a Write lock.
         self.set_probabilistic_sampler(rate)
         if self.min_samples_per_second != min_samples_per_second:
             self.lower_bound_sampler = RateLimitingSampler(min_samples_per_second)
             self.min_samples_per_second = min_samples_per_second
         if self.max_samples_per_second != max_samples_per_second:
-            self.upper_bound_rate_limiter = RateLimiter(max_samples_per_second, max_samples_per_second)
+            self.upper_bound_rate_limiter = RateLimiter(max_samples_per_second,
+                                                        max_samples_per_second)
             self.max_samples_per_second = max_samples_per_second
 
     def __str__(self):
         return 'GuaranteedThroughputProbabilisticSampler(%s, %s, %s, %s)' \
-               % (self.operation, self.rate, self.min_samples_per_second, self.max_samples_per_second)
+               % (self.operation, self.rate, self.min_samples_per_second,
+                  self.max_samples_per_second)
 
 
 class AdaptiveSampler(Sampler):
@@ -276,8 +278,10 @@ class AdaptiveSampler(Sampler):
 
         self.default_sampling_probability = \
             strategies.get(DEFAULT_SAMPLING_PROBABILITY_STR, DEFAULT_SAMPLING_PROBABILITY)
-        self.min_samples_per_second = strategies.get(DEFAULT_LOWER_BOUND_STR, DEFAULT_MIN_SAMPLES_PER_SECOND)
-        self.max_samples_per_second = strategies.get(DEFAULT_UPPER_BOUND_STR, DEFAULT_MAX_SAMPLES_PER_SECOND)
+        self.min_samples_per_second = strategies.get(DEFAULT_LOWER_BOUND_STR,
+                                                     DEFAULT_MIN_SAMPLES_PER_SECOND)
+        self.max_samples_per_second = strategies.get(DEFAULT_UPPER_BOUND_STR,
+                                                     DEFAULT_MAX_SAMPLES_PER_SECOND)
         self.default_sampler = \
             ProbabilisticSampler(self.default_sampling_probability)
         self.max_operations = max_operations
@@ -310,8 +314,10 @@ class AdaptiveSampler(Sampler):
 
     def update(self, strategies):
         # (NB) This function should only be called while holding a Write lock.
-        self.min_samples_per_second = strategies.get(DEFAULT_LOWER_BOUND_STR, DEFAULT_MIN_SAMPLES_PER_SECOND)
-        self.max_samples_per_second = strategies.get(DEFAULT_UPPER_BOUND_STR, DEFAULT_MAX_SAMPLES_PER_SECOND)
+        self.min_samples_per_second = strategies.get(DEFAULT_LOWER_BOUND_STR,
+                                                     DEFAULT_MIN_SAMPLES_PER_SECOND)
+        self.max_samples_per_second = strategies.get(DEFAULT_UPPER_BOUND_STR,
+                                                     DEFAULT_MAX_SAMPLES_PER_SECOND)
         for strategy in strategies.get(STRATEGIES_STR, []):
             operation = strategy.get(OPERATION_STR)
             sampling_rate = get_sampling_probability(strategy)
@@ -324,8 +330,10 @@ class AdaptiveSampler(Sampler):
                     self.max_samples_per_second
                 )
             else:
-                sampler.update(sampling_rate, self.min_samples_per_second, self.max_samples_per_second)
-        sampling_rate = strategies.get(DEFAULT_SAMPLING_PROBABILITY_STR, DEFAULT_SAMPLING_PROBABILITY)
+                sampler.update(sampling_rate, self.min_samples_per_second,
+                               self.max_samples_per_second)
+        sampling_rate = strategies.get(DEFAULT_SAMPLING_PROBABILITY_STR,
+                                       DEFAULT_SAMPLING_PROBABILITY)
         if self.default_sampling_probability != sampling_rate:
             self.default_sampling_probability = sampling_rate
             self.default_sampler = \
