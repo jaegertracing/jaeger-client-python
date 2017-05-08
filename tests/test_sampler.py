@@ -152,7 +152,7 @@ def test_rate_limiting_sampler():
 
 
 def test_guaranteed_throughput_probabilistic_sampler():
-    sampler = GuaranteedThroughputProbabilisticSampler('op', 2, 0.5)
+    sampler = GuaranteedThroughputProbabilisticSampler('op', 0.5, 2, 3)
     sampled, tags = sampler.is_sampled(MAX_INT-10)
     assert sampled
     assert tags == get_tags('probabilistic', 0.5)
@@ -161,9 +161,9 @@ def test_guaranteed_throughput_probabilistic_sampler():
     assert tags == get_tags('lowerbound', 0.5)
     sampled, _ = sampler.is_sampled(MAX_INT+10)
     assert not sampled
-    assert '%s' % sampler == 'GuaranteedThroughputProbabilisticSampler(op, 0.5, 2)'
+    assert '%s' % sampler == 'GuaranteedThroughputProbabilisticSampler(op, 0.5, 2, 3)'
 
-    sampler.update(3, 0.51)
+    sampler.update(0.51, 3, 4)
     sampled, tags = sampler.is_sampled(MAX_INT-10)
     assert sampled
     assert tags == get_tags('probabilistic', 0.51)
@@ -171,7 +171,28 @@ def test_guaranteed_throughput_probabilistic_sampler():
     assert sampled
     assert tags == get_tags('lowerbound', 0.51)
 
-    assert '%s' % sampler == 'GuaranteedThroughputProbabilisticSampler(op, 0.51, 3)'
+    assert '%s' % sampler == 'GuaranteedThroughputProbabilisticSampler(op, 0.51, 3, 4)'
+    sampler.close()
+
+
+def test_guaranteed_throughput_probabilistic_sampler_upper_bound_rate_limiter():
+    sampler = GuaranteedThroughputProbabilisticSampler('op', 1, 1, 2)
+    sampled, tags = sampler.is_sampled(0)
+    assert sampled
+    assert tags == get_tags('probabilistic', 1)
+    sampled, tags = sampler.is_sampled(0)
+    assert sampled
+    assert tags == get_tags('probabilistic', 1)
+    # The max_samples_per_second is 2, so after this third call, the upper_bound_rate_limiter
+    # should be triggered and the sampling_rate should be halved.
+    sampled, tags = sampler.is_sampled(0)
+    assert sampled
+    assert tags == get_tags('probabilistic', 1)
+    assert '%s' % sampler == 'GuaranteedThroughputProbabilisticSampler(op, 0.5, 1, 2)'
+
+    # Updating the sampling rate should work
+    sampler.update(1, 1, 2)
+    assert '%s' % sampler == 'GuaranteedThroughputProbabilisticSampler(op, 1, 1, 2)'
     sampler.close()
 
 
@@ -179,6 +200,7 @@ def test_adaptive_sampler():
     strategies = {
         "defaultSamplingProbability":0.51,
         "defaultLowerBoundTracesPerSecond":3,
+        "defaultUpperBoundTracesPerSecond":4,
         "perOperationStrategies":
         [
             {
@@ -209,12 +231,13 @@ def test_adaptive_sampler():
     assert tags == get_tags('probabilistic', 0.51)
     sampled, _ = sampler.is_sampled(MAX_INT+(MAX_INT/4), "new_op_2")
     assert not sampled
-    assert '%s' % sampler == 'AdaptiveSampler(0.51, 3, 2)'
+    assert '%s' % sampler == 'AdaptiveSampler(0.51, 3, 4, 2)'
 
     # Update the strategies
     strategies = {
         "defaultSamplingProbability":0.52,
         "defaultLowerBoundTracesPerSecond":4,
+        "defaultUpperBoundTracesPerSecond":5,
         "perOperationStrategies":
         [
             {
@@ -242,22 +265,23 @@ def test_adaptive_sampler():
     sampled, tags = sampler.is_sampled(MAX_INT-10, 'new_op_3')
     assert sampled
     assert tags == get_tags('probabilistic', 0.53)
-    assert '%s' % sampler == 'AdaptiveSampler(0.52, 4, 2)'
+    assert '%s' % sampler == 'AdaptiveSampler(0.52, 4, 5, 2)'
 
     sampler.close()
 
 
 def test_adaptive_sampler_default_values():
     adaptive_sampler = AdaptiveSampler({}, 2)
-    assert '%s' % adaptive_sampler == 'AdaptiveSampler(0.001, 0.00166666666667, 2)', 'sampler should use default values'
+    assert '%s' % adaptive_sampler == 'AdaptiveSampler(0.001, 0.00166666666667, 2.0, 2)', 'sampler should use default values'
 
     sampled, tags = adaptive_sampler.is_sampled(0, 'op')
     assert sampled
     assert tags == get_tags('probabilistic', 0.001), 'should use default probability'
-    assert '%s' % adaptive_sampler.samplers['op'] == 'GuaranteedThroughputProbabilisticSampler(op, 0.001, 0.00166666666667)'
+    assert '%s' % adaptive_sampler.samplers['op'] == 'GuaranteedThroughputProbabilisticSampler(op, 0.001, 0.00166666666667, 2.0)'
 
     adaptive_sampler.update(strategies = {
         "defaultLowerBoundTracesPerSecond":4,
+        "defaultUpperBoundTracesPerSecond":5,
         "perOperationStrategies":
             [
                 {
@@ -268,19 +292,19 @@ def test_adaptive_sampler_default_values():
                 }
             ]
     })
-    assert '%s' % adaptive_sampler == 'AdaptiveSampler(0.001, 4, 2)'
+    assert '%s' % adaptive_sampler == 'AdaptiveSampler(0.001, 4, 5, 2)'
 
     sampled, tags = adaptive_sampler.is_sampled(0, 'new_op')
     assert sampled
     assert tags == get_tags('probabilistic', 0.002)
-    assert '%s' % adaptive_sampler.samplers['new_op'] == 'GuaranteedThroughputProbabilisticSampler(new_op, 0.002, 4)'
+    assert '%s' % adaptive_sampler.samplers['new_op'] == 'GuaranteedThroughputProbabilisticSampler(new_op, 0.002, 4, 5)'
 
     sampled, tags = adaptive_sampler.is_sampled(0, 'op')
     assert sampled
     assert tags == get_tags('probabilistic', 0.001)
-    # TODO ruh roh, the lowerbound isn't changed if the operation isn't included in perOperationStrategies
-    assert '%s' % adaptive_sampler.samplers['op'] == 'GuaranteedThroughputProbabilisticSampler(op, 0.001, 0.00166666666667)'
-
+    # TODO ruh roh, the min_samples_per_second and max_samples_per_second arent't changed if the operation isn't
+    # included in perOperationStrategies
+    assert '%s' % adaptive_sampler.samplers['op'] == 'GuaranteedThroughputProbabilisticSampler(op, 0.001, 0.00166666666667, 2.0)'
 
 
 def test_sampler_equality():
@@ -380,6 +404,7 @@ def test_sampling_request_callback():
         {
             "defaultSamplingProbability":0.001,
             "defaultLowerBoundTracesPerSecond":2,
+            "defaultUpperBoundTracesPerSecond":3,
             "perOperationStrategies":
             [
                 {
@@ -395,7 +420,7 @@ def test_sampling_request_callback():
     return_value.result = lambda *args: \
         type('obj', (object,), {'body': adaptive_sampling_strategy})()
     sampler._sampling_request_callback(return_value)
-    assert '%s' % sampler.sampler == 'AdaptiveSampler(0.001, 2, 10)', 'sampler should have changed to adaptive'
+    assert '%s' % sampler.sampler == 'AdaptiveSampler(0.001, 2, 3, 10)', 'sampler should have changed to adaptive'
     prev_sampler = sampler.sampler
 
     sampler._sampling_request_callback(return_value)
@@ -539,6 +564,7 @@ def test_update_sampler_adaptive_sampler():
         {
             "defaultSamplingProbability":0.001,
             "defaultLowerBoundTracesPerSecond":2,
+            "defaultUpperBoundTracesPerSecond":3,
             "perOperationStrategies":
             [
                 {
@@ -552,7 +578,7 @@ def test_update_sampler_adaptive_sampler():
     }
 
     remote_sampler._update_sampler(response)
-    assert '%s' % remote_sampler.sampler == 'AdaptiveSampler(0.001, 2, 10)'
+    assert '%s' % remote_sampler.sampler == 'AdaptiveSampler(0.001, 2, 3, 10)'
 
     new_response = {
         "strategyType":1,
@@ -560,6 +586,7 @@ def test_update_sampler_adaptive_sampler():
         {
             "defaultSamplingProbability":0.51,
             "defaultLowerBoundTracesPerSecond":3,
+            "defaultUpperBoundTracesPerSecond":4,
             "perOperationStrategies":
             [
                 {
@@ -573,14 +600,14 @@ def test_update_sampler_adaptive_sampler():
     }
 
     remote_sampler._update_sampler(new_response)
-    assert '%s' % remote_sampler.sampler == 'AdaptiveSampler(0.51, 3, 10)'
+    assert '%s' % remote_sampler.sampler == 'AdaptiveSampler(0.51, 3, 4, 10)'
 
     remote_sampler._update_sampler({"strategyType":0,"probabilisticSampling":{"samplingRate":0.004}})
     assert '%s' % remote_sampler.sampler == 'ProbabilisticSampler(0.004)', \
         'should not fail going from adaptive sampler to probabilistic sampler'
 
     remote_sampler._update_sampler({"strategyType":1,"operationSampling":{"defaultSamplingProbability":0.4}})
-    assert '%s' % remote_sampler.sampler == 'AdaptiveSampler(0.4, 0.00166666666667, 10)'
+    assert '%s' % remote_sampler.sampler == 'AdaptiveSampler(0.4, 0.00166666666667, 2.0, 10)'
 
     remote_sampler.close()
 

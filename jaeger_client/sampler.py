@@ -45,12 +45,14 @@ default_logger = logging.getLogger('jaeger_tracing')
 SAMPLER_TYPE_TAG_KEY = 'sampler.type'
 SAMPLER_PARAM_TAG_KEY = 'sampler.param'
 DEFAULT_SAMPLING_PROBABILITY = 0.001
-DEFAULT_LOWER_BOUND = 1.0 / (10.0 * 60.0)  # sample once every 10 minutes
+DEFAULT_MIN_SAMPLES_PER_SECOND = 1.0 / (10.0 * 60.0)  # sample once every 10 minutes
 DEFAULT_MAX_OPERATIONS = 2000
+DEFAULT_MAX_SAMPLES_PER_SECOND = 2.0
 
 STRATEGIES_STR = 'perOperationStrategies'
 OPERATION_STR = 'operation'
 DEFAULT_LOWER_BOUND_STR = 'defaultLowerBoundTracesPerSecond'
+DEFAULT_UPPER_BOUND_STR = 'defaultUpperBoundTracesPerSecond'
 PROBABILISTIC_SAMPLING_STR = 'probabilisticSampling'
 SAMPLING_RATE_STR = 'samplingRate'
 DEFAULT_SAMPLING_PROBABILITY_STR = 'defaultSamplingProbability'
@@ -194,34 +196,18 @@ class GuaranteedThroughputProbabilisticSampler(Sampler):
     ie. if is_sampled() for both samplers return true, the tags for
     ProbabilisticSampler will be used.
     """
-    def __init__(self, operation, lower_bound, rate):
-        super(GuaranteedThroughputProbabilisticSampler, self).__init__(
-            tags={
-                SAMPLER_TYPE_TAG_KEY: SAMPLER_TYPE_LOWER_BOUND,
-                SAMPLER_PARAM_TAG_KEY: rate,
-            }
-        )
-        self.probabilistic_sampler = ProbabilisticSampler(rate)
-        self.lower_bound_sampler = RateLimitingSampler(lower_bound)
+    def __init__(self, operation, rate, min_samples_per_second, max_samples_per_second):
+        super(GuaranteedThroughputProbabilisticSampler, self).__init__()
+        self.lower_bound_sampler = RateLimitingSampler(min_samples_per_second)
+        self.upper_bound_rate_limiter = RateLimiter(max_samples_per_second, max_samples_per_second)
         self.operation = operation
-        self.rate = rate
-        self.lower_bound = lower_bound
+        self.min_samples_per_second = min_samples_per_second
+        self.max_samples_per_second = max_samples_per_second
+        self.probabilistic_sampler = None
+        self.rate = None
+        self.set_probabilistic_sampler(rate)
 
-    def is_sampled(self, trace_id, operation=''):
-        sampled, tags = \
-            self.probabilistic_sampler.is_sampled(trace_id, operation)
-        if sampled:
-            self.lower_bound_sampler.is_sampled(trace_id, operation)
-            return True, tags
-        sampled, _ = self.lower_bound_sampler.is_sampled(trace_id, operation)
-        return sampled, self._tags
-
-    def close(self):
-        self.probabilistic_sampler.close()
-        self.lower_bound_sampler.close()
-
-    def update(self, lower_bound, rate):
-        # (NB) This function should only be called while holding a Write lock.
+    def set_probabilistic_sampler(self, rate):
         if self.rate != rate:
             self.probabilistic_sampler = ProbabilisticSampler(rate)
             self.rate = rate
@@ -229,13 +215,53 @@ class GuaranteedThroughputProbabilisticSampler(Sampler):
                 SAMPLER_TYPE_TAG_KEY: SAMPLER_TYPE_LOWER_BOUND,
                 SAMPLER_PARAM_TAG_KEY: rate,
             }
-        if self.lower_bound != lower_bound:
-            self.lower_bound_sampler = RateLimitingSampler(lower_bound)
-            self.lower_bound = lower_bound
+
+    def is_sampled(self, trace_id, operation=''):
+        # (NB) This function should only be called while holding a Write lock.
+        sampled, tags = \
+            self.probabilistic_sampler.is_sampled(trace_id, operation)
+        if sampled:
+            self.lower_bound_sampler.is_sampled(trace_id, operation)
+            if not self.upper_bound_rate_limiter.check_credit(1):
+                self.reduce_sampling_rate()
+            return True, tags
+        sampled, _ = self.lower_bound_sampler.is_sampled(trace_id, operation)
+        return sampled, self._tags
+
+    def reduce_sampling_rate(self):
+        """
+        Due to inherent latencies in the adaptive sampling feedback loop, the new probabilities
+        are not calculated and propagated in real time. In the worst case, sampling probabilities
+        can take up to 2 minutes to propagate to the corresponding client. This means that adaptive
+        sampling cannot react to fluctuations in traffic.
+
+        Under certain conditions, the sampling probability might increase to 100% (imagine having a
+        very low QPS operation). However, every now and then, this operation is hit with a ton of
+        traffic and all the requests are sampled before adaptive sampling can kick in and prevent
+        oversampling.
+
+        To prevent this, we reduce the sampling probability wherever the upper bound rate limiter
+        is triggered such that clients don't over sample during traffic spikes.
+        """
+        self.set_probabilistic_sampler(self.rate / 2.0)
+
+    def close(self):
+        self.probabilistic_sampler.close()
+        self.lower_bound_sampler.close()
+
+    def  update(self, rate, min_samples_per_second, max_samples_per_second):
+        # (NB) This function should only be called while holding a Write lock.
+        self.set_probabilistic_sampler(rate)
+        if self.min_samples_per_second != min_samples_per_second:
+            self.lower_bound_sampler = RateLimitingSampler(min_samples_per_second)
+            self.min_samples_per_second = min_samples_per_second
+        if self.max_samples_per_second != max_samples_per_second:
+            self.upper_bound_rate_limiter = RateLimiter(max_samples_per_second, max_samples_per_second)
+            self.max_samples_per_second = max_samples_per_second
 
     def __str__(self):
-        return 'GuaranteedThroughputProbabilisticSampler(%s, %s, %s)' \
-               % (self.operation, self.rate, self.lower_bound)
+        return 'GuaranteedThroughputProbabilisticSampler(%s, %s, %s, %s)' \
+               % (self.operation, self.rate, self.min_samples_per_second, self.max_samples_per_second)
 
 
 class AdaptiveSampler(Sampler):
@@ -248,34 +274,35 @@ class AdaptiveSampler(Sampler):
     def __init__(self, strategies, max_operations):
         super(AdaptiveSampler, self).__init__()
 
-        samplers = {}
-        for strategy in strategies.get(STRATEGIES_STR, []):
-            operation = strategy.get(OPERATION_STR)
-            sampler = GuaranteedThroughputProbabilisticSampler(
-                operation,
-                strategies.get(DEFAULT_LOWER_BOUND_STR, DEFAULT_LOWER_BOUND),
-                get_sampling_probability(strategy)
-            )
-            samplers[operation] = sampler
-
-        self.samplers = samplers
-        self.default_sampler = \
-            ProbabilisticSampler(strategies.get(DEFAULT_SAMPLING_PROBABILITY_STR,
-                                                DEFAULT_SAMPLING_PROBABILITY))
         self.default_sampling_probability = \
             strategies.get(DEFAULT_SAMPLING_PROBABILITY_STR, DEFAULT_SAMPLING_PROBABILITY)
-        self.lower_bound = strategies.get(DEFAULT_LOWER_BOUND_STR, DEFAULT_LOWER_BOUND)
+        self.min_samples_per_second = strategies.get(DEFAULT_LOWER_BOUND_STR, DEFAULT_MIN_SAMPLES_PER_SECOND)
+        self.max_samples_per_second = strategies.get(DEFAULT_UPPER_BOUND_STR, DEFAULT_MAX_SAMPLES_PER_SECOND)
+        self.default_sampler = \
+            ProbabilisticSampler(self.default_sampling_probability)
         self.max_operations = max_operations
 
+        self.samplers = {}
+        for strategy in strategies.get(STRATEGIES_STR, []):
+            operation = strategy.get(OPERATION_STR)
+            self.samplers[operation] = GuaranteedThroughputProbabilisticSampler(
+                operation,
+                get_sampling_probability(strategy),
+                self.min_samples_per_second,
+                self.max_samples_per_second,
+            )
+
     def is_sampled(self, trace_id, operation=''):
+        # (NB) This function should only be called while holding a Write lock.
         sampler = self.samplers.get(operation, None)
         if sampler is None:
             if len(self.samplers) >= self.max_operations:
                 return self.default_sampler.is_sampled(trace_id, operation)
             sampler = GuaranteedThroughputProbabilisticSampler(
                 operation,
-                self.lower_bound,
-                self.default_sampling_probability
+                self.default_sampling_probability,
+                self.min_samples_per_second,
+                self.max_samples_per_second
             )
             self.samplers[operation] = sampler
             return sampler.is_sampled(trace_id, operation)
@@ -283,25 +310,24 @@ class AdaptiveSampler(Sampler):
 
     def update(self, strategies):
         # (NB) This function should only be called while holding a Write lock.
+        self.min_samples_per_second = strategies.get(DEFAULT_LOWER_BOUND_STR, DEFAULT_MIN_SAMPLES_PER_SECOND)
+        self.max_samples_per_second = strategies.get(DEFAULT_UPPER_BOUND_STR, DEFAULT_MAX_SAMPLES_PER_SECOND)
         for strategy in strategies.get(STRATEGIES_STR, []):
             operation = strategy.get(OPERATION_STR)
-            lower_bound = strategies.get(DEFAULT_LOWER_BOUND_STR, DEFAULT_LOWER_BOUND)
             sampling_rate = get_sampling_probability(strategy)
             sampler = self.samplers.get(operation, None)
             if sampler is None:
-                sampler = GuaranteedThroughputProbabilisticSampler(
+                self.samplers[operation] = GuaranteedThroughputProbabilisticSampler(
                     operation,
-                    lower_bound,
-                    sampling_rate
+                    sampling_rate,
+                    self.min_samples_per_second,
+                    self.max_samples_per_second
                 )
-                self.samplers[operation] = sampler
             else:
-                sampler.update(lower_bound, sampling_rate)
-        self.lower_bound = strategies.get(DEFAULT_LOWER_BOUND_STR, DEFAULT_LOWER_BOUND)
-        if self.default_sampling_probability != strategies.get(DEFAULT_SAMPLING_PROBABILITY_STR,
-                                                               DEFAULT_SAMPLING_PROBABILITY):
-            self.default_sampling_probability = \
-                strategies.get(DEFAULT_SAMPLING_PROBABILITY_STR, DEFAULT_SAMPLING_PROBABILITY)
+                sampler.update(sampling_rate, self.min_samples_per_second, self.max_samples_per_second)
+        sampling_rate = strategies.get(DEFAULT_SAMPLING_PROBABILITY_STR, DEFAULT_SAMPLING_PROBABILITY)
+        if self.default_sampling_probability != sampling_rate:
+            self.default_sampling_probability = sampling_rate
             self.default_sampler = \
                 ProbabilisticSampler(self.default_sampling_probability)
 
@@ -310,9 +336,9 @@ class AdaptiveSampler(Sampler):
             sampler.close()
 
     def __str__(self):
-        return 'AdaptiveSampler(%s, %s, %s)' \
-               % (self.default_sampling_probability, self.lower_bound,
-                  self.max_operations)
+        return 'AdaptiveSampler(%s, %s, %s, %s)' \
+               % (self.default_sampling_probability, self.min_samples_per_second,
+                  self.max_samples_per_second, self.max_operations)
 
 
 class RemoteControlledSampler(Sampler):
@@ -482,8 +508,8 @@ def get_sampling_probability(strategy=None):
 
 def get_rate_limit(strategy=None):
     if not strategy:
-        return DEFAULT_LOWER_BOUND
+        return DEFAULT_MIN_SAMPLES_PER_SECOND
     rate_limit_strategy = strategy.get(RATE_LIMITING_SAMPLING_STR)
     if not rate_limit_strategy:
-        return DEFAULT_LOWER_BOUND
-    return rate_limit_strategy.get(MAX_TRACES_PER_SECOND_STR, DEFAULT_LOWER_BOUND)
+        return DEFAULT_MIN_SAMPLES_PER_SECOND
+    return rate_limit_strategy.get(MAX_TRACES_PER_SECOND_STR, DEFAULT_MIN_SAMPLES_PER_SECOND)
