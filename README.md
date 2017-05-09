@@ -19,6 +19,7 @@ pip install jaeger-client
 ```python
 import opentracing
 import logging
+import time
 from jaeger_client import Config
 
 if __name__ == "__main__":
@@ -41,6 +42,10 @@ if __name__ == "__main__":
     with opentracing.tracer.start_span('TestSpan') as span:
         span.log_event('test message', payload={'life': 42})
 
+        with opentracing.tracer.start_span('ChildSpan', child_of=span) as child_span:
+            span.log_event('down below')
+
+    time.sleep(2)   # yield to IOLoop to flush the spans
     tracer.close()  # flush any buffered spans
 ```
 
