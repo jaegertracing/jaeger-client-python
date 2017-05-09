@@ -16,24 +16,32 @@ pip install jaeger-client
 
 ## Getting Started
 
-(under construction)
-
-If your python code is already instrumented for OpenTracing,
-you can simply switch to Jaeger's implementation with:
-
 ```python
 import opentracing
+import logging
 from jaeger_client import Config
 
 if __name__ == "__main__":
-  config = Config(config={},  # usually read from some yaml config
-                  service_name='your-app-name')
-  tracer = config.initialize_tracer()
+    log_level = logging.DEBUG
+    logging.getLogger('').handlers = []
+    logging.basicConfig(format='%(asctime)s %(message)s', level=log_level)
 
-  with opentracing.tracer.start_span('TestSpan') as span:
-    span.log_event('test message', payload={'life': 42})
+    config = Config(
+        config={ # usually read from some yaml config
+            'sampler': {
+                'type': 'const',
+                'param': 1,
+            },
+            'logging': True,
+        },  
+        service_name='your-app-name',
+    )
+    tracer = config.initialize_tracer()
 
-  tracer.close()  # flush any buffered spans
+    with opentracing.tracer.start_span('TestSpan') as span:
+        span.log_event('test message', payload={'life': 42})
+
+    tracer.close()  # flush any buffered spans
 ```
 
 ## Configuration
