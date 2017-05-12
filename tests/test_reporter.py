@@ -28,7 +28,7 @@ import jaeger_client.reporter
 
 from concurrent.futures import Future
 from jaeger_client import Span, SpanContext
-from jaeger_client.metrics import Metrics
+from jaeger_client.metrics import MetricsFactory
 from jaeger_client.utils import ErrorReporter
 from tornado.ioloop import IOLoop
 from tornado.testing import AsyncTestCase, gen_test
@@ -117,16 +117,22 @@ FakeTrace = collections.namedtuple(
     'FakeTracer', ['ip_address', 'service_name'])
 
 
-class FakeMetrics(Metrics):
+class FakeMetricsFactory(MetricsFactory):
     def __init__(self):
-        super(FakeMetrics, self).__init__(
+        super(FakeMetricsFactory, self).__init__(
             count=self._incr_count
         )
         self.counters = {}
-        self.gauges = {}
 
-    def _incr_count(self, key, value):
+    def _incr_count(self, name, value, tags):
+        key = self._get_key(name, tags)
         self.counters[key] = value + self.counters.get(key, 0)
+
+    def _get_key(self, name, tags=None):
+        key = name
+        for k in sorted(tags.iterkeys()):
+            key = key + '|' + str(k) + '=' + str(tags[k])
+        return key
 
 
 class ReporterTest(AsyncTestCase):
@@ -148,7 +154,7 @@ class ReporterTest(AsyncTestCase):
                             io_loop=IOLoop.current(),
                             batch_size=batch_size,
                             flush_interval=flush,
-                            metrics=FakeMetrics(),
+                            metrics_factory=FakeMetricsFactory(),
                             error_reporter=HardErrorReporter(),
                             queue_capacity=queue_cap)
         sender = FakeSender()
@@ -178,25 +184,26 @@ class ReporterTest(AsyncTestCase):
         assert 1 == len(sender.futures)
 
         # send after close
-        assert Metrics.REPORTER_DROPPED not in reporter.metrics.counters
+        span_dropped_key = 'jaeger.spans|dropped=True'
+        assert span_dropped_key not in reporter.metrics_factory.counters
         reporter.report_span(self._new_span('1'))
-        assert 1 == reporter.metrics.counters[Metrics.REPORTER_DROPPED]
+        assert 1 == reporter.metrics_factory.counters[span_dropped_key]
 
     @gen_test
     def test_submit_failure(self):
         reporter, sender = self._new_reporter(batch_size=1)
-        reporter.error_reporter = ErrorReporter(
-            metrics=reporter.metrics, logger=logging.getLogger())
+        reporter.error_reporter = ErrorReporter(logger=logging.getLogger())
 
-        assert Metrics.REPORTER_FAILURE not in reporter.metrics.counters
+        reporter_failure_key = 'jaeger.spans|reported=False'
+        assert reporter_failure_key not in reporter.metrics_factory.counters
 
         # simulate exception in send
         reporter._send = mock.MagicMock(side_effect=ValueError())
         reporter.report_span(self._new_span('1'))
 
         yield self._wait_for(
-            lambda: Metrics.REPORTER_FAILURE in reporter.metrics.counters)
-        assert 1 == reporter.metrics.counters.get(Metrics.REPORTER_FAILURE)
+            lambda: reporter_failure_key in reporter.metrics_factory.counters)
+        assert 1 == reporter.metrics_factory.counters.get(reporter_failure_key)
 
         # silly test, for code coverage only
         yield reporter._submit([])
@@ -210,12 +217,13 @@ class ReporterTest(AsyncTestCase):
         assert 1 == len(sender.futures)
         # the consumer is blocked on a future, so won't drain the queue
         reporter.report_span(self._new_span('2'))
-        assert Metrics.REPORTER_DROPPED not in reporter.metrics.counters
+        span_dropped_key = 'jaeger.spans|dropped=True'
+        assert span_dropped_key not in reporter.metrics_factory.counters
         reporter.report_span(self._new_span('3'))
         yield self._wait_for(
-            lambda: Metrics.REPORTER_DROPPED in reporter.metrics.counters
+            lambda: span_dropped_key in reporter.metrics_factory.counters
         )
-        assert 1 == reporter.metrics.counters.get(Metrics.REPORTER_DROPPED)
+        assert 1 == reporter.metrics_factory.counters.get(span_dropped_key)
         # let it drain the queue
         sender.futures[0].set_result(1)
         yield self._wait_for(lambda: len(sender.futures) > 1)

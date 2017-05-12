@@ -30,7 +30,7 @@ from concurrent.futures import Future
 from .constants import DEFAULT_FLUSH_INTERVAL
 from . import thrift
 from . import ioloop_util
-from .metrics import Metrics
+from .metrics import MetricsFactory
 from .utils import ErrorReporter
 
 from thrift.protocol import TCompactProtocol
@@ -79,7 +79,7 @@ class Reporter(NullReporter):
     """Receives completed spans from Tracer and submits them out of process."""
     def __init__(self, channel, queue_capacity=100, batch_size=10,
                  flush_interval=DEFAULT_FLUSH_INTERVAL, io_loop=None,
-                 error_reporter=None, metrics=None, **kwargs):
+                 error_reporter=None, metrics_factory=None, **kwargs):
         """
         :param channel: a communication channel to jaeger-agent
         :param queue_capacity: how many spans we can hold in memory before
@@ -89,7 +89,7 @@ class Reporter(NullReporter):
         :param io_loop: which IOLoop to use. If None, try to get it from
             channel (only works if channel is tchannel.sync)
         :param error_reporter:
-        :param metrics:
+        :param metrics_factory:
         :param kwargs:
             'logger'
         :return:
@@ -99,8 +99,9 @@ class Reporter(NullReporter):
         self._channel = channel
         self.queue_capacity = queue_capacity
         self.batch_size = batch_size
-        self.metrics = metrics or Metrics()
-        self.error_reporter = error_reporter or ErrorReporter(self.metrics)
+        self.metrics_factory = metrics_factory or MetricsFactory()
+        self.metrics = ReporterMetrics(self.metrics_factory)
+        self.error_reporter = error_reporter or ErrorReporter()
         self.logger = kwargs.get('logger', default_logger)
         self.agent = Agent.Client(self._channel, self)
 
@@ -132,11 +133,11 @@ class Reporter(NullReporter):
             with self.stop_lock:
                 stopped = self.stopped
             if stopped:
-                self.metrics.count(Metrics.REPORTER_DROPPED, 1)
+                self.metrics.reporter_dropped.increment(1)
             else:
                 self.queue.put_nowait(span)
         except tornado.queues.QueueFull:
-            self.metrics.count(Metrics.REPORTER_DROPPED, 1)
+            self.metrics.reporter_dropped.increment(1)
 
     @tornado.gen.coroutine
     def _consume_queue(self):
@@ -182,14 +183,14 @@ class Reporter(NullReporter):
         try:
             spans = thrift.make_zipkin_spans(spans)
             yield self._send(spans)
-            self.metrics.count(Metrics.REPORTER_SUCCESS, len(spans))
+            self.metrics.reporter_success.increment(len(spans))
         except socket.error as e:
+            self.metrics.reporter_socket.increment(len(spans))
             self.error_reporter.error(
-                Metrics.REPORTER_SOCKET, len(spans),
                 'Failed to submit trace to jaeger-agent socket: %s', e)
         except Exception as e:
+            self.metrics.reporter_failure.increment(len(spans))
             self.error_reporter.error(
-                Metrics.REPORTER_FAILURE, len(spans),
                 'Failed to submit trace to jaeger-agent: %s', e)
 
     @tornado.gen.coroutine
@@ -219,6 +220,18 @@ class Reporter(NullReporter):
     def _flush(self):
         yield self.queue.put(self.stop)
         yield self.queue.join()
+
+
+class ReporterMetrics:
+    def __init__(self, metrics_factory):
+        self.reporter_success = \
+            metrics_factory.counter(name='jaeger.spans', tags={'reported': 'True'})
+        self.reporter_failure = \
+            metrics_factory.counter(name='jaeger.spans', tags={'reported': 'False'})
+        self.reporter_dropped = \
+            metrics_factory.counter(name='jaeger.spans', tags={'dropped': 'True'})
+        self.reporter_socket = \
+            metrics_factory.counter(name='jaeger.spans', tags={'socket_error': 'True'})
 
 
 class CompositeReporter(NullReporter):

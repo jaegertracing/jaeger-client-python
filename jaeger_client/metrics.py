@@ -21,69 +21,75 @@
 from __future__ import absolute_import
 
 
-class Metrics(object):
-    """Provides an abstraction of metrics reporting framework."""
+class MetricsFactory(object):
+    """Generates new metrics."""
 
-    # TODO do we want to automatically include host name?
-    prefix = 'jaeger'
-
-    TRACES_STARTED_SAMPLED = '%s.traces-started.sampled' % prefix
-    """Number of traces started by this tracer as sampled"""
-
-    TRACES_STARTED_NOT_SAMPLED = '%s.traces-started.not-sampled' % prefix
-    """Number of traces started by this tracer as not sampled"""
-
-    TRACES_JOINED_SAMPLED = '%s.traces-joined.sampled' % prefix
-    """Number of externally started sampled traces this tracer joined"""
-
-    TRACES_JOINED_NOT_SAMPLED = '%s.traces-joined.not-sampled' % prefix
-    """Number of externally started non-sampled traces this tracer joined"""
-
-    SPANS_SAMPLED = '%s.spans.sampled' % prefix
-    """Number of sampled spans started/finished by this tracer"""
-
-    SPANS_NOT_SAMPLED = '%s.spans.not-sampled' % prefix
-    """Number of not-sampled spans started/finished by this tracer"""
-
-    TRACER_DECODING_ERRORS = '%s.decoding.errors' % prefix
-    """Number of errors decoding tracing context"""
-
-    REPORTER_SUCCESS = '%s.spans.reported' % prefix
-    """Number of spans successfully reported"""
-
-    REPORTER_FAILURE = '%s.spans.failed' % prefix
-    """Number of spans in failed attempts to report"""
-
-    REPORTER_DROPPED = '%s.spans.dropped' % prefix
-    """Number of spans dropped from the reporter"""
-
-    REPORTER_SOCKET = '%s.spans.socket_error' % prefix
-    """Number of spans dropped due to socket error"""
-
-    REPORTER_QUEUE_LENGTH = '%s.queue_length' % prefix
-    """Current number of spans in the reporter queue"""
-
-    SAMPLER_ERRORS = '%s.sampler.errors' % prefix
-    """Number of times the Sampler failed to retrieve sampling strategy"""
-
-    def __init__(self, count=None, gauge=None):
+    def __init__(self, count=None, gauge=None, timing=None, tags=None):
         """
         :param count: function (key, value) to emit counters
         :param gauge: function (key, value) to emit gauges
+        :param timing: function (key, value) to emit timings
+        :param tags: {k:v} dictionary
         """
+        self.count = count
+        self.gauge = gauge
+        self.timing = timing
+        self.tags = tags
+
+    def counter(self, name, tags=None):
+        return Counter(name, self.merge_tags(tags), self.count)
+
+    def timer(self, name, tags=None):
+        return Timer(name, self.merge_tags(tags), self.timing)
+
+    def gauge(self, name, tags=None):
+        return Gauge(name, self.merge_tags(tags), self.gauge)
+
+    def merge_tags(self, tags=None):
+        if not self.tags:
+            return tags
+        tags_cpy = self.tags.copy()
+        tags_cpy.update(tags)
+        return tags_cpy
+
+
+class Counter(object):
+    def __init__(self, name, tags=None, count=None):
+        self.name = name
+        self.tags = tags
+
         self._count = count
-        self._gauge = gauge
         if not callable(self._count):
             self._count = None
+
+    def increment(self, value):
+        if self._count:
+            self._count(self.name, value, self.tags)
+
+
+class Timer(object):
+    def __init__(self, name, tags=None, timing=None):
+        self.name = name
+        self.tags = tags
+
+        self._timing = timing
+        if not callable(self._timing):
+            self._timing = None
+
+    def record(self, value):
+        if self._timing:
+            self._timing(self.name, value, self.tags)
+
+
+class Gauge(object):
+    def __init__(self, name, tags=None, gauge=None):
+        self.name = name
+        self.tags = tags
+
+        self._gauge = gauge
         if not callable(self._gauge):
             self._gauge = None
 
-    def count(self, key, value):
-        if self._count:
-            self._count(key, value)
-        # print('count', key, value)
-
-    def gauge(self, key, value):
+    def update(self, value):
         if self._gauge:
-            self._gauge(key, value)
-        # print('gauge', key, value)
+            self._gauge(self.name, value, self.tags)

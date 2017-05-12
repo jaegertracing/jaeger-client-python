@@ -47,7 +47,7 @@ from .constants import (
     BAGGAGE_HEADER_PREFIX,
     DEBUG_ID_HEADER_KEY,
 )
-from .metrics import Metrics
+from .metrics import MetricsFactory
 from .utils import get_boolean, ErrorReporter
 
 DEFAULT_REPORTING_PORT = 5775
@@ -81,7 +81,7 @@ class Config(object):
     _initialized = False
     _initialized_lock = threading.Lock()
 
-    def __init__(self, config, metrics=None, service_name=None):
+    def __init__(self, config, metrics_factory=None, service_name=None):
         """
         :param metrics: an instance of Metrics class, or None
         :param service_name: default service name.
@@ -89,16 +89,15 @@ class Config(object):
         """
         self.config = config
         if get_boolean(self.config.get('metrics', True), True):
-            self._metrics = metrics or Metrics()
+            self._metrics_factory = metrics_factory or MetricsFactory()
         else:
             # if metrics are explicitly disabled, use a dummy
-            self._metrics = Metrics()
+            self._metrics_factory = MetricsFactory()
         self._service_name = config.get('service_name', service_name)
         if self._service_name is None:
             raise ValueError('service_name required in the config or param')
 
         self._error_reporter = ErrorReporter(
-            metrics=self.metrics,
             logger=logger if self.logging else None,
         )
 
@@ -241,7 +240,7 @@ class Config(object):
                 channel=channel,
                 service_name=self.service_name,
                 logger=logger,
-                metrics=self.metrics,
+                metrics_factory=self._metrics_factory,
                 error_reporter=self.error_reporter,
                 sampling_refresh_interval=self.sampling_refresh_interval,
                 max_operations=self.max_operations)
@@ -253,7 +252,7 @@ class Config(object):
             batch_size=self.reporter_batch_size,
             flush_interval=self.reporter_flush_interval,
             logger=logger,
-            metrics=self.metrics,
+            metrics_factory=self._metrics_factory,
             error_reporter=self.error_reporter)
 
         if self.logging:
@@ -272,7 +271,7 @@ class Config(object):
             service_name=self.service_name,
             reporter=reporter,
             sampler=sampler,
-            metrics=self.metrics,
+            metrics_factory=self._metrics_factory,
             trace_id_header=self.trace_id_header,
             baggage_header_prefix=self.baggage_header_prefix,
             debug_id_header=self.debug_id_header,

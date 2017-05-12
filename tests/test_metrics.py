@@ -23,27 +23,50 @@ from __future__ import absolute_import
 import mock
 import unittest
 
-from jaeger_client.metrics import Metrics
+from jaeger_client.metrics import MetricsFactory, Counter, Timer, Gauge
 
 
 class MetricsTests(unittest.TestCase):
 
     def test_count_func_called(self):
         m = mock.MagicMock()
-        metrics = Metrics(count=m)
-        metrics.count('foo', 1)
-        assert m.called_with('foo', 1)
+        counter = Counter(name='foo', tags=None, count=m)
+        counter.increment(1)
+        assert m.called_with('foo', 1, None)
 
     def test_gauge_func_called(self):
         m = mock.MagicMock()
-        metrics = Metrics(gauge=m)
-        metrics.gauge('foo', 1)
-        assert m.call_args == (('foo', 1),)
+        gauge = Gauge(name='foo', tags=None, gauge=m)
+        gauge.update(1)
+        assert m.called_with('foo', 1, None)
+
+    def test_timing_func_called(self):
+        m = mock.MagicMock()
+        timer = Timer(name='foo', tags=None, timing=m)
+        timer.record(1)
+        assert m.called_with('foo', 1, None)
 
     def test_count_func_noops_if_given_uncallable_count_found(self):
-        metrics = Metrics(count=123)
-        metrics.count('foo', 1)
+        counter = Counter(name='foo', tags=None, count=123)
+        counter.increment(1)
 
     def test_gauge_func_noops_if_given_uncallable_gauge_found(self):
-        metrics = Metrics(gauge=123)
-        metrics.gauge('foo', 1)
+        gauge = Gauge(name='foo', tags=None, gauge=123)
+        gauge.update(1)
+
+    def test_timing_func_noops_if_given_uncallable_timing_found(self):
+        timer = Timer(name='foo', tags=None, timing=123)
+        timer.record(1)
+
+    def test_tags(self):
+        m = mock.MagicMock()
+        mf = MetricsFactory(count=m, tags={'k':'v', 'a':'b'})
+        counter = mf.counter(name='foo', tags={'a':'c'})
+        counter.increment(1)
+        assert m.called_with('foo', 1, {'k':'v', 'a':'c'}), \
+            'metric tag should overwrite global tag'
+
+        mf = MetricsFactory(count=m)
+        counter = mf.counter(name='foo', tags={'a':'c'})
+        counter.increment(1)
+        assert m.called_with('foo', 1, {'a':'c'})

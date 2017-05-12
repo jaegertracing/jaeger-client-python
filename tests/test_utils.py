@@ -62,17 +62,17 @@ class ConfigTests(unittest.TestCase):
 
     def test_error_reporter_doesnt_send_log_messages_if_before_deadline(self):
         mock_logger = mock.MagicMock()
-        er = utils.ErrorReporter(None, logger=mock_logger, log_interval_minutes=1000)
+        er = utils.ErrorReporter(logger=mock_logger, log_interval_minutes=1000)
         er.error('foo', 1)
         assert not mock_logger.error.called
 
     def test_error_reporter_sends_log_messages_if_after_deadline(self):
         mock_logger = mock.MagicMock()
         # 0 log interval means we're always after the deadline, so always log
-        er = utils.ErrorReporter(None, logger=mock_logger, log_interval_minutes=0)
+        er = utils.ErrorReporter(logger=mock_logger, log_interval_minutes=0)
         er._last_error_reported_at=0
         er.error('foo', 1, 'error args')
-        assert mock_logger.error.call_args == (('error args',),)
+        assert mock_logger.error.call_args == (('foo', 1, 'error args',),)
 
 
 def test_local_ip_does_not_blow_up():
