@@ -37,3 +37,4 @@ from .sampler import ConstSampler  # noqa
 from .sampler import ProbabilisticSampler  # noqa
 from .sampler import RateLimitingSampler  # noqa
 from .sampler import RemoteControlledSampler  # noqa
+from .metrics import Metrics  # noqa
