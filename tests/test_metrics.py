@@ -21,52 +21,94 @@
 from __future__ import absolute_import
 
 import mock
-import unittest
+import pytest
 
-from jaeger_client.metrics import MetricsFactory, Counter, Timer, Gauge
+from jaeger_client.metrics import MetricsFactory, NoopMetricsFactory, Metrics,\
+    LegacyMetricsFactory
 
 
-class MetricsTests(unittest.TestCase):
+def test_metrics_factory():
+    mf = MetricsFactory()
+    with pytest.raises(NotImplementedError):
+        mf.counter('foo')
+    with pytest.raises(NotImplementedError):
+        mf.timer('foo')
+    with pytest.raises(NotImplementedError):
+        mf.gauge('foo')
 
-    def test_count_func_called(self):
-        m = mock.MagicMock()
-        counter = Counter(name='foo', tags=None, count=m)
-        counter.increment(1)
-        assert m.called_with('foo', 1, None)
 
-    def test_gauge_func_called(self):
-        m = mock.MagicMock()
-        gauge = Gauge(name='foo', tags=None, gauge=m)
-        gauge.update(1)
-        assert m.called_with('foo', 1, None)
+def test_noop_metrics_factory():
+    mf = NoopMetricsFactory()
+    mf.counter('foo')(1)
+    mf.timer('foo')(1)
+    mf.gauge('foo')(1)
 
-    def test_timing_func_called(self):
-        m = mock.MagicMock()
-        timer = Timer(name='foo', tags=None, timing=m)
-        timer.record(1)
-        assert m.called_with('foo', 1, None)
 
-    def test_count_func_noops_if_given_uncallable_count_found(self):
-        counter = Counter(name='foo', tags=None, count=123)
-        counter.increment(1)
+def test_metrics_count_func_called():
+    m = mock.MagicMock()
+    metrics = Metrics(count=m)
+    metrics.count('foo', 1)
+    assert m.call_args == (('foo', 1),)
 
-    def test_gauge_func_noops_if_given_uncallable_gauge_found(self):
-        gauge = Gauge(name='foo', tags=None, gauge=123)
-        gauge.update(1)
 
-    def test_timing_func_noops_if_given_uncallable_timing_found(self):
-        timer = Timer(name='foo', tags=None, timing=123)
-        timer.record(1)
+def test_metrics_timing_func_called():
+    m = mock.MagicMock()
+    metrics = Metrics(timing=m)
+    metrics.timing('foo', 1)
+    assert m.call_args == (('foo', 1),)
 
-    def test_tags(self):
-        m = mock.MagicMock()
-        mf = MetricsFactory(count=m, tags={'k':'v', 'a':'b'})
-        counter = mf.counter(name='foo', tags={'a':'c'})
-        counter.increment(1)
-        assert m.called_with('foo', 1, {'k':'v', 'a':'c'}), \
-            'metric tag should overwrite global tag'
 
-        mf = MetricsFactory(count=m)
-        counter = mf.counter(name='foo', tags={'a':'c'})
-        counter.increment(1)
-        assert m.called_with('foo', 1, {'a':'c'})
+def test_metrics_gauge_func_called():
+    m = mock.MagicMock()
+    metrics = Metrics(gauge=m)
+    metrics.gauge('foo', 1)
+    assert m.call_args == (('foo', 1),)
+
+
+def test_metrics_count_func_noops_if_given_uncallable_count_found():
+    metrics = Metrics(count=123)
+    metrics.count('foo', 1)
+
+
+def test_metrics_timing_func_noops_if_given_uncallable_timing_found():
+    metrics = Metrics(timing=123)
+    metrics.timing('foo', 1)
+
+
+def test_metrics_gauge_func_noops_if_given_uncallable_gauge_found():
+    metrics = Metrics(gauge=123)
+    metrics.gauge('foo', 1)
+
+
+def test_legacy_metrics_factory():
+    cm = mock.MagicMock()
+    tm = mock.MagicMock()
+    gm = mock.MagicMock()
+    mf = LegacyMetricsFactory(Metrics(count=cm, timing=tm, gauge=gm),
+                              tags={'k':'v', 'a':'placeholder'})
+    counter = mf.counter(name='foo', tags={'a':'counter'})
+    counter(1)
+    assert cm.call_args == (('foo|a=counter|k=v', 1),), \
+        'metric tag should overwrite global tag'
+
+    gauge = mf.gauge(name='bar', tags={'a':'gauge'})
+    gauge(2)
+    assert gm.call_args == (('bar|a=gauge|k=v', 2),), \
+        'metric tag should overwrite global tag'
+
+    timing = mf.timer(name='rawr', tags={'a':'timer'})
+    timing(3)
+    assert tm.call_args(('rawr|a=timer|k=v', 3),), \
+        'metric tag should overwrite global tag'
+
+
+def test_legacy_metrics_factory_noop():
+    mf = LegacyMetricsFactory(Metrics())
+    counter = mf.counter(name='foo', tags={'a':'counter'})
+    counter(1)
+
+    gauge = mf.gauge(name='bar', tags={'a':'gauge'})
+    gauge(2)
+
+    timing = mf.timer(name='rawr', tags={'a':'timer'})
+    timing(3)

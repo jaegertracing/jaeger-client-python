@@ -47,7 +47,7 @@ from .constants import (
     BAGGAGE_HEADER_PREFIX,
     DEBUG_ID_HEADER_KEY,
 )
-from .metrics import MetricsFactory
+from .metrics import LegacyMetricsFactory, NoopMetricsFactory, Metrics
 from .utils import get_boolean, ErrorReporter
 
 DEFAULT_REPORTING_PORT = 5775
@@ -81,7 +81,7 @@ class Config(object):
     _initialized = False
     _initialized_lock = threading.Lock()
 
-    def __init__(self, config, metrics_factory=None, service_name=None):
+    def __init__(self, config, metrics=None, service_name=None, metrics_factory=None):
         """
         :param metrics: an instance of Metrics class, or None
         :param service_name: default service name.
@@ -89,10 +89,10 @@ class Config(object):
         """
         self.config = config
         if get_boolean(self.config.get('metrics', True), True):
-            self._metrics_factory = metrics_factory or MetricsFactory()
+            self._metrics_factory = metrics_factory or LegacyMetricsFactory(metrics or Metrics())
         else:
             # if metrics are explicitly disabled, use a dummy
-            self._metrics_factory = MetricsFactory()
+            self._metrics_factory = NoopMetricsFactory()
         self._service_name = config.get('service_name', service_name)
         if self._service_name is None:
             raise ValueError('service_name required in the config or param')

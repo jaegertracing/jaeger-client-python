@@ -30,7 +30,7 @@ from concurrent.futures import Future
 from .constants import DEFAULT_FLUSH_INTERVAL
 from . import thrift
 from . import ioloop_util
-from .metrics import MetricsFactory
+from .metrics import NoopMetricsFactory
 from .utils import ErrorReporter
 
 from thrift.protocol import TCompactProtocol
@@ -99,7 +99,7 @@ class Reporter(NullReporter):
         self._channel = channel
         self.queue_capacity = queue_capacity
         self.batch_size = batch_size
-        self.metrics_factory = metrics_factory or MetricsFactory()
+        self.metrics_factory = metrics_factory or NoopMetricsFactory()
         self.metrics = ReporterMetrics(self.metrics_factory)
         self.error_reporter = error_reporter or ErrorReporter()
         self.logger = kwargs.get('logger', default_logger)
@@ -133,11 +133,11 @@ class Reporter(NullReporter):
             with self.stop_lock:
                 stopped = self.stopped
             if stopped:
-                self.metrics.reporter_dropped.increment(1)
+                self.metrics.reporter_dropped(1)
             else:
                 self.queue.put_nowait(span)
         except tornado.queues.QueueFull:
-            self.metrics.reporter_dropped.increment(1)
+            self.metrics.reporter_dropped(1)
 
     @tornado.gen.coroutine
     def _consume_queue(self):
@@ -183,13 +183,13 @@ class Reporter(NullReporter):
         try:
             spans = thrift.make_zipkin_spans(spans)
             yield self._send(spans)
-            self.metrics.reporter_success.increment(len(spans))
+            self.metrics.reporter_success(len(spans))
         except socket.error as e:
-            self.metrics.reporter_socket.increment(len(spans))
+            self.metrics.reporter_socket(len(spans))
             self.error_reporter.error(
                 'Failed to submit trace to jaeger-agent socket: %s', e)
         except Exception as e:
-            self.metrics.reporter_failure.increment(len(spans))
+            self.metrics.reporter_failure(len(spans))
             self.error_reporter.error(
                 'Failed to submit trace to jaeger-agent: %s', e)
 
@@ -225,13 +225,13 @@ class Reporter(NullReporter):
 class ReporterMetrics:
     def __init__(self, metrics_factory):
         self.reporter_success = \
-            metrics_factory.counter(name='jaeger.spans', tags={'reported': 'True'})
+            metrics_factory.counter(name='jaeger.spans', tags={'reported': 'true'})
         self.reporter_failure = \
-            metrics_factory.counter(name='jaeger.spans', tags={'reported': 'False'})
+            metrics_factory.counter(name='jaeger.spans', tags={'reported': 'false'})
         self.reporter_dropped = \
-            metrics_factory.counter(name='jaeger.spans', tags={'dropped': 'True'})
+            metrics_factory.counter(name='jaeger.spans', tags={'dropped': 'true'})
         self.reporter_socket = \
-            metrics_factory.counter(name='jaeger.spans', tags={'socket_error': 'True'})
+            metrics_factory.counter(name='jaeger.spans', tags={'socket_error': 'true'})
 
 
 class CompositeReporter(NullReporter):

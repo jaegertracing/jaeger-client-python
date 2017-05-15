@@ -28,7 +28,7 @@ import jaeger_client.reporter
 
 from concurrent.futures import Future
 from jaeger_client import Span, SpanContext
-from jaeger_client.metrics import MetricsFactory
+from jaeger_client.metrics import LegacyMetricsFactory, Metrics
 from jaeger_client.utils import ErrorReporter
 from tornado.ioloop import IOLoop
 from tornado.testing import AsyncTestCase, gen_test
@@ -117,22 +117,15 @@ FakeTrace = collections.namedtuple(
     'FakeTracer', ['ip_address', 'service_name'])
 
 
-class FakeMetricsFactory(MetricsFactory):
+class FakeMetricsFactory(LegacyMetricsFactory):
     def __init__(self):
         super(FakeMetricsFactory, self).__init__(
-            count=self._incr_count
+            Metrics(count=self._incr_count)
         )
         self.counters = {}
 
-    def _incr_count(self, name, value, tags):
-        key = self._get_key(name, tags)
+    def _incr_count(self, key, value):
         self.counters[key] = value + self.counters.get(key, 0)
-
-    def _get_key(self, name, tags=None):
-        key = name
-        for k in sorted(tags.iterkeys()):
-            key = key + '|' + str(k) + '=' + str(tags[k])
-        return key
 
 
 class ReporterTest(AsyncTestCase):
@@ -184,7 +177,7 @@ class ReporterTest(AsyncTestCase):
         assert 1 == len(sender.futures)
 
         # send after close
-        span_dropped_key = 'jaeger.spans|dropped=True'
+        span_dropped_key = 'jaeger.spans|dropped=true'
         assert span_dropped_key not in reporter.metrics_factory.counters
         reporter.report_span(self._new_span('1'))
         assert 1 == reporter.metrics_factory.counters[span_dropped_key]
@@ -194,7 +187,7 @@ class ReporterTest(AsyncTestCase):
         reporter, sender = self._new_reporter(batch_size=1)
         reporter.error_reporter = ErrorReporter(logger=logging.getLogger())
 
-        reporter_failure_key = 'jaeger.spans|reported=False'
+        reporter_failure_key = 'jaeger.spans|reported=false'
         assert reporter_failure_key not in reporter.metrics_factory.counters
 
         # simulate exception in send
@@ -217,7 +210,7 @@ class ReporterTest(AsyncTestCase):
         assert 1 == len(sender.futures)
         # the consumer is blocked on a future, so won't drain the queue
         reporter.report_span(self._new_span('2'))
-        span_dropped_key = 'jaeger.spans|dropped=True'
+        span_dropped_key = 'jaeger.spans|dropped=true'
         assert span_dropped_key not in reporter.metrics_factory.counters
         reporter.report_span(self._new_span('3'))
         yield self._wait_for(

@@ -33,7 +33,7 @@ from .constants import (
     SAMPLER_TYPE_RATE_LIMITING,
     SAMPLER_TYPE_LOWER_BOUND,
 )
-from .metrics import MetricsFactory
+from .metrics import NoopMetricsFactory
 from .utils import ErrorReporter
 from .rate_limiter import RateLimiter
 from jaeger_client.thrift_gen.sampling import (
@@ -341,8 +341,8 @@ class RemoteControlledSampler(Sampler):
         self.sampler = kwargs.get('init_sampler')
         self.sampling_refresh_interval = \
             kwargs.get('sampling_refresh_interval', DEFAULT_SAMPLING_INTERVAL)
-        self.metrics_factory = kwargs.get('metrics_factory', None) or MetricsFactory()
-        self.sampler_errors = self.metrics_factory.counter('jaeger.sampler', {'error': 'True'})
+        self.metrics_factory = kwargs.get('metrics_factory', None) or NoopMetricsFactory()
+        self.sampler_errors = self.metrics_factory.counter('jaeger.sampler', {'error': 'true'})
         self.error_reporter = kwargs.get('error_reporter') or \
             ErrorReporter()
         self.max_operations = kwargs.get('max_operations', DEFAULT_MAX_OPERATIONS)
@@ -403,7 +403,7 @@ class RemoteControlledSampler(Sampler):
     def _sampling_request_callback(self, future):
         exception = future.exception()
         if exception:
-            self.sampler_errors.increment(1)
+            self.sampler_errors(1)
             self.error_reporter.error(
                 'Fail to get sampling strategy from jaeger-agent: %s',
                 exception)
@@ -413,7 +413,7 @@ class RemoteControlledSampler(Sampler):
         try:
             sampling_strategies_response = json.loads(response.body)
         except Exception as e:
-            self.sampler_errors.increment(1)
+            self.sampler_errors(1)
             self.error_reporter.error(
                 'Fail to parse sampling strategy '
                 'from jaeger-agent: %s [%s]', e, response.body)
@@ -430,7 +430,7 @@ class RemoteControlledSampler(Sampler):
                 else:
                     self._update_rate_limiting_or_probabilistic_sampler(response)
             except Exception as e:
-                self.sampler_errors.increment(1)
+                self.sampler_errors(1)
                 self.error_reporter.error(
                     'Fail to update sampler'
                     'from jaeger-agent: %s [%s]', e, response)
