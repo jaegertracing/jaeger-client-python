@@ -87,8 +87,14 @@ def test_legacy_metrics_factory():
 
     timing = mf.create_timer(name='rawr', tags={'a':'timer'})
     timing(3)
-    assert tm.call_args(('rawr|a=timer|k=v', 3),), \
+    assert tm.call_args == (('rawr|a=timer|k=v', 3),), \
         'metric tag should overwrite global tag'
+
+    mf = LegacyMetricsFactory(Metrics(timing=tm))
+    timing = mf.create_timer(name='wow')
+    timing(4)
+    assert tm.call_args == (('wow', 4),), \
+        'building a timer with no tags should work'
 
 
 def test_legacy_metrics_factory_noop():

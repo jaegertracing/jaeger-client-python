@@ -101,7 +101,9 @@ class LegacyMetricsFactory(MetricsFactory):
             return self._metrics.gauge(key, value)
         return update
 
-    def _get_key(self, name, tags={}):
+    def _get_key(self, name, tags=None):
+        if not tags:
+            return name
         key = name
         for k in sorted(tags.iterkeys()):
             key = key + '|' + str(k) + '=' + str(tags[k])
