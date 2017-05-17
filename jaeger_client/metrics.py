@@ -24,23 +24,8 @@ from __future__ import absolute_import
 class MetricsFactory(object):
     """Generates new metrics."""
 
-    def __init__(self, count=None, gauge=None, timing=None, tags=None):
-        """
-        :param count: function to emit counters
-        :param gauge: function to emit gauges
-        :param timing: function to emit timers
-        :param tags: global {k:v} dictionary
-        """
-        self._count = count
-        self._gauge = gauge
-        self._timing = timing
+    def __init__(self, tags=None):
         self._tags = tags
-        if not callable(self._count):
-            self._count = self._noop
-        if not callable(self._gauge):
-            self._gauge = self._noop
-        if not callable(self._timing):
-            self._timing = self._noop
 
     def _noop(self, *args):
         pass
@@ -54,9 +39,7 @@ class MetricsFactory(object):
         :return: a callable function which takes the value to increase
         the counter by ie. def increment(value)
         """
-        def increment(value):
-            return self._noop()
-        return increment
+        return self._noop
 
     def create_timer(self, name, tags=None):
         """
@@ -67,9 +50,7 @@ class MetricsFactory(object):
         :return: a callable function which takes the duration to
         record ie. def record(duration)
         """
-        def record(value):
-            return self._noop()
-        return record
+        return self._noop
 
     def create_gauge(self, name, tags=None):
         """
@@ -80,9 +61,7 @@ class MetricsFactory(object):
         :return: a callable function which takes the value to update
         the gauge with ie. def update(value)
         """
-        def update(value):
-            return self._noop()
-        return update
+        return self._noop
 
     def _merge_tags(self, tags=None):
         if not self._tags:
@@ -97,34 +76,32 @@ class LegacyMetricsFactory(MetricsFactory):
 
     def __init__(self, metrics, tags=None):
         super(LegacyMetricsFactory, self).__init__(
-            count=metrics.count,
-            gauge=metrics.gauge,
-            timing=metrics.timing,
             tags=tags
         )
+        self._metrics = metrics
 
     def create_counter(self, name, tags=None):
         key = self._get_key(name, self._merge_tags(tags))
 
         def increment(value):
-            return self._count(key, value)
+            return self._metrics.count(key, value)
         return increment
 
     def create_timer(self, name, tags=None):
         key = self._get_key(name, self._merge_tags(tags))
 
         def record(value):
-            return self._timing(key, value)
+            return self._metrics.timing(key, value)
         return record
 
     def create_gauge(self, name, tags=None):
         key = self._get_key(name, self._merge_tags(tags))
 
         def update(value):
-            return self._gauge(key, value)
+            return self._metrics.gauge(key, value)
         return update
 
-    def _get_key(self, name, tags=None):
+    def _get_key(self, name, tags={}):
         key = name
         for k in sorted(tags.iterkeys()):
             key = key + '|' + str(k) + '=' + str(tags[k])
