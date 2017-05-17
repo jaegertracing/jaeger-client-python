@@ -36,11 +36,11 @@ class MetricsFactory(object):
         self._timing = timing
         self._tags = tags
         if not callable(self._count):
-            self._count = None
+            self._count = _noop
         if not callable(self._gauge):
-            self._gauge = None
+            self._gauge = _noop
         if not callable(self._timing):
-            self._timing = None
+            self._timing = _noop
 
     def counter(self, name, tags=None):
         """
@@ -156,20 +156,20 @@ class Metrics(object):
         self._gauge = gauge
         self._timing = timing
         if not callable(self._count):
-            self._count = None
+            self._count = _noop
         if not callable(self._gauge):
-            self._gauge = None
+            self._gauge = _noop
         if not callable(self._timing):
-            self._timing = None
+            self._timing = _noop
 
     def count(self, key, value):
-        if self._count:
-            self._count(key, value)
+        self._count(key, value)
 
     def timing(self, key, value):
-        if self._timing:
-            self._timing(key, value)
+        self._timing(key, value)
 
     def gauge(self, key, value):
-        if self._gauge:
-            self._gauge(key, value)
+        self._gauge(key, value)
+
+def _noop(*args):
+    pass
