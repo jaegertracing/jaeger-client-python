@@ -21,27 +21,16 @@
 from __future__ import absolute_import
 
 import mock
-import pytest
 
-from jaeger_client.metrics import MetricsFactory, NoopMetricsFactory, Metrics,\
+from jaeger_client.metrics import MetricsFactory, Metrics,\
     LegacyMetricsFactory
 
 
-def test_metrics_factory():
+def test_metrics_factory_noop():
     mf = MetricsFactory()
-    with pytest.raises(NotImplementedError):
-        mf.counter('foo')
-    with pytest.raises(NotImplementedError):
-        mf.timer('foo')
-    with pytest.raises(NotImplementedError):
-        mf.gauge('foo')
-
-
-def test_noop_metrics_factory():
-    mf = NoopMetricsFactory()
-    mf.counter('foo')(1)
-    mf.timer('foo')(1)
-    mf.gauge('foo')(1)
+    mf.create_counter('foo')(1)
+    mf.create_timer('foo')(1)
+    mf.create_gauge('foo')(1)
 
 
 def test_metrics_count_func_called():
@@ -86,17 +75,17 @@ def test_legacy_metrics_factory():
     gm = mock.MagicMock()
     mf = LegacyMetricsFactory(Metrics(count=cm, timing=tm, gauge=gm),
                               tags={'k':'v', 'a':'placeholder'})
-    counter = mf.counter(name='foo', tags={'a':'counter'})
+    counter = mf.create_counter(name='foo', tags={'a':'counter'})
     counter(1)
     assert cm.call_args == (('foo|a=counter|k=v', 1),), \
         'metric tag should overwrite global tag'
 
-    gauge = mf.gauge(name='bar', tags={'a':'gauge'})
+    gauge = mf.create_gauge(name='bar', tags={'a':'gauge'})
     gauge(2)
     assert gm.call_args == (('bar|a=gauge|k=v', 2),), \
         'metric tag should overwrite global tag'
 
-    timing = mf.timer(name='rawr', tags={'a':'timer'})
+    timing = mf.create_timer(name='rawr', tags={'a':'timer'})
     timing(3)
     assert tm.call_args(('rawr|a=timer|k=v', 3),), \
         'metric tag should overwrite global tag'
@@ -104,11 +93,11 @@ def test_legacy_metrics_factory():
 
 def test_legacy_metrics_factory_noop():
     mf = LegacyMetricsFactory(Metrics())
-    counter = mf.counter(name='foo', tags={'a':'counter'})
+    counter = mf.create_counter(name='foo', tags={'a':'counter'})
     counter(1)
 
-    gauge = mf.gauge(name='bar', tags={'a':'gauge'})
+    gauge = mf.create_gauge(name='bar', tags={'a':'gauge'})
     gauge(2)
 
-    timing = mf.timer(name='rawr', tags={'a':'timer'})
+    timing = mf.create_timer(name='rawr', tags={'a':'timer'})
     timing(3)

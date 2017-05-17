@@ -47,7 +47,7 @@ from .constants import (
     BAGGAGE_HEADER_PREFIX,
     DEBUG_ID_HEADER_KEY,
 )
-from .metrics import LegacyMetricsFactory, NoopMetricsFactory, Metrics
+from .metrics import LegacyMetricsFactory, MetricsFactory, Metrics
 from .utils import get_boolean, ErrorReporter
 
 DEFAULT_REPORTING_PORT = 5775
@@ -92,7 +92,7 @@ class Config(object):
             self._metrics_factory = metrics_factory or LegacyMetricsFactory(metrics or Metrics())
         else:
             # if metrics are explicitly disabled, use a dummy
-            self._metrics_factory = NoopMetricsFactory()
+            self._metrics_factory = MetricsFactory()
         self._service_name = config.get('service_name', service_name)
         if self._service_name is None:
             raise ValueError('service_name required in the config or param')

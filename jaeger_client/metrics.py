@@ -26,51 +26,63 @@ class MetricsFactory(object):
 
     def __init__(self, count=None, gauge=None, timing=None, tags=None):
         """
-        :param count: function (key, value) to emit counters
-        :param gauge: function (key, value) to emit gauges
-        :param timing: function (key, value) to emit timings
-        :param tags: {k:v} dictionary
+        :param count: function to emit counters
+        :param gauge: function to emit gauges
+        :param timing: function to emit timers
+        :param tags: global {k:v} dictionary
         """
         self._count = count
         self._gauge = gauge
         self._timing = timing
         self._tags = tags
         if not callable(self._count):
-            self._count = _noop
+            self._count = self._noop
         if not callable(self._gauge):
-            self._gauge = _noop
+            self._gauge = self._noop
         if not callable(self._timing):
-            self._timing = _noop
+            self._timing = self._noop
 
-    def counter(self, name, tags=None):
+    def _noop(self, *args):
+        pass
+
+    def create_counter(self, name, tags=None):
         """
-        Generates a new counter from the given name and tags.
+        Generates a new counter from the given name and tags and returns
+        a callable function used to increment the counter.
         :param name: name of the counter
         :param tags: tags for the counter
         :return: a callable function which takes the value to increase
         the counter by ie. def increment(value)
         """
-        raise NotImplementedError
+        def increment(value):
+            return self._noop()
+        return increment
 
-    def timer(self, name, tags=None):
+    def create_timer(self, name, tags=None):
         """
-        Generates a new timer from the given name and tags.
+        Generates a new timer from the given name and tags and returns
+        a callable function used to record a duration.
         :param name: name of the timer
         :param tags: tags for the timer
         :return: a callable function which takes the duration to
         record ie. def record(duration)
         """
-        raise NotImplementedError
+        def record(value):
+            return self._noop()
+        return record
 
-    def gauge(self, name, tags=None):
+    def create_gauge(self, name, tags=None):
         """
-        Generates a new gauge from the given name and tags.
+        Generates a new gauge from the given name and tags and returns
+        a callable function used to update the gauge.
         :param name: name of the gauge
         :param tags: tags for the gauge
         :return: a callable function which takes the value to update
         the gauge with ie. def update(value)
         """
-        raise NotImplementedError
+        def update(value):
+            return self._noop()
+        return update
 
     def _merge_tags(self, tags=None):
         if not self._tags:
@@ -78,30 +90,6 @@ class MetricsFactory(object):
         tags_cpy = self._tags.copy()
         tags_cpy.update(tags)
         return tags_cpy
-
-
-class NoopMetricsFactory(MetricsFactory):
-    """Metrics factory that returns Metrics with Noop"""
-
-    def __init__(self, tags=None):
-        super(NoopMetricsFactory, self).__init__(
-            tags=tags
-        )
-
-    def counter(self, name, tags=None):
-        def increment(value):
-            pass
-        return increment
-
-    def timer(self, name, tags=None):
-        def record(value):
-            pass
-        return record
-
-    def gauge(self, name, tags=None):
-        def update(value):
-            pass
-        return update
 
 
 class LegacyMetricsFactory(MetricsFactory):
@@ -115,21 +103,21 @@ class LegacyMetricsFactory(MetricsFactory):
             tags=tags
         )
 
-    def counter(self, name, tags=None):
+    def create_counter(self, name, tags=None):
         key = self._get_key(name, self._merge_tags(tags))
 
         def increment(value):
             return self._count(key, value)
         return increment
 
-    def timer(self, name, tags=None):
+    def create_timer(self, name, tags=None):
         key = self._get_key(name, self._merge_tags(tags))
 
         def record(value):
             return self._timing(key, value)
         return record
 
-    def gauge(self, name, tags=None):
+    def create_gauge(self, name, tags=None):
         key = self._get_key(name, self._merge_tags(tags))
 
         def update(value):
@@ -156,20 +144,20 @@ class Metrics(object):
         self._gauge = gauge
         self._timing = timing
         if not callable(self._count):
-            self._count = _noop
+            self._count = None
         if not callable(self._gauge):
-            self._gauge = _noop
+            self._gauge = None
         if not callable(self._timing):
-            self._timing = _noop
+            self._timing = None
 
     def count(self, key, value):
-        self._count(key, value)
+        if self._count:
+            self._count(key, value)
 
     def timing(self, key, value):
-        self._timing(key, value)
+        if self._timing:
+            self._timing(key, value)
 
     def gauge(self, key, value):
-        self._gauge(key, value)
-
-def _noop(*args):
-    pass
+        if self._gauge:
+            self._gauge(key, value)

@@ -30,7 +30,7 @@ from concurrent.futures import Future
 from .constants import DEFAULT_FLUSH_INTERVAL
 from . import thrift
 from . import ioloop_util
-from .metrics import NoopMetricsFactory
+from .metrics import MetricsFactory
 from .utils import ErrorReporter
 
 from thrift.protocol import TCompactProtocol
@@ -99,7 +99,7 @@ class Reporter(NullReporter):
         self._channel = channel
         self.queue_capacity = queue_capacity
         self.batch_size = batch_size
-        self.metrics_factory = metrics_factory or NoopMetricsFactory()
+        self.metrics_factory = metrics_factory or MetricsFactory()
         self.metrics = ReporterMetrics(self.metrics_factory)
         self.error_reporter = error_reporter or ErrorReporter()
         self.logger = kwargs.get('logger', default_logger)
@@ -225,13 +225,13 @@ class Reporter(NullReporter):
 class ReporterMetrics:
     def __init__(self, metrics_factory):
         self.reporter_success = \
-            metrics_factory.counter(name='jaeger.spans', tags={'reported': 'true'})
+            metrics_factory.create_counter(name='jaeger.spans', tags={'reported': 'true'})
         self.reporter_failure = \
-            metrics_factory.counter(name='jaeger.spans', tags={'reported': 'false'})
+            metrics_factory.create_counter(name='jaeger.spans', tags={'reported': 'false'})
         self.reporter_dropped = \
-            metrics_factory.counter(name='jaeger.spans', tags={'dropped': 'true'})
+            metrics_factory.create_counter(name='jaeger.spans', tags={'dropped': 'true'})
         self.reporter_socket = \
-            metrics_factory.counter(name='jaeger.spans', tags={'socket_error': 'true'})
+            metrics_factory.create_counter(name='jaeger.spans', tags={'socket_error': 'true'})
 
 
 class CompositeReporter(NullReporter):

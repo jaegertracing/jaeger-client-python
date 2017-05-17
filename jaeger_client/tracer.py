@@ -35,7 +35,7 @@ from .codecs import TextCodec, ZipkinCodec, ZipkinSpanFormat, BinaryCodec
 from .span import Span, SAMPLED_FLAG, DEBUG_FLAG
 from .span_context import SpanContext
 from .thrift import ipv4_to_int
-from .metrics import NoopMetricsFactory
+from .metrics import MetricsFactory
 from .utils import local_ip
 
 logger = logging.getLogger('jaeger_tracing')
@@ -51,7 +51,7 @@ class Tracer(opentracing.Tracer):
         self.reporter = reporter
         self.sampler = sampler
         self.ip_address = ipv4_to_int(local_ip())
-        self.metrics_factory = metrics_factory or NoopMetricsFactory()
+        self.metrics_factory = metrics_factory or MetricsFactory()
         self.metrics = TracerMetrics(self.metrics_factory)
         self.random = random.Random(time.time() * (os.getpid() or 1))
         self.debug_id_header = debug_id_header
@@ -226,14 +226,14 @@ class TracerMetrics:
 
     def __init__(self, metrics_factory):
         self.traces_started_sampled = \
-            metrics_factory.counter(name='jaeger.traces-started', tags={'sampled': 'true'})
+            metrics_factory.create_counter(name='jaeger.traces-started', tags={'sampled': 'true'})
         self.traces_started_not_sampled = \
-            metrics_factory.counter(name='jaeger.traces-started', tags={'sampled': 'false'})
+            metrics_factory.create_counter(name='jaeger.traces-started', tags={'sampled': 'false'})
         self.traces_joined_sampled = \
-            metrics_factory.counter(name='jaeger.traces-joined', tags={'sampled': 'true'})
+            metrics_factory.create_counter(name='jaeger.traces-joined', tags={'sampled': 'true'})
         self.traces_joined_not_sampled = \
-            metrics_factory.counter(name='jaeger.traces-joined', tags={'sampled': 'false'})
+            metrics_factory.create_counter(name='jaeger.traces-joined', tags={'sampled': 'false'})
         self.spans_sampled = \
-            metrics_factory.counter(name='jaeger.spans', tags={'sampled': 'true'})
+            metrics_factory.create_counter(name='jaeger.spans', tags={'sampled': 'true'})
         self.spans_not_sampled = \
-            metrics_factory.counter(name='jaeger.spans', tags={'sampled': 'false'})
+            metrics_factory.create_counter(name='jaeger.spans', tags={'sampled': 'false'})
