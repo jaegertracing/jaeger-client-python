@@ -44,7 +44,7 @@ class MetricsFactory(object):
     def create_timer(self, name, tags=None):
         """
         Generates a new timer from the given name and tags and returns
-        a callable function used to record a duration.
+        a callable function used to record a float duration in microseconds.
         :param name: name of the timer
         :param tags: tags for the timer
         :return: a callable function which takes the duration to
@@ -91,7 +91,8 @@ class LegacyMetricsFactory(MetricsFactory):
         key = self._get_key(name, self._merge_tags(tags))
 
         def record(value):
-            return self._metrics.timing(key, value)
+            # Convert microseconds to milliseconds for legacy
+            return self._metrics.timing(key, value/1000.0)
         return record
 
     def create_gauge(self, name, tags=None):
@@ -105,8 +106,13 @@ class LegacyMetricsFactory(MetricsFactory):
         if not tags:
             return name
         key = name
+        first_tag = True
         for k in sorted(tags.iterkeys()):
-            key = key + '|' + str(k) + '=' + str(tags[k])
+            tag_separator = '_'
+            if first_tag:
+                tag_separator = '.'
+                first_tag = False
+            key = key + tag_separator + str(k) + '-' + str(tags[k])
         return key
 
 

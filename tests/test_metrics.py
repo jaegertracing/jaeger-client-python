@@ -77,23 +77,23 @@ def test_legacy_metrics_factory():
                               tags={'k':'v', 'a':'placeholder'})
     counter = mf.create_counter(name='foo', tags={'a':'counter'})
     counter(1)
-    assert cm.call_args == (('foo|a=counter|k=v', 1),), \
+    assert cm.call_args == (('foo.a-counter_k-v', 1),), \
         'metric tag should overwrite global tag'
 
     gauge = mf.create_gauge(name='bar', tags={'a':'gauge'})
     gauge(2)
-    assert gm.call_args == (('bar|a=gauge|k=v', 2),), \
+    assert gm.call_args == (('bar.a-gauge_k-v', 2),), \
         'metric tag should overwrite global tag'
 
     timing = mf.create_timer(name='rawr', tags={'a':'timer'})
     timing(3)
-    assert tm.call_args == (('rawr|a=timer|k=v', 3),), \
+    assert tm.call_args == (('rawr.a-timer_k-v', 0.003),), \
         'metric tag should overwrite global tag'
 
     mf = LegacyMetricsFactory(Metrics(timing=tm))
     timing = mf.create_timer(name='wow')
     timing(4)
-    assert tm.call_args == (('wow', 4),), \
+    assert tm.call_args == (('wow', 0.004),), \
         'building a timer with no tags should work'
 
 
