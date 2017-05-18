@@ -24,9 +24,6 @@ from __future__ import absolute_import
 class MetricsFactory(object):
     """Generates new metrics."""
 
-    def __init__(self, tags=None):
-        self._tags = tags
-
     def _noop(self, *args):
         pass
 
@@ -63,32 +60,22 @@ class MetricsFactory(object):
         """
         return self._noop
 
-    def _merge_tags(self, tags=None):
-        if not self._tags:
-            return tags
-        tags_cpy = self._tags.copy()
-        tags_cpy.update(tags)
-        return tags_cpy
-
 
 class LegacyMetricsFactory(MetricsFactory):
-    """A MetricsFactory wrapper around Metrics."""
+    """A MetricsFactory adapter for legacy Metrics class."""
 
-    def __init__(self, metrics, tags=None):
-        super(LegacyMetricsFactory, self).__init__(
-            tags=tags
-        )
+    def __init__(self, metrics):
         self._metrics = metrics
 
     def create_counter(self, name, tags=None):
-        key = self._get_key(name, self._merge_tags(tags))
+        key = self._get_key(name, tags)
 
         def increment(value):
             return self._metrics.count(key, value)
         return increment
 
     def create_timer(self, name, tags=None):
-        key = self._get_key(name, self._merge_tags(tags))
+        key = self._get_key(name, tags)
 
         def record(value):
             # Convert microseconds to milliseconds for legacy
@@ -96,7 +83,7 @@ class LegacyMetricsFactory(MetricsFactory):
         return record
 
     def create_gauge(self, name, tags=None):
-        key = self._get_key(name, self._merge_tags(tags))
+        key = self._get_key(name, tags)
 
         def update(value):
             return self._metrics.gauge(key, value)
@@ -117,13 +104,18 @@ class LegacyMetricsFactory(MetricsFactory):
 
 
 class Metrics(object):
-    """Provides an abstraction of metrics reporting framework."""
+    """
+    Provides an abstraction of metrics reporting framework.
+    This Class has been deprecated, please use MetricsFactory
+    instead.
+    """
 
     def __init__(self, count=None, gauge=None, timing=None):
         """
         :param count: function (key, value) to emit counters
         :param gauge: function (key, value) to emit gauges
-        :param timing: function (key, value) to emit timings
+        :param timing: function (key, value in milliseconds) to
+            emit timings
         """
         self._count = count
         self._gauge = gauge

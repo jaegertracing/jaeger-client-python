@@ -33,7 +33,7 @@ from .constants import (
     SAMPLER_TYPE_RATE_LIMITING,
     SAMPLER_TYPE_LOWER_BOUND,
 )
-from .metrics import MetricsFactory
+from .metrics import Metrics, LegacyMetricsFactory
 from .utils import ErrorReporter
 from .rate_limiter import RateLimiter
 from jaeger_client.thrift_gen.sampling import (
@@ -327,6 +327,9 @@ class RemoteControlledSampler(Sampler):
             - sampling_refresh_interval: interval in seconds for polling
               for new strategy
             - logger:
+            - metrics: metrics facade, used to emit metrics on errors.
+                This parameter has been deprecated, please use
+                metrics_factory instead.
             - metrics_factory: used to generate metrics for errors
             - error_reporter: ErrorReporter instance
             - max_operations: maximum number of unique operations the
@@ -341,7 +344,8 @@ class RemoteControlledSampler(Sampler):
         self.sampler = kwargs.get('init_sampler')
         self.sampling_refresh_interval = \
             kwargs.get('sampling_refresh_interval', DEFAULT_SAMPLING_INTERVAL)
-        self.metrics_factory = kwargs.get('metrics_factory', None) or MetricsFactory()
+        self.metrics_factory = kwargs.get('metrics_factory', None) \
+            or LegacyMetricsFactory(kwargs.get('metrics', None) or Metrics())
         self.sampler_errors = \
             self.metrics_factory.create_counter('jaeger.sampler', {'error': 'true'})
         self.error_reporter = kwargs.get('error_reporter') or \

@@ -35,14 +35,18 @@ from .codecs import TextCodec, ZipkinCodec, ZipkinSpanFormat, BinaryCodec
 from .span import Span, SAMPLED_FLAG, DEBUG_FLAG
 from .span_context import SpanContext
 from .thrift import ipv4_to_int
-from .metrics import MetricsFactory
+from .metrics import Metrics, LegacyMetricsFactory
 from .utils import local_ip
 
 logger = logging.getLogger('jaeger_tracing')
 
 
 class Tracer(opentracing.Tracer):
-    def __init__(self, service_name, reporter, sampler, metrics_factory=None,
+    """
+    N.B. metrics has been deprecated, use metrics_factory instead.
+    """
+    def __init__(self, service_name, reporter, sampler, metrics=None,
+                 metrics_factory=None,
                  trace_id_header=constants.TRACE_ID_HEADER,
                  baggage_header_prefix=constants.BAGGAGE_HEADER_PREFIX,
                  debug_id_header=constants.DEBUG_ID_HEADER_KEY,
@@ -51,7 +55,7 @@ class Tracer(opentracing.Tracer):
         self.reporter = reporter
         self.sampler = sampler
         self.ip_address = ipv4_to_int(local_ip())
-        self.metrics_factory = metrics_factory or MetricsFactory()
+        self.metrics_factory = metrics_factory or LegacyMetricsFactory(metrics or Metrics())
         self.metrics = TracerMetrics(self.metrics_factory)
         self.random = random.Random(time.time() * (os.getpid() or 1))
         self.debug_id_header = debug_id_header

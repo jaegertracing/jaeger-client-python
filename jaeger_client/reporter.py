@@ -30,7 +30,7 @@ from concurrent.futures import Future
 from .constants import DEFAULT_FLUSH_INTERVAL
 from . import thrift
 from . import ioloop_util
-from .metrics import MetricsFactory
+from .metrics import Metrics, LegacyMetricsFactory
 from .utils import ErrorReporter
 
 from thrift.protocol import TCompactProtocol
@@ -79,7 +79,8 @@ class Reporter(NullReporter):
     """Receives completed spans from Tracer and submits them out of process."""
     def __init__(self, channel, queue_capacity=100, batch_size=10,
                  flush_interval=DEFAULT_FLUSH_INTERVAL, io_loop=None,
-                 error_reporter=None, metrics_factory=None, **kwargs):
+                 error_reporter=None, metrics=None, metrics_factory=None,
+                 **kwargs):
         """
         :param channel: a communication channel to jaeger-agent
         :param queue_capacity: how many spans we can hold in memory before
@@ -89,7 +90,9 @@ class Reporter(NullReporter):
         :param io_loop: which IOLoop to use. If None, try to get it from
             channel (only works if channel is tchannel.sync)
         :param error_reporter:
-        :param metrics_factory:
+        :param metrics: an instance of Metrics class, or None. This parameter
+            has been deprecated, please use metrics_factory instead.
+        :param metrics_factory: an instance of MetricsFactory class, or None.
         :param kwargs:
             'logger'
         :return:
@@ -99,7 +102,7 @@ class Reporter(NullReporter):
         self._channel = channel
         self.queue_capacity = queue_capacity
         self.batch_size = batch_size
-        self.metrics_factory = metrics_factory or MetricsFactory()
+        self.metrics_factory = metrics_factory or LegacyMetricsFactory(metrics or Metrics())
         self.metrics = ReporterMetrics(self.metrics_factory)
         self.error_reporter = error_reporter or ErrorReporter()
         self.logger = kwargs.get('logger', default_logger)

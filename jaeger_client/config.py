@@ -83,9 +83,11 @@ class Config(object):
 
     def __init__(self, config, metrics=None, service_name=None, metrics_factory=None):
         """
-        :param metrics: an instance of Metrics class, or None
+        :param metrics: an instance of Metrics class, or None. This parameter
+            has been deprecated, please use metrics_factory instead.
         :param service_name: default service name.
             Can be overwritten by config['service_name'].
+        :param metrics_factory: an instance of MetricsFactory class, or None.
         """
         self.config = config
         if get_boolean(self.config.get('metrics', True), True):

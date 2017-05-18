@@ -73,19 +73,18 @@ def test_legacy_metrics_factory():
     cm = mock.MagicMock()
     tm = mock.MagicMock()
     gm = mock.MagicMock()
-    mf = LegacyMetricsFactory(Metrics(count=cm, timing=tm, gauge=gm),
-                              tags={'k':'v', 'a':'placeholder'})
-    counter = mf.create_counter(name='foo', tags={'a':'counter'})
+    mf = LegacyMetricsFactory(Metrics(count=cm, timing=tm, gauge=gm))
+    counter = mf.create_counter(name='foo', tags={'k':'v','a':'counter'})
     counter(1)
     assert cm.call_args == (('foo.a-counter_k-v', 1),), \
         'metric tag should overwrite global tag'
 
-    gauge = mf.create_gauge(name='bar', tags={'a':'gauge'})
+    gauge = mf.create_gauge(name='bar', tags={'k':'v', 'a':'gauge'})
     gauge(2)
     assert gm.call_args == (('bar.a-gauge_k-v', 2),), \
         'metric tag should overwrite global tag'
 
-    timing = mf.create_timer(name='rawr', tags={'a':'timer'})
+    timing = mf.create_timer(name='rawr', tags={'k':'v', 'a':'timer'})
     timing(3)
     assert tm.call_args == (('rawr.a-timer_k-v', 0.003),), \
         'metric tag should overwrite global tag'
