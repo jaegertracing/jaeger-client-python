@@ -49,11 +49,30 @@ if __name__ == "__main__":
     tracer.close()  # flush any buffered spans
 ```
 
+### Other Instrumentation
+
+The [opentracing-contrib](https://github.com/opentracing-contrib) project has a few modules that provide explicit instrumentation support for popular frameworks like Django and Flask.
+
+At Uber we are mostly using the [opentracing_instrumentation](https://github.com/uber-common/opentracing-python-instrumentation) module that provides:
+  * explicit instrumentation for HTTP servers, and
+  * implicit (monkey-patched) instrumentation for several popular libraries like `urllib2`, `redis`, `requests`, some SQL clients, etc.
+
 ## Configuration
 
-(under construction)
+### Production
 
-See [Config class](jaeger_client/config.py).
+The recommended way to initialize the tracer for production use:
+
+```python
+from jaeger_client import Config
+
+config = Config(config={}, service_name='your-app-name)
+tracer = config.initialize_tracer()
+```
+
+### Development
+
+For development, some parameters can be passed via `config` dictionary, as in the Getting Started example above. For more details please see the [Config class](jaeger_client/config.py).
 
 ## Debug Traces (Forced Sampling)
 
