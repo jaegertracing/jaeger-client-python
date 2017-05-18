@@ -92,7 +92,7 @@ class LegacyMetricsFactory(MetricsFactory):
 
         def record(value):
             # Convert microseconds to milliseconds for legacy
-            return self._metrics.timing(key, value/1000.0)
+            return self._metrics.timing(key, value / 1000.0)
         return record
 
     def create_gauge(self, name, tags=None):
