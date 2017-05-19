@@ -104,7 +104,7 @@ class Reporter(NullReporter):
         self.batch_size = batch_size
         self.metrics_factory = metrics_factory or LegacyMetricsFactory(metrics or Metrics())
         self.metrics = ReporterMetrics(self.metrics_factory)
-        self.error_reporter = error_reporter or ErrorReporter()
+        self.error_reporter = error_reporter or ErrorReporter(Metrics())
         self.logger = kwargs.get('logger', default_logger)
         self.agent = Agent.Client(self._channel, self)
 

@@ -76,18 +76,15 @@ def test_legacy_metrics_factory():
     mf = LegacyMetricsFactory(Metrics(count=cm, timing=tm, gauge=gm))
     counter = mf.create_counter(name='foo', tags={'k':'v','a':'counter'})
     counter(1)
-    assert cm.call_args == (('foo.a-counter_k-v', 1),), \
-        'metric tag should overwrite global tag'
+    assert cm.call_args == (('foo.a_counter.k_v', 1),)
 
     gauge = mf.create_gauge(name='bar', tags={'k':'v', 'a':'gauge'})
     gauge(2)
-    assert gm.call_args == (('bar.a-gauge_k-v', 2),), \
-        'metric tag should overwrite global tag'
+    assert gm.call_args == (('bar.a_gauge.k_v', 2),)
 
     timing = mf.create_timer(name='rawr', tags={'k':'v', 'a':'timer'})
     timing(3)
-    assert tm.call_args == (('rawr.a-timer_k-v', 0.003),), \
-        'metric tag should overwrite global tag'
+    assert tm.call_args == (('rawr.a_timer.k_v', 0.003),)
 
     mf = LegacyMetricsFactory(Metrics(timing=tm))
     timing = mf.create_timer(name='wow')

@@ -93,13 +93,8 @@ class LegacyMetricsFactory(MetricsFactory):
         if not tags:
             return name
         key = name
-        first_tag = True
         for k in sorted(tags.iterkeys()):
-            tag_separator = '_'
-            if first_tag:
-                tag_separator = '.'
-                first_tag = False
-            key = key + tag_separator + str(k) + '-' + str(tags[k])
+            key = key + '.' + str(k) + '_' + str(tags[k])
         return key
 
 

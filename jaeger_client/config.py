@@ -100,6 +100,7 @@ class Config(object):
             raise ValueError('service_name required in the config or param')
 
         self._error_reporter = ErrorReporter(
+            metrics=Metrics(),
             logger=logger if self.logging else None,
         )
 
