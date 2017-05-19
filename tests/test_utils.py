@@ -72,7 +72,7 @@ class ConfigTests(unittest.TestCase):
         er = utils.ErrorReporter(None, logger=mock_logger, log_interval_minutes=0)
         er._last_error_reported_at=0
         er.error('foo', 1, 'error args')
-        assert mock_logger.error.call_args == (('error args',),)
+        assert mock_logger.error.call_args == (('foo', 1, 'error args',),)
 
 
 def test_local_ip_does_not_blow_up():

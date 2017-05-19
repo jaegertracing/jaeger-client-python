@@ -22,25 +22,21 @@ import socket
 import struct
 import time
 
-from .metrics import Metrics
-
 
 class ErrorReporter(object):
     """
     Reports errors by emitting metrics, and if logger is provided,
     logging the error message once every log_interval_minutes
+
+    N.B. metrics will be deprecated in the future
     """
 
     def __init__(self, metrics, logger=None, log_interval_minutes=15):
         self.logger = logger
         self.log_interval_minutes = log_interval_minutes
-        self.metrics = metrics or Metrics()
         self._last_error_reported_at = time.time()
 
-    def error(self, name, count, *args):
-        if self.metrics:
-            self.metrics.count(name, count)
-
+    def error(self, *args):
         if self.logger is None:
             return
 
