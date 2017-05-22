@@ -1,4 +1,4 @@
-from .observer import SpanObserver # noqa
-from .normalizer import NameNormalizer # noqa
-from .endpoint import Endpoint # noqa
-from .metrics import MetricsByEndpoint # noqa
+from .observer import SpanObserver  # noqa
+from .normalizer import NameNormalizer  # noqa
+from .operation import Operation  # noqa
+from .metrics import MetricsByOperation  # noqa

@@ -8,9 +8,10 @@ SAFE_CHARACTER_SET = [
     ['.', '.'],
 ]
 
+
 class NameNormalizer(object):
     """
-    NameNormalizer is used to convert the endpoint names to strings
+    NameNormalizer is used to convert the operation names to strings
     that can be safely used as tags in the metrics.
     """
     def __init__(self):

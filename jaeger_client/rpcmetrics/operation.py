@@ -1,6 +1,7 @@
-from . import NameNormalizer
+from .normalizer import NameNormalizer
 
-class Endpoint(object):
+
+class Operation(object):
     def __init__(self, max_size=200):
         from threading import Lock
         self.lock = Lock()

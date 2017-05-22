@@ -120,12 +120,16 @@ FakeTrace = collections.namedtuple(
 class FakeMetricsFactory(LegacyMetricsFactory):
     def __init__(self):
         super(FakeMetricsFactory, self).__init__(
-            Metrics(count=self._incr_count)
+            Metrics(count=self._incr_count, timing=self._record_timer)
         )
         self.counters = {}
+        self.timers = {}
 
     def _incr_count(self, key, value):
         self.counters[key] = value + self.counters.get(key, 0)
+
+    def _record_timer(self, key, value):
+        self.timers[key] = value
 
 
 class ReporterTest(AsyncTestCase):
