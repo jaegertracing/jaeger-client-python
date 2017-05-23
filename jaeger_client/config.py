@@ -212,7 +212,7 @@ class Config(object):
         # noinspection PyBroadException
         try:
             return self.local_agent_group()['reporting_host']
-        except KeyError:
+        except:
             return DEFAULT_REPORTING_HOST
 
     @property
