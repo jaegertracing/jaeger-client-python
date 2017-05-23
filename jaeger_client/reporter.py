@@ -44,6 +44,9 @@ class NullReporter(object):
     def report_span(self, span):
         pass
 
+    def report_spans(self, spans):
+        pass
+
     def close(self):
         fut = Future()
         fut.set_result(True)
@@ -61,6 +64,10 @@ class InMemoryReporter(NullReporter):
         with self.lock:
             self.spans.append(span)
 
+    def report_spans(self, spans):
+        with self.lock:
+            self.spans.append(spans)
+
     def get_spans(self):
         with self.lock:
             return self.spans[:]
@@ -73,6 +80,10 @@ class LoggingReporter(NullReporter):
 
     def report_span(self, span):
         self.logger.info('Reporting span %s', span)
+
+    def report_spans(self, spans):
+        for span in spans:
+            self.logger.info('Reporting span %s', span)
 
 
 class Reporter(NullReporter):
@@ -130,6 +141,10 @@ class Reporter(NullReporter):
             self._report_span_from_ioloop(span)
         else:
             self.io_loop.add_callback(self._report_span_from_ioloop, span)
+
+    def report_spans(self, spans):
+        for span in spans:
+            self.report_span(span)
 
     def _report_span_from_ioloop(self, span):
         try:
@@ -245,6 +260,10 @@ class CompositeReporter(NullReporter):
     def report_span(self, span):
         for reporter in self.reporters:
             reporter.report_span(span)
+
+    def report_spans(self, spans):
+        for reporter in self.reporters:
+            reporter.report_spans(spans)
 
     def close(self):
         from threading import Lock

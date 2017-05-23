@@ -221,6 +221,9 @@ class Tracer(opentracing.Tracer):
     def report_span(self, span):
         self.reporter.report_span(span)
 
+    def report_spans(self, spans):
+        self.reporter.report_spans(spans)
+
     def random_id(self):
         return self.random.getrandbits(constants.MAX_ID_BITS)
 

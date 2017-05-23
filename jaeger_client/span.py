@@ -68,7 +68,7 @@ class Span(opentracing.Span):
             self.operation_name = operation_name
         return self
 
-    def finish(self, finish_time=None):
+    def finish(self, finish_time=None, defer_report=False):
         """Indicate that the work represented by this span has been completed
         or terminated, and is ready to be sent to the Reporter.
 
@@ -82,7 +82,8 @@ class Span(opentracing.Span):
             return
 
         self.end_time = finish_time or time.time()  # no locking
-        self.tracer.report_span(self)
+        if not defer_report:
+            self.tracer.report_span(self)
 
     def set_tag(self, key, value):
         """
