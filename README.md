@@ -45,7 +45,7 @@ if __name__ == "__main__":
         with opentracing.tracer.start_span('ChildSpan', child_of=span) as child_span:
             span.log_event('down below')
 
-    time.sleep(2)   # yield to IOLoop to flush the spans
+    time.sleep(2)   # yield to IOLoop to flush the spans - https://github.com/uber/jaeger-client-python/issues/50
     tracer.close()  # flush any buffered spans
 ```
 
