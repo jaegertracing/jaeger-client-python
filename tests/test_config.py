@@ -73,3 +73,10 @@ class ConfigTests(unittest.TestCase):
         c = Config({'sampler': {'type': 'bad-sampler'}}, service_name='x')
         with self.assertRaises(ValueError):
             c.sampler.is_sampled(0)
+
+    def test_agent_reporting_host(self):
+        c = Config({}, service_name='x')
+        assert c.local_agent_reporting_host == 'localhost'
+
+        c = Config({'local_agent': {'reporting_host': 'jaeger.local'}}, service_name='x')
+        assert c.local_agent_reporting_host == 'jaeger.local'
