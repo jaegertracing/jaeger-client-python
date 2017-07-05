@@ -46,6 +46,19 @@ def test_baggage():
     assert span.get_baggage_item('x-Y') is None
 
 
+def test_baggage_logs():
+    ctx = SpanContext(trace_id=1, span_id=2, parent_id=None, flags=1)
+    span = Span(context=ctx, operation_name='x', tracer=None)
+    span.set_baggage_item('x', 'a')
+    assert span.get_baggage_item('x') == 'a'
+    assert len(span.logs) == 1
+    assert span.logs[0].value == '{"value": "a", "event": "baggage", "key": "x"}'
+    span.set_baggage_item('x', 'b')  # override
+    assert span.get_baggage_item('x') == 'b'
+    assert len(span.logs) == 2
+    assert span.logs[1].value == '{"override": "true", "value": "b", "event": "baggage", "key": "x"}'
+
+
 def test_sampling_priority(tracer):
     tracer.sampler = ConstSampler(False)
     span = tracer.start_span(operation_name='x')
