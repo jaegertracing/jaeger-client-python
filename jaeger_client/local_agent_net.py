@@ -35,11 +35,17 @@ class LocalAgentHTTP(object):
         self.agent_http_port = int(port)
 
     def request_sampling_strategy(self, service_name, timeout):
+        return self.http_get('sampling', service_name, timeout)
+
+    def request_baggage_restrictions(self, service_name, timeout):
+        return self.http_get('baggageRestrictions', service_name, timeout)
+
+    def http_get(self, path, service_name, timeout):
         http_client = tornado.httpclient.AsyncHTTPClient(
             defaults=dict(request_timeout=timeout))
         # Properly url encode the params
         url = url_concat(
-            'http://%s:%d/sampling' % (self.agent_http_host, self.agent_http_port),
+            'http://%s:%d/%s' % (self.agent_http_host, self.agent_http_port, path),
             [('service', service_name)])
         return http_client.fetch(url)
 
@@ -56,13 +62,13 @@ class LocalAgentSender(TBufferedTransport):
     end of the batch span submission call.
     """
 
-    def __init__(self, host, sampling_port, reporting_port, io_loop=None):
+    def __init__(self, host, config_port, reporting_port, io_loop=None):
         # IOLoop
         self._thread_loop = None
         self.io_loop = io_loop or self._create_new_thread_loop()
 
         # http sampling
-        self.local_agent_http = LocalAgentHTTP(host, sampling_port)
+        self.local_agent_http = LocalAgentHTTP(host, config_port)
 
         # udp reporting - this will only get written to after our flush() call.
         # We are buffering things up because we are a TBufferedTransport.
@@ -86,4 +92,9 @@ class LocalAgentSender(TBufferedTransport):
     # Pass-through for the http
     def request_sampling_strategy(self, service_name, timeout):
         return self.local_agent_http.request_sampling_strategy(
+            service_name, timeout)
+
+    # Pass-through for the http
+    def request_baggage_restrictions(self, service_name, timeout):
+        return self.local_agent_http.request_baggage_restrictions(
             service_name, timeout)

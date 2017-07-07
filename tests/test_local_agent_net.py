@@ -14,13 +14,23 @@ test_strategy = """
     }
     """
 
+test_restrictions = """
+    [
+        {
+            "baggageKey":"key",
+            "maxValueLength":10
+        }
+    ]
+    """
 
 class AgentHandler(tornado.web.RequestHandler):
     def get(self):
         self.write(test_strategy)
+        self.write(test_restrictions)
 
 application = tornado.web.Application([
     (r"/sampling", AgentHandler),
+    (r"/baggageRestrictions", AgentHandler),
 ])
 
 @pytest.fixture
@@ -33,8 +43,20 @@ def test_request_sampling_strategy(http_client, base_url):
     o = urlparse(base_url)
     sender = LocalAgentSender(
         host='localhost',
-        sampling_port=o.port,
+        config_port=o.port,
         reporting_port=DEFAULT_REPORTING_PORT
     )
     response = yield sender.request_sampling_strategy(service_name='svc', timeout=15)
     assert response.body == test_strategy
+
+
+@pytest.mark.gen_test
+def test_request_baggage_restrictions(http_client, base_url):
+    o = urlparse(base_url)
+    sender = LocalAgentSender(
+        host='localhost',
+        config_port=o.port,
+        reporting_port=DEFAULT_REPORTING_PORT
+    )
+    response = yield sender.request_baggage_restrictions(service_name='svc', timeout=15)
+    assert response.body == test_restrictions
