@@ -137,7 +137,7 @@ def span_context_to_string(trace_id, span_id, parent_id, flags):
     :param parent_id:
     :param flags:
     """
-    parent_id = parent_id or 0L
+    parent_id = parent_id or 0
     return '{:x}:{:x}:{:x}:{:x}'.format(trace_id, span_id, parent_id, flags)
 
 

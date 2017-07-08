@@ -120,8 +120,8 @@ def test_large_ids(tracer):
     trace_id = 0x97fd53dc6b437681
     serialize(trace_id)
 
-    trace_id = (1L << 64) - 1
-    assert trace_id == 0xffffffffffffffffL
+    trace_id = (1 << 64) - 1
+    assert trace_id == 0xffffffffffffffff
     serialize(trace_id)
     assert thrift.id_to_int(trace_id) == -1
 

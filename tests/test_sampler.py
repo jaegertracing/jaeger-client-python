@@ -36,7 +36,7 @@ from jaeger_client.sampler import (
     get_rate_limit,
 )
 
-MAX_INT = 1L << 63
+MAX_INT = 1 << 63
 
 def get_tags(type, param):
     return {
@@ -61,7 +61,7 @@ def test_probabilistic_sampler_errors():
 
 def test_probabilistic_sampler():
     sampler = ProbabilisticSampler(0.5)
-    assert MAX_INT == 0x8000000000000000L
+    assert MAX_INT == 0x8000000000000000
     sampled, tags = sampler.is_sampled(MAX_INT-10)
     assert sampled
     assert tags == get_tags('probabilistic', 0.5)
