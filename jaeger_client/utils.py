@@ -17,7 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-from builtins import str
+from builtins import bytes
 from builtins import range
 from builtins import object
 import fcntl
@@ -73,7 +73,7 @@ def local_ip():
     if ip.startswith('127.'):
         # Check eth0, eth1, eth2, en0, ...
         interfaces = [
-            i + str(n) for i in ('eth', 'en', 'wlan') for n in range(3)
+            i + bytes(n) for i in (b'eth', b'en', b'wlan') for n in range(3)
         ]  # :(
         for interface in interfaces:
             try:
