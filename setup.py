@@ -41,6 +41,7 @@ setup(
         'thrift',
         'tornado>=4.3,<5',
         'opentracing>=1.2.2,<1.3',
+        "future",
     ],
     # Uncomment below if need to test with unreleased version of opentracing
     # dependency_links=[
