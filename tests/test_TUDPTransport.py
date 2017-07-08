@@ -39,7 +39,7 @@ class TUDPTransportTests(unittest.TestCase):
         assert t.transport_sock.gettimeout() == 0
 
     def test_write(self):
-        self.t.write('hello')
+        self.t.write(b'hello')
 
     def test_isopen_when_open(self):
         assert self.t.isOpen() == True
@@ -52,4 +52,4 @@ class TUDPTransportTests(unittest.TestCase):
         self.t.close()
         with self.assertRaises(Exception):
             # Something bad should happen if we send on a closed socket..
-            self.t.write('hello')
+            self.t.write(b'hello')
