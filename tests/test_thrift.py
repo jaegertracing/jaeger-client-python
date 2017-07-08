@@ -20,7 +20,7 @@
 
 from future import standard_library
 standard_library.install_aliases()
-from io import StringIO
+from io import BytesIO
 
 import jaeger_client.thrift_gen.zipkincore.ZipkinCollector as zipkin_collector
 import jaeger_client.thrift_gen.sampling.SamplingManager as sampling_manager
@@ -79,7 +79,7 @@ def _marshall_span(span):
             it's one or the other (really? yes.). This will convert
             us from write-able to read-able.
             """
-            self._buffer = StringIO(self.getvalue())
+            self._buffer = BytesIO(self.getvalue())
 
     spans = thrift.make_zipkin_spans([span])
 
