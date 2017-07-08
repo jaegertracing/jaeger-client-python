@@ -322,6 +322,6 @@ def test_debug_id():
     span = tracer.start_span('test', child_of=context)
     assert span.is_debug()
     assert span.is_sampled()
-    tags = filter(lambda t: t.key == debug_header, span.tags)
+    tags = [t for t in span.tags if t.key == debug_header]
     assert len(tags) == 1
     assert tags[0].value == 'Coraline'

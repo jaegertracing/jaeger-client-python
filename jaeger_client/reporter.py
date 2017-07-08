@@ -19,6 +19,7 @@
 # THE SOFTWARE.
 
 from __future__ import absolute_import
+from builtins import object
 import logging
 import threading
 
@@ -225,7 +226,7 @@ class Reporter(NullReporter):
         yield self.queue.join()
 
 
-class ReporterMetrics:
+class ReporterMetrics(object):
     def __init__(self, metrics_factory):
         self.reporter_success = \
             metrics_factory.create_counter(name='jaeger.spans', tags={'reported': 'true'})

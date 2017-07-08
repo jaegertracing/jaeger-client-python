@@ -19,6 +19,9 @@
 # THE SOFTWARE.
 
 from __future__ import absolute_import
+from __future__ import division
+from builtins import object
+from past.utils import old_div
 import logging
 import random
 import json
@@ -45,7 +48,7 @@ default_logger = logging.getLogger('jaeger_tracing')
 SAMPLER_TYPE_TAG_KEY = 'sampler.type'
 SAMPLER_PARAM_TAG_KEY = 'sampler.param'
 DEFAULT_SAMPLING_PROBABILITY = 0.001
-DEFAULT_LOWER_BOUND = 1.0 / (10.0 * 60.0)  # sample once every 10 minutes
+DEFAULT_LOWER_BOUND = old_div(1.0, (10.0 * 60.0))  # sample once every 10 minutes
 DEFAULT_MAX_OPERATIONS = 2000
 
 STRATEGIES_STR = 'perOperationStrategies'
@@ -306,7 +309,7 @@ class AdaptiveSampler(Sampler):
                 ProbabilisticSampler(self.default_sampling_probability)
 
     def close(self):
-        for _, sampler in self.samplers.iteritems():
+        for _, sampler in self.samplers.items():
             sampler.close()
 
     def __str__(self):
