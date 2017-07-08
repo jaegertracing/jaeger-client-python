@@ -33,15 +33,15 @@ from jaeger_client.thrift import add_zipkin_annotations
 
 
 def log_exists(span, value):
-    return filter(lambda (x): x.value == value, span.logs) != []
+    return filter(lambda x: x.value == value, span.logs) != []
 
 
 def test_start_trace(tracer):
     assert type(tracer) is Tracer
     with mock.patch.object(random.Random, 'getrandbits') as mock_random, \
             mock.patch('time.time') as mock_timestamp:
-        mock_random.return_value = 12345L
-        mock_timestamp.return_value = 54321L
+        mock_random.return_value = 12345
+        mock_timestamp.return_value = 54321
 
         span = tracer.start_span('test')
         span.set_tag(ext_tags.SPAN_KIND, ext_tags.SPAN_KIND_RPC_SERVER)
@@ -49,10 +49,10 @@ def test_start_trace(tracer):
         assert span.tracer == tracer, "Tracer must be referenced from span"
         assert span.kind == ext_tags.SPAN_KIND_RPC_SERVER, \
             'Span must be server-side'
-        assert span.trace_id == 12345L, "Must match trace_id"
+        assert span.trace_id == 12345, "Must match trace_id"
         assert span.is_sampled(), "Must be sampled"
         assert span.parent_id is None, "Must not have parent_id (root span)"
-        assert span.start_time == 54321L, "Must match timestamp"
+        assert span.start_time == 54321, "Must match timestamp"
 
         span.finish()
         assert span.end_time is not None, "Must have end_time defined"
