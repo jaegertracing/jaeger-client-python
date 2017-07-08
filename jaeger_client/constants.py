@@ -22,6 +22,7 @@ from __future__ import absolute_import, unicode_literals, print_function
 
 from . import __version__
 
+import six
 
 # Max number of bits to use when generating random ID
 MAX_ID_BITS = 64
@@ -33,10 +34,10 @@ DEFAULT_SAMPLING_INTERVAL = 60
 DEFAULT_FLUSH_INTERVAL = 1
 
 # Name of the HTTP header used to encode trace ID
-TRACE_ID_HEADER = b'uber-trace-id'
+TRACE_ID_HEADER = 'uber-trace-id' if six.PY3 else b'uber-trace-id'
 
 # Prefix for HTTP headers used to record baggage items
-BAGGAGE_HEADER_PREFIX = b'uberctx-'
+BAGGAGE_HEADER_PREFIX = 'uberctx-' if six.PY3 else b'uberctx-'
 
 # The name of HTTP header or a TextMap carrier key which, if found in the
 # carrier, forces the trace to be sampled as "debug" trace. The value of the
