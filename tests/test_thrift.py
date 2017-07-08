@@ -18,7 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-from cStringIO import StringIO
+from future import standard_library
+standard_library.install_aliases()
+from io import StringIO
 
 import jaeger_client.thrift_gen.zipkincore.ZipkinCollector as zipkin_collector
 import jaeger_client.thrift_gen.sampling.SamplingManager as sampling_manager

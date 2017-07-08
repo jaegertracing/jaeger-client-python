@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+from past.builtins import basestring
 import socket
 import struct
 
@@ -117,7 +118,7 @@ def timestamp_micros(ts):
     :param ts:
     :return:
     """
-    return long(ts * 1000000)
+    return int(ts * 1000000)
 
 
 def make_zipkin_spans(spans):

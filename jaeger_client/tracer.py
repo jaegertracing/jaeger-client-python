@@ -20,6 +20,7 @@
 
 from __future__ import absolute_import
 
+from builtins import object
 import socket
 
 import os
@@ -137,7 +138,7 @@ class Tracer(opentracing.Tracer):
                 if sampled:
                     flags = SAMPLED_FLAG
                     tags = tags or {}
-                    for k, v in sampler_tags.iteritems():
+                    for k, v in sampler_tags.items():
                         tags[k] = v
             else:  # have debug id
                 flags = SAMPLED_FLAG | DEBUG_FLAG
@@ -164,7 +165,7 @@ class Tracer(opentracing.Tracer):
 
         if (rpc_server or not parent_id) and (flags & SAMPLED_FLAG):
             # this is a first-in-process span, and is sampled
-            for k, v in self.tags.iteritems():
+            for k, v in self.tags.items():
                 span.set_tag(k, v)
 
         self._emit_span_metrics(span=span, join=rpc_server)
@@ -225,7 +226,7 @@ class Tracer(opentracing.Tracer):
         return self.random.getrandbits(constants.MAX_ID_BITS)
 
 
-class TracerMetrics:
+class TracerMetrics(object):
     """Tracer specific metrics."""
 
     def __init__(self, metrics_factory):

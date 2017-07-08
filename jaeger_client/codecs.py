@@ -20,7 +20,11 @@
 
 from __future__ import absolute_import
 
-import urllib
+from future import standard_library
+standard_library.install_aliases()
+from past.builtins import basestring
+from builtins import object
+import urllib.request, urllib.parse, urllib.error
 
 from opentracing import (
     InvalidCarrierException,
@@ -64,9 +68,9 @@ class TextCodec(Codec):
             parent_id=span_context.parent_id, flags=span_context.flags)
         baggage = span_context.baggage
         if baggage:
-            for key, value in baggage.iteritems():
+            for key, value in baggage.items():
                 if self.url_encoding:
-                    encoded_value = urllib.quote(value)
+                    encoded_value = urllib.parse.quote(value)
                 else:
                     encoded_value = value
                 carrier['%s%s' % (self.baggage_prefix, key)] = encoded_value
@@ -77,16 +81,16 @@ class TextCodec(Codec):
         trace_id, span_id, parent_id, flags = None, None, None, None
         baggage = None
         debug_id = None
-        for key, value in carrier.iteritems():
+        for key, value in carrier.items():
             uc_key = key.lower()
             if uc_key == self.trace_id_header:
                 if self.url_encoding:
-                    value = urllib.unquote(value)
+                    value = urllib.parse.unquote(value)
                 trace_id, span_id, parent_id, flags = \
                     span_context_from_string(value)
             elif uc_key.startswith(self.baggage_prefix):
                 if self.url_encoding:
-                    value = urllib.unquote(value)
+                    value = urllib.parse.unquote(value)
                 attr_key = key[self.prefix_length:]
                 if baggage is None:
                     baggage = {attr_key.lower(): value}
@@ -94,7 +98,7 @@ class TextCodec(Codec):
                     baggage[attr_key.lower()] = value
             elif uc_key == self.debug_id_header:
                 if self.url_encoding:
-                    value = urllib.unquote(value)
+                    value = urllib.parse.unquote(value)
                 debug_id = value
         if not trace_id and baggage:
             raise SpanContextCorruptedException('baggage without trace ctx')
@@ -162,9 +166,9 @@ def span_context_from_string(value):
         raise SpanContextCorruptedException(
             'malformed trace context "%s"' % value)
     try:
-        trace_id = long(parts[0], 16)
-        span_id = long(parts[1], 16)
-        parent_id = long(parts[2], 16)
+        trace_id = int(parts[0], 16)
+        span_id = int(parts[1], 16)
+        parent_id = int(parts[2], 16)
         flags = int(parts[3], 16)
         if trace_id < 1 or span_id < 1 or parent_id < 0 or flags < 0:
             raise SpanContextCorruptedException(
