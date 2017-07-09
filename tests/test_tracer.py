@@ -20,6 +20,7 @@
 
 import mock
 import random
+import six
 
 import pytest
 import tornado.httputil
@@ -224,7 +225,7 @@ def test_tracer_tags_on_root_span(span_type, expected_tags):
                 'child', child_of=span.context,
                 tags={ext_tags.SPAN_KIND: ext_tags.SPAN_KIND_RPC_SERVER}
             )
-        for key, value in expected_tags.items():
+        for key, value in six.iteritems(expected_tags):
             found_tag = None
             for tag in span.tags:
                 if tag.key == key:
