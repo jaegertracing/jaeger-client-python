@@ -23,8 +23,9 @@ from __future__ import division
 
 
 from builtins import str
-from past.utils import old_div
 from builtins import object
+
+
 class MetricsFactory(object):
     """Generates new metrics."""
 
@@ -83,7 +84,7 @@ class LegacyMetricsFactory(MetricsFactory):
 
         def record(value):
             # Convert microseconds to milliseconds for legacy
-            return self._metrics.timing(key, old_div(value, 1000.0))
+            return self._metrics.timing(key, value / 1000.0)
         return record
 
     def create_gauge(self, name, tags=None):
