@@ -19,25 +19,28 @@
 # THE SOFTWARE.
 
 from __future__ import absolute_import
-
-import six
-
-from future import standard_library
-standard_library.install_aliases()
-from past.builtins import basestring
 from builtins import object
-import urllib.request, urllib.parse, urllib.error
+from future import standard_library
+from past.builtins import basestring
 
 from opentracing import (
     InvalidCarrierException,
     SpanContextCorruptedException,
 )
 from .constants import (
-    TRACE_ID_HEADER,
     BAGGAGE_HEADER_PREFIX,
     DEBUG_ID_HEADER_KEY,
+    TRACE_ID_HEADER,
 )
 from .span_context import SpanContext
+
+import six
+import urllib.error
+import urllib.parse
+import urllib.request
+
+
+standard_library.install_aliases()
 
 
 class Codec(object):
