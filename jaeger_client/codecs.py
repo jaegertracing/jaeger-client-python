@@ -19,8 +19,11 @@
 # THE SOFTWARE.
 
 from __future__ import absolute_import
-from builtins import object
+
 from future import standard_library
+standard_library.install_aliases()  # noqa
+
+from builtins import object
 from past.builtins import basestring
 
 from opentracing import (
@@ -35,12 +38,7 @@ from .constants import (
 from .span_context import SpanContext
 
 import six
-import urllib.error
 import urllib.parse
-import urllib.request
-
-
-standard_library.install_aliases()
 
 
 class Codec(object):
