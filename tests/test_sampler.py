@@ -22,6 +22,10 @@ import time
 import math
 import mock
 import pytest
+import tornado.web
+from urlparse import urlparse
+from jaeger_client.local_agent_net import LocalAgentSender
+from jaeger_client.config import DEFAULT_REPORTING_PORT
 
 from jaeger_client.sampler import (
     Sampler,
@@ -306,7 +310,31 @@ def test_sampler_equality():
     assert rate1 != prob1
 
 
-def test_remotely_controlled_sampler():
+test_strategy = """
+    {
+        "strategyType":0,
+        "probabilisticSampling":
+        {
+            "samplingRate":0.002
+        }
+    }
+    """
+
+class SamplingHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.write(test_strategy)
+
+application = tornado.web.Application([
+    (r"/sampling", SamplingHandler),
+])
+
+@pytest.fixture
+def app():
+    return application
+
+
+@pytest.mark.gen_test
+def test_remotely_controlled_sampler(http_client, base_url):
     sampler = RemoteControlledSampler(
         channel=mock.MagicMock(),
         service_name='x'
@@ -315,26 +343,32 @@ def test_remotely_controlled_sampler():
     assert sampled
     assert tags == get_tags('probabilistic', DEFAULT_SAMPLING_PROBABILITY)
 
-    init_sampler = mock.MagicMock()
-    init_sampler.is_sampled = mock.MagicMock()
-    channel = mock.MagicMock()
-    channel.io_loop = None
-    sampler = RemoteControlledSampler(
-        channel=channel,
-        service_name='x',
-        init_sampler=init_sampler,
-        logger=mock.MagicMock(),
+    o = urlparse(base_url)
+    sender = LocalAgentSender(
+        host='localhost',
+        config_port=o.port,
+        reporting_port=DEFAULT_REPORTING_PORT
     )
-    assert init_sampler.is_sampled.call_count == 1
 
-    sampler.is_sampled(1)
-    assert init_sampler.is_sampled.call_count == 2
+    sampler = RemoteControlledSampler(
+        channel=sender,
+        service_name='x',
+        logger=mock.MagicMock(),
+        sampling_refresh_interval=0.001
+    )
 
-    sampler.io_loop = mock.MagicMock()
-    # noinspection PyProtectedMember
-    sampler._init_polling()
-    # noinspection PyProtectedMember
-    sampler._delayed_polling()
+    expected_prob = 0.002
+    expected_tags = get_tags('probabilistic', expected_prob)
+    for i in range(100):
+        sampled, tags = sampler.is_sampled(1)
+        if tags == expected_tags:
+            break
+        yield tornado.gen.sleep(0.001)
+
+    sampled, tags = sampler.is_sampled(1)
+    assert sampled
+    assert tags == get_tags('probabilistic', expected_prob)
+
     sampler.close()
 
 

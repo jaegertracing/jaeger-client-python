@@ -23,14 +23,17 @@ test_restrictions = """
     ]
     """
 
-class AgentHandler(tornado.web.RequestHandler):
+class SamplingHandler(tornado.web.RequestHandler):
     def get(self):
         self.write(test_strategy)
+
+class BaggageRestrictionsHandler(tornado.web.RequestHandler):
+    def get(self):
         self.write(test_restrictions)
 
 application = tornado.web.Application([
-    (r"/sampling", AgentHandler),
-    (r"/baggageRestrictions", AgentHandler),
+    (r"/sampling", SamplingHandler),
+    (r"/baggageRestrictions", BaggageRestrictionsHandler),
 ])
 
 @pytest.fixture

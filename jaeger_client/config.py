@@ -296,7 +296,7 @@ class Config(object):
         logger.info('Initializing Jaeger Tracer with UDP reporter')
         return LocalAgentSender(
             host='localhost',
-            sampling_port=self.local_agent_sampling_port,
+            config_port=self.local_agent_sampling_port,
             reporting_port=self.local_agent_reporting_port,
             io_loop=io_loop
         )

@@ -139,7 +139,16 @@ class Span(opentracing.Span):
         return self
 
     def set_baggage_item(self, key, value):
+        valid, max_value_length = self.tracer.baggage_restriction_manager.is_valid_baggage_key(key)
+        if not valid:
+            self.tracer.metrics.baggage_update_failure(1)
+            return self
         prev_value = self.get_baggage_item(key=key)
+        truncated = False
+        if len(value) > max_value_length:
+            value = value[:max_value_length]
+            truncated = True
+            self.tracer.metrics.baggage_truncate(1)
         new_context = self.context.with_baggage_item(key=key, value=value)
         with self.update_lock:
             self._context = new_context
@@ -150,9 +159,11 @@ class Span(opentracing.Span):
                 'value': value,
             }
             if prev_value:
-                # TODO add metric for this
                 logs['override'] = 'true'
+            if truncated:
+                logs['truncated'] = 'true'
             self.log_kv(key_values=logs)
+        self.tracer.metrics.baggage_update_success(1)
         return self
 
     def get_baggage_item(self, key):

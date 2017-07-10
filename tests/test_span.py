@@ -20,6 +20,7 @@
 
 from __future__ import absolute_import
 
+import mock
 import collections
 import json
 
@@ -28,9 +29,9 @@ from jaeger_client import Span, SpanContext, ConstSampler
 from jaeger_client.thrift import add_zipkin_annotations
 
 
-def test_baggage():
+def test_baggage(tracer):
     ctx = SpanContext(trace_id=1, span_id=2, parent_id=None, flags=1)
-    span = Span(context=ctx, operation_name='x', tracer=None)
+    span = Span(context=ctx, operation_name='x', tracer=tracer)
     assert span.get_baggage_item('x') is None
     span.set_baggage_item('x', 'y').\
         set_baggage_item('z', 'why')
@@ -46,9 +47,9 @@ def test_baggage():
     assert span.get_baggage_item('x-Y') is None
 
 
-def test_baggage_logs():
+def test_baggage_logs(tracer):
     ctx = SpanContext(trace_id=1, span_id=2, parent_id=None, flags=1)
-    span = Span(context=ctx, operation_name='x', tracer=None)
+    span = Span(context=ctx, operation_name='x', tracer=tracer)
     span.set_baggage_item('x', 'a')
     assert span.get_baggage_item('x') == 'a'
     assert len(span.logs) == 1
@@ -57,6 +58,26 @@ def test_baggage_logs():
     assert span.get_baggage_item('x') == 'b'
     assert len(span.logs) == 2
     assert span.logs[1].value == '{"override": "true", "value": "b", "event": "baggage", "key": "x"}'
+
+
+def test_baggage_restrictions(tracer):
+    tracer.metrics = mock.MagicMock()
+    ctx = SpanContext(trace_id=1, span_id=2, parent_id=None, flags=1)
+    span = Span(context=ctx, operation_name='x', tracer=tracer)
+
+    # test invalid baggage key
+    tracer.baggage_restriction_manager.is_valid_baggage_key = mock.MagicMock(return_value=(False,0))
+    span.set_baggage_item('x', 'a')
+    assert span.get_baggage_item('x') is None
+    tracer.metrics.baggage_update_failure.assert_called_with(1)
+
+    # test baggage value truncation
+    tracer.baggage_restriction_manager.is_valid_baggage_key = mock.MagicMock(return_value=(True,5))
+    span.set_baggage_item('x', '01234567890123456789')
+    assert span.get_baggage_item('x') == '01234'
+    tracer.metrics.baggage_truncate.assert_called_with(1)
+    tracer.metrics.baggage_update_success.assert_called_with(1)
+    assert span.logs[0].value == '{"value": "01234", "event": "baggage", "key": "x", "truncated": "true"}'
 
 
 def test_sampling_priority(tracer):

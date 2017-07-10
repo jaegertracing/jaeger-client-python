@@ -26,6 +26,47 @@ from tornado.httputil import url_concat
 from .TUDPTransport import TUDPTransport
 from concurrent.futures import Future
 from thrift.transport.TTransport import TBufferedTransport
+import random
+from tornado.ioloop import PeriodicCallback
+
+
+class LocalAgentPoller(object):
+    """
+
+    """
+    def __init__(self, io_loop, lock, refresh_interval_seconds, callback):
+        self.io_loop = io_loop
+        self.lock = lock
+        self.periodic = None
+        self.refresh_interval_seconds = refresh_interval_seconds
+        self.callback = callback
+
+    def init_polling(self):
+        """
+        To avoid spiky traffic from the client, we use a random delay
+        before the first poll.
+        """
+        with self.lock:
+            r = random.Random()
+            delay = r.random() * self.refresh_interval_seconds
+            self.io_loop.call_later(delay=delay,
+                                    callback=self._delayed_polling)
+
+    def _delayed_polling(self):
+        periodic = PeriodicCallback(
+            callback=self.callback,
+            # convert interval to milliseconds
+            callback_time=self.refresh_interval_seconds * 1000,
+            io_loop=self.io_loop)
+        self.callback()  # Call the callback once before the periodic calls
+        with self.lock:
+            self.periodic = periodic
+            periodic.start()  # start the periodic cycle
+
+    def close(self):
+        with self.lock:
+            if self.periodic is not None:
+                self.periodic.stop()
 
 
 class LocalAgentHTTP(object):
@@ -52,7 +93,7 @@ class LocalAgentHTTP(object):
 
 class LocalAgentSender(TBufferedTransport):
     """
-    LocalAgentSender implements a everything necessary to communicate with
+    LocalAgentSender implements everything necessary to communicate with
     local jaeger-agent. This class is designed to work in tornado and
     non-tornado environments. If in torndado, pass in the ioloop, if not
     then LocalAgentSender will create one for itself.

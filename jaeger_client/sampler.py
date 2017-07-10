@@ -20,11 +20,9 @@
 
 from __future__ import absolute_import
 import logging
-import random
 import json
 
 from threading import Lock
-from tornado.ioloop import PeriodicCallback
 from .constants import (
     MAX_ID_BITS,
     DEFAULT_SAMPLING_INTERVAL,
@@ -36,6 +34,7 @@ from .constants import (
 from .metrics import Metrics, LegacyMetricsFactory
 from .utils import ErrorReporter
 from .rate_limiter import RateLimiter
+from .local_agent_net import LocalAgentPoller
 from jaeger_client.thrift_gen.sampling import (
     SamplingManager
 )
@@ -358,8 +357,6 @@ class RemoteControlledSampler(Sampler):
             self.sampler.is_sampled(0)  # assert we got valid sampler API
 
         self.lock = Lock()
-        self.running = True
-        self.periodic = None
 
         self.io_loop = channel.io_loop
         if not self.io_loop:
@@ -368,42 +365,13 @@ class RemoteControlledSampler(Sampler):
         else:
             # according to IOLoop docs, it's not safe to use timeout methods
             # unless already running in the loop, so we use `add_callback`
-            self.io_loop.add_callback(self._init_polling)
+            self.poller = LocalAgentPoller(self.io_loop, self.lock, self.sampling_refresh_interval,
+                                           self._poll_sampling_manager)
+            self.io_loop.add_callback(self.poller.init_polling)
 
     def is_sampled(self, trace_id, operation=''):
         with self.lock:
             return self.sampler.is_sampled(trace_id, operation)
-
-    def _init_polling(self):
-        """
-        Bootstrap polling for sampling strategy.
-
-        To avoid spiky traffic from the samplers, we use a random delay
-        before the first poll.
-        """
-        with self.lock:
-            if self.running:
-                r = random.Random()
-                delay = r.random() * self.sampling_refresh_interval
-                self.io_loop.call_later(delay=delay,
-                                        callback=self._delayed_polling)
-                self.logger.info(
-                    'Delaying sampling strategy polling by %d sec', delay)
-
-    def _delayed_polling(self):
-        periodic = PeriodicCallback(
-            callback=self._poll_sampling_manager,
-            # convert interval to milliseconds
-            callback_time=self.sampling_refresh_interval * 1000,
-            io_loop=self.io_loop)
-        self._poll_sampling_manager()  # Initialize sampler now
-        with self.lock:
-            if self.running:
-                self.periodic = periodic
-                periodic.start()  # start the periodic cycle
-                self.logger.info(
-                    'Tracing sampler started with sampling refresh '
-                    'interval %d sec', self.sampling_refresh_interval)
 
     def _sampling_request_callback(self, future):
         exception = future.exception()
@@ -471,10 +439,8 @@ class RemoteControlledSampler(Sampler):
         fut.add_done_callback(self._sampling_request_callback)
 
     def close(self):
-        with self.lock:
-            self.running = False
-            if self.periodic is not None:
-                self.periodic.stop()
+        if self.poller:
+            self.poller.close()
 
 
 def get_sampling_probability(strategy=None):

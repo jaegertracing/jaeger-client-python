@@ -88,7 +88,7 @@ class EndToEndHandler(object):
     def local_agent_sender(self):
         return LocalAgentSender(
             host='test_driver',
-            sampling_port=DEFAULT_SAMPLING_PORT,
+            config_port=DEFAULT_SAMPLING_PORT,
             reporting_port=DEFAULT_REPORTING_PORT,
         )
 
