@@ -19,6 +19,7 @@
 # THE SOFTWARE.
 
 from past.builtins import basestring
+import six
 import socket
 import struct
 
@@ -33,6 +34,9 @@ _max_signed_port = (1 << 15) - 1
 _max_unsigned_port = (1 << 16)
 _max_signed_id = (1 << 63) - 1
 _max_unsigned_id = (1 << 64)
+
+if six.PY3:
+    long = int
 
 
 def ipv4_to_int(ipv4):
@@ -118,7 +122,7 @@ def timestamp_micros(ts):
     :param ts:
     :return:
     """
-    return int(ts * 1000000)
+    return long(ts * 1000000)
 
 
 def make_zipkin_spans(spans):
