@@ -3,10 +3,12 @@
 History
 -------
 
-3.4.1 (unreleased)
+3.5.0 (2017-07-10)
 ------------------
 
-- Nothing changed yet.
+- Add metrics factory and allow tags for metrics [#45]
+- Save baggage in span [#54]
+- Allow to override hostname for jaeger agent [#51]
 
 
 3.4.0 (2017-03-20)
