@@ -50,6 +50,7 @@ from .constants import (
 from .metrics import LegacyMetricsFactory, MetricsFactory, Metrics
 from .utils import get_boolean, ErrorReporter
 
+DEFAULT_REPORTING_HOST = 'localhost'
 DEFAULT_REPORTING_PORT = 5775
 DEFAULT_SAMPLING_PORT = 5778
 LOCAL_AGENT_DEFAULT_ENABLED = True
@@ -215,6 +216,14 @@ class Config(object):
             return DEFAULT_REPORTING_PORT
 
     @property
+    def local_agent_reporting_host(self):
+        # noinspection PyBroadException
+        try:
+            return self.local_agent_group()['reporting_host']
+        except:
+            return DEFAULT_REPORTING_HOST
+
+    @property
     def max_operations(self):
         return self.config.get('max_operations', None)
 
@@ -295,7 +304,7 @@ class Config(object):
         """
         logger.info('Initializing Jaeger Tracer with UDP reporter')
         return LocalAgentSender(
-            host='localhost',
+            host=self.local_agent_reporting_host,
             sampling_port=self.local_agent_sampling_port,
             reporting_port=self.local_agent_reporting_port,
             io_loop=io_loop
