@@ -208,6 +208,14 @@ class Config(object):
             return DEFAULT_SAMPLING_PORT
 
     @property
+    def local_agent_reporting_host(self):
+        # noinspection PyBroadException
+        try:
+            return self.local_agent_group()['reporting_host']
+        except:
+            return DEFAULT_REPORTING_HOST
+
+    @property
     def local_agent_reporting_port(self):
         # noinspection PyBroadException
         try:
