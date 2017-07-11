@@ -19,6 +19,12 @@
 # THE SOFTWARE.
 
 from __future__ import absolute_import
+from __future__ import division
+
+from builtins import str
+from builtins import object
+
+import six
 
 
 class MetricsFactory(object):
@@ -93,7 +99,7 @@ class LegacyMetricsFactory(MetricsFactory):
         if not tags:
             return name
         key = name
-        for k in sorted(tags.iterkeys()):
+        for k in sorted(six.iterkeys(tags)):
             key = key + '.' + str(k) + '_' + str(tags[k])
         return key
 

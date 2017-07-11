@@ -18,6 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+from past.builtins import basestring
+import six
 import socket
 import struct
 
@@ -30,8 +32,11 @@ from .thrift_gen.zipkincore.constants import LOCAL_COMPONENT
 
 _max_signed_port = (1 << 15) - 1
 _max_unsigned_port = (1 << 16)
-_max_signed_id = (1L << 63) - 1
-_max_unsigned_id = (1L << 64)
+_max_signed_id = (1 << 63) - 1
+_max_unsigned_id = (1 << 64)
+
+if six.PY3:
+    long = int
 
 
 def ipv4_to_int(ipv4):

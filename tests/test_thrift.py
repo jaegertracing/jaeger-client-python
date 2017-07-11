@@ -18,7 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-from cStringIO import StringIO
+from future import standard_library
+standard_library.install_aliases()
+from io import BytesIO
 
 import jaeger_client.thrift_gen.zipkincore.ZipkinCollector as zipkin_collector
 import jaeger_client.thrift_gen.sampling.SamplingManager as sampling_manager
@@ -77,7 +79,7 @@ def _marshall_span(span):
             it's one or the other (really? yes.). This will convert
             us from write-able to read-able.
             """
-            self._buffer = StringIO(self.getvalue())
+            self._buffer = BytesIO(self.getvalue())
 
     spans = thrift.make_zipkin_spans([span])
 
@@ -120,8 +122,8 @@ def test_large_ids(tracer):
     trace_id = 0x97fd53dc6b437681
     serialize(trace_id)
 
-    trace_id = (1L << 64) - 1
-    assert trace_id == 0xffffffffffffffffL
+    trace_id = (1 << 64) - 1
+    assert trace_id == 0xffffffffffffffff
     serialize(trace_id)
     assert thrift.id_to_int(trace_id) == -1
 

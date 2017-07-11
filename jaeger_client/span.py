@@ -20,7 +20,9 @@
 
 from __future__ import absolute_import
 
+from builtins import str
 import json
+import six
 import threading
 import time
 
@@ -54,7 +56,7 @@ class Span(opentracing.Span):
         self.tags = []
         self.logs = []
         if tags:
-            for k, v in tags.iteritems():
+            for k, v in six.iteritems(tags):
                 self.set_tag(k, v)
 
     def set_operation_name(self, operation_name):
