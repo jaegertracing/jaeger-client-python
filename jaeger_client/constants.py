@@ -33,10 +33,10 @@ DEFAULT_SAMPLING_INTERVAL = 60
 DEFAULT_FLUSH_INTERVAL = 1
 
 # Name of the HTTP header used to encode trace ID
-TRACE_ID_HEADER = b'uber-trace-id'
+TRACE_ID_HEADER = 'uber-trace-id'
 
 # Prefix for HTTP headers used to record baggage items
-BAGGAGE_HEADER_PREFIX = b'uberctx-'
+BAGGAGE_HEADER_PREFIX = 'uberctx-'
 
 # The name of HTTP header or a TextMap carrier key which, if found in the
 # carrier, forces the trace to be sampled as "debug" trace. The value of the

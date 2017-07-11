@@ -1,10 +1,12 @@
+from future import standard_library
+standard_library.install_aliases()
 import pytest
 import tornado.web
-from urlparse import urlparse
+from urllib.parse import urlparse
 from jaeger_client.local_agent_net import LocalAgentSender
 from jaeger_client.config import DEFAULT_REPORTING_PORT
 
-test_strategy = """
+test_strategy = b"""
     {
         "strategyType":0,
         "probabilisticSampling":

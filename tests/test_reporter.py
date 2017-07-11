@@ -1,3 +1,6 @@
+from __future__ import print_function
+from builtins import range
+from builtins import object
 # Copyright (c) 2016 Uber Technologies, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -162,7 +165,7 @@ class ReporterTest(AsyncTestCase):
             if fn():
                 return
             yield tornado.gen.sleep(0.001)
-        print 'waited for condition %f' % (time.time() - start)
+        print('waited for condition %f' % (time.time() - start))
 
     @gen_test
     def test_submit_batch_size_1(self):

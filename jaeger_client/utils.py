@@ -1,3 +1,6 @@
+from builtins import bytes
+from builtins import range
+from builtins import object
 # Copyright (c) 2016 Uber Technologies, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -70,7 +73,7 @@ def local_ip():
     if ip.startswith('127.'):
         # Check eth0, eth1, eth2, en0, ...
         interfaces = [
-            i + str(n) for i in ('eth', 'en', 'wlan') for n in xrange(3)
+            i + bytes(n) for i in (b'eth', b'en', b'wlan') for n in range(3)
         ]  # :(
         for interface in interfaces:
             try:
@@ -84,6 +87,7 @@ def local_ip():
 def interface_ip(interface):
     """Determine the IP assigned to us by the given network interface."""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
     return socket.inet_ntoa(
         fcntl.ioctl(
             sock.fileno(), 0x8915, struct.pack('256s', interface[:15])

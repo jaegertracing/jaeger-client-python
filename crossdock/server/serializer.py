@@ -1,5 +1,7 @@
+from builtins import str
 import json
 import logging
+import six
 
 from crossdock.thrift_gen.tracetest.ttypes import JoinTraceRequest, StartTraceRequest, \
     Downstream, Transport, TraceResponse, ObservedSpan
@@ -93,7 +95,7 @@ def traced_service_object_to_json(obj):
 
 
 def set_traced_service_object_values(obj, values, downstream_func):
-    for k in values.iterkeys():
+    for k in six.iterkeys(values):
         if hasattr(obj, k):
             if k == 'downstream':
                 if values[k] is not None:

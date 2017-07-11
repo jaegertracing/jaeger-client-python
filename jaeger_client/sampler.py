@@ -19,9 +19,13 @@
 # THE SOFTWARE.
 
 from __future__ import absolute_import
+from __future__ import division
+from builtins import object
+from past.utils import old_div
 import logging
 import random
 import json
+import six
 
 from threading import Lock
 from tornado.ioloop import PeriodicCallback
@@ -45,7 +49,7 @@ default_logger = logging.getLogger('jaeger_tracing')
 SAMPLER_TYPE_TAG_KEY = 'sampler.type'
 SAMPLER_PARAM_TAG_KEY = 'sampler.param'
 DEFAULT_SAMPLING_PROBABILITY = 0.001
-DEFAULT_LOWER_BOUND = 1.0 / (10.0 * 60.0)  # sample once every 10 minutes
+DEFAULT_LOWER_BOUND = old_div(1.0, (10.0 * 60.0))  # sample once every 10 minutes
 DEFAULT_MAX_OPERATIONS = 2000
 
 STRATEGIES_STR = 'perOperationStrategies'
@@ -235,7 +239,7 @@ class GuaranteedThroughputProbabilisticSampler(Sampler):
 
     def __str__(self):
         return 'GuaranteedThroughputProbabilisticSampler(%s, %s, %s)' \
-               % (self.operation, self.rate, self.lower_bound)
+               % (self.operation, self.rate, round(float(self.lower_bound), 14))
 
 
 class AdaptiveSampler(Sampler):
@@ -306,12 +310,12 @@ class AdaptiveSampler(Sampler):
                 ProbabilisticSampler(self.default_sampling_probability)
 
     def close(self):
-        for _, sampler in self.samplers.iteritems():
+        for _, sampler in six.iteritems(self.samplers):
             sampler.close()
 
     def __str__(self):
         return 'AdaptiveSampler(%s, %s, %s)' \
-               % (self.default_sampling_probability, self.lower_bound,
+               % (self.default_sampling_probability, round(float(self.lower_bound), 14),
                   self.max_operations)
 
 
