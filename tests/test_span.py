@@ -28,9 +28,9 @@ from jaeger_client import Span, SpanContext, ConstSampler
 from jaeger_client.thrift import add_zipkin_annotations
 
 
-def test_baggage():
+def test_baggage(tracer):
     ctx = SpanContext(trace_id=1, span_id=2, parent_id=None, flags=1)
-    span = Span(context=ctx, operation_name='x', tracer=None)
+    span = Span(context=ctx, operation_name='x', tracer=tracer)
     assert span.get_baggage_item('x') is None
     span.set_baggage_item('x', 'y').\
         set_baggage_item('z', 'why')
@@ -46,9 +46,9 @@ def test_baggage():
     assert span.get_baggage_item('x-Y') is None
 
 
-def test_baggage_logs():
+def test_baggage_logs(tracer):
     ctx = SpanContext(trace_id=1, span_id=2, parent_id=None, flags=1)
-    span = Span(context=ctx, operation_name='x', tracer=None)
+    span = Span(context=ctx, operation_name='x', tracer=tracer)
     span.set_baggage_item('x', 'a')
     assert span.get_baggage_item('x') == 'a'
     assert len(span.logs) == 1

@@ -141,20 +141,9 @@ class Span(opentracing.Span):
         return self
 
     def set_baggage_item(self, key, value):
-        prev_value = self.get_baggage_item(key=key)
-        new_context = self.context.with_baggage_item(key=key, value=value)
+        new_context = self.tracer.baggage_setter.set_baggage(self, key, value)
         with self.update_lock:
             self._context = new_context
-        if self.is_sampled():
-            logs = {
-                'event': 'baggage',
-                'key': key,
-                'value': value,
-            }
-            if prev_value:
-                # TODO add metric for this
-                logs['override'] = 'true'
-            self.log_kv(key_values=logs)
         return self
 
     def get_baggage_item(self, key):

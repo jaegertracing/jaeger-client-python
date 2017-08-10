@@ -39,6 +39,8 @@ from .span_context import SpanContext
 from .thrift import ipv4_to_int
 from .metrics import Metrics, LegacyMetricsFactory
 from .utils import local_ip
+from .baggage.restriction_manager import DefaultBaggageRestrictionManager
+from .baggage.setter import BaggageSetter
 
 logger = logging.getLogger('jaeger_tracing')
 
@@ -52,7 +54,8 @@ class Tracer(opentracing.Tracer):
                  trace_id_header=constants.TRACE_ID_HEADER,
                  baggage_header_prefix=constants.BAGGAGE_HEADER_PREFIX,
                  debug_id_header=constants.DEBUG_ID_HEADER_KEY,
-                 one_span_per_rpc=True, extra_codecs=None):
+                 one_span_per_rpc=True, extra_codecs=None,
+                 baggage_restriction_manager=DefaultBaggageRestrictionManager()):
         self.service_name = service_name
         self.reporter = reporter
         self.sampler = sampler
@@ -83,6 +86,7 @@ class Tracer(opentracing.Tracer):
             constants.JAEGER_VERSION_TAG_KEY: constants.JAEGER_CLIENT_VERSION,
         }
         self.one_span_per_rpc = one_span_per_rpc
+        self.baggage_setter = BaggageSetter(baggage_restriction_manager, self.metrics_factory)
         # noinspection PyBroadException
         try:
             hostname = socket.gethostname()
