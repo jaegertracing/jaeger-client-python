@@ -27,10 +27,10 @@ from jaeger_client.baggage.restriction_manager import BaggageRestrictionManager,
 class TUDPTransportTests(unittest.TestCase):
     def test_restriction_manager(self):
         m = BaggageRestrictionManager()
-        self.assertRaises(NotImplementedError, m.get_restriction, 'key')
+        self.assertRaises(NotImplementedError, m.get_restriction, 'service', 'key')
 
     def test_default_baggage_restriction_manager(self):
         m = DefaultBaggageRestrictionManager()
-        restriction = m.get_restriction('key')
+        restriction = m.get_restriction('service', 'key')
         assert restriction.max_value_length == 2048
         assert restriction.key_allowed

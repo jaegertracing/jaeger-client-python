@@ -37,6 +37,8 @@ class BaggageSetter(object):
     def set_baggage(self, span, key, value):
         """
         Sets the baggage key:value on the span and the corresponding logs.
+        Whether the baggage is set on the span depens on if the key is
+        allowed to be set by this service.
         A SpanContext is returned with the new baggage key:value set.
 
         :param span: The span to set the baggage on.
@@ -46,7 +48,8 @@ class BaggageSetter(object):
         """
         truncated = False
         prev_item = ''
-        restriction = self._restriction_manager.get_restriction(key)
+        restriction = self._restriction_manager.get_restriction(service=span.tracer.service_name,
+                                                                baggage_key=key)
         if not restriction.key_allowed:
             self._log_fields(span, key, value, prev_item, truncated, restriction.key_allowed)
             self._baggage_update_failure(1)

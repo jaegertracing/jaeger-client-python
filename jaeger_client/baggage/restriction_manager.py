@@ -27,11 +27,11 @@ class BaggageRestrictionManager(object):
     """
     BaggageRestrictionManager manages baggage restrictions for baggage keys.
     The manager will return a Restriction for a specific baggage key which
-    will determine whether the baggage key is allowed and any other applicable
-    restrictions on the baggage value.
+    will determine whether the baggage key is allowed for the current service
+    and any other applicable restrictions on the baggage value.
     """
 
-    def get_restriction(self, baggage_key):
+    def get_restriction(self, service, baggage_key):
         raise NotImplementedError()
 
 
@@ -42,5 +42,5 @@ class DefaultBaggageRestrictionManager(BaggageRestrictionManager):
     def __init__(self, max_value_length=DEFAULT_MAX_VALUE_LENGTH):
         self._restriction = Restriction(key_allowed=True, max_value_length=max_value_length)
 
-    def get_restriction(self, baggage_key):
+    def get_restriction(self, service, baggage_key):
         return self._restriction

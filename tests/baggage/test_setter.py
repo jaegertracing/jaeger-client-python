@@ -27,12 +27,17 @@ from jaeger_client.baggage.restriction import Restriction
 from jaeger_client.metrics import LegacyMetricsFactory, Metrics
 from jaeger_client.span import Span
 from jaeger_client.span_context import SpanContext
+from jaeger_client.tracer import Tracer
+from jaeger_client.reporter import InMemoryReporter
+from jaeger_client.sampler import ConstSampler
 
 
 class BaggageSetterTests(unittest.TestCase):
     def setUp(self):
+        self.service = 'test'
+        self.tracer = Tracer(service_name=self.service, reporter=InMemoryReporter(), sampler=ConstSampler(True))
         self.span_ctx = SpanContext(trace_id=1, span_id=2, parent_id=None, flags=1)
-        self.span = Span(context=self.span_ctx, operation_name='x', tracer=None)
+        self.span = Span(context=self.span_ctx, operation_name='x', tracer=self.tracer)
         self.mgr = BaggageRestrictionManager()
         self.cm = mock.MagicMock()
         self.mf = LegacyMetricsFactory(Metrics(count=self.cm))
@@ -49,6 +54,7 @@ class BaggageSetterTests(unittest.TestCase):
                '{{"value": "{}", "event": "baggage", "key": "{}", "invalid": "true"}}'.format(value, key)
         assert new_ctx.baggage.get(key) is None
 
+        assert self.mgr.get_restriction.call_args == ({'baggage_key':'key', 'service':'test'},)
         assert self.cm.call_args == (('jaeger.baggage-update.result_err', 1),)
 
     def test_truncated_override_baggage(self):
@@ -56,7 +62,7 @@ class BaggageSetterTests(unittest.TestCase):
         actual_value = '0123456789'
         expected_value = '01234'
 
-        self.span = Span(context=self.span_ctx.with_baggage_item(key=key, value=actual_value), operation_name='x', tracer=None)
+        self.span = Span(context=self.span_ctx.with_baggage_item(key=key, value=actual_value), operation_name='x', tracer=self.tracer)
         self.mgr.get_restriction = mock.MagicMock(return_value=Restriction(key_allowed=True, max_value_length=5))
 
         new_ctx = self.setter.set_baggage(self.span, key, actual_value)
@@ -68,7 +74,7 @@ class BaggageSetterTests(unittest.TestCase):
         assert self.cm.call_args_list == [(('jaeger.baggage-truncate', 1),),(('jaeger.baggage-update.result_ok', 1),)]
 
     def test_unsampled_span(self):
-        self.span = Span(context=SpanContext(trace_id=1, span_id=2, parent_id=None, flags=0), operation_name='x', tracer=None)
+        self.span = Span(context=SpanContext(trace_id=1, span_id=2, parent_id=None, flags=0), operation_name='x', tracer=self.tracer)
         self.mgr.get_restriction = mock.MagicMock(return_value=Restriction(key_allowed=True, max_value_length=10))
 
         key = 'key'
