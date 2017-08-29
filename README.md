@@ -66,7 +66,7 @@ The recommended way to initialize the tracer for production use:
 ```python
 from jaeger_client import Config
 
-config = Config(config={}, service_name='your-app-name)
+config = Config(config={}, service_name='your-app-name')
 tracer = config.initialize_tracer()
 ```
 
