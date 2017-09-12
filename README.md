@@ -37,12 +37,13 @@ if __name__ == "__main__":
         },  
         service_name='your-app-name',
     )
+    # this call also sets opentracing.tracer
     tracer = config.initialize_tracer()
 
-    with opentracing.tracer.start_span('TestSpan') as span:
+    with tracer.start_span('TestSpan') as span:
         span.log_event('test message', payload={'life': 42})
 
-        with opentracing.tracer.start_span('ChildSpan', child_of=span) as child_span:
+        with tracer.start_span('ChildSpan', child_of=span) as child_span:
             span.log_event('down below')
 
     time.sleep(2)   # yield to IOLoop to flush the spans - https://github.com/uber/jaeger-client-python/issues/50
@@ -57,7 +58,7 @@ At Uber we are mostly using the [opentracing_instrumentation](https://github.com
   * explicit instrumentation for HTTP servers, and
   * implicit (monkey-patched) instrumentation for several popular libraries like `urllib2`, `redis`, `requests`, some SQL clients, etc.
 
-## Configuration
+## Initialization & Configuration
 
 ### Production
 
@@ -70,9 +71,20 @@ config = Config(config={}, service_name='your-app-name')
 tracer = config.initialize_tracer()
 ```
 
+Note that the last line also sets the `opentracing.tracer` global variable.
+
 ### Development
 
 For development, some parameters can be passed via `config` dictionary, as in the Getting Started example above. For more details please see the [Config class](jaeger_client/config.py).
+
+### WSGI
+
+Applications running under WSGI usually fork multiple sub-processes to handle individual requests.
+When Jaeger tracer is initialized, it may start a new background thread. If the process later forks,
+it might cause issues or hang the application (due to exclusive lock on the interpreter).
+Therefore, it is recommended that the tracer is not initialized until after the child processes
+are forked. Depending on the WSGI framework you might be able to use `@postfork` decorator
+to delay tracer initialization.
 
 ## Debug Traces (Forced Sampling)
 
