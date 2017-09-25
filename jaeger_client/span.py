@@ -144,7 +144,7 @@ class Span(opentracing.Span):
         prev_value = self.get_baggage_item(key=key)
         new_context = self.context.with_baggage_item(key=key, value=value)
         with self.update_lock:
-            self._context = new_context
+            self.context = new_context
         if self.is_sampled():
             logs = {
                 'event': 'baggage',
