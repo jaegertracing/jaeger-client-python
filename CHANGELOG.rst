@@ -3,10 +3,10 @@
 History
 -------
 
-3.6.1 (unreleased)
+3.6.1 (2017-09-26)
 ------------------
 
-- Nothing changed yet.
+- Fix bug when creating tracer with tags. (#80)
 
 
 3.6.0 (2017-09-26)
