@@ -84,7 +84,7 @@ class Tracer(opentracing.Tracer):
             constants.JAEGER_VERSION_TAG_KEY: constants.JAEGER_CLIENT_VERSION,
         }
         if tags:
-            self.tags += tags
+            self.tags.update(tags)
         self.one_span_per_rpc = one_span_per_rpc
         # noinspection PyBroadException
         try:
