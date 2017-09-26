@@ -42,6 +42,7 @@ class ConfigTests(unittest.TestCase):
         os.environ['JAEGER_TAGS'] = 'a=b,c=d'
         c = Config({'tags': {'e': 'f'}}, service_name='x')
         assert c.tags == {'a': 'b', 'c': 'd', 'e': 'f'}
+        c.initialize_tracer()
 
     def test_no_sampler(self):
         c = Config({}, service_name='x')
