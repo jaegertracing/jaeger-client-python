@@ -3,10 +3,11 @@
 History
 -------
 
-3.5.1 (unreleased)
+3.6.0 (2017-09-26)
 ------------------
 
-- Nothing changed yet.
+- Allow tracer constructor to accept optional tags argument.
+- Support `JAEGER_TAGS` environment variable and config for tracer tags.
 
 
 3.5.0 (2017-07-10)
