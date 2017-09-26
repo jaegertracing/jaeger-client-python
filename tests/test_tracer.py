@@ -198,6 +198,7 @@ def test_tracer_tags_no_hostname():
         'jaeger.hostname': 'dream-host.com',
         'sampler.type': 'const',
         'sampler.param': 'True',
+        'global-tag': 'global-tag'
     }),
     ('child', {
         'jaeger.version': None,
@@ -216,7 +217,10 @@ def test_tracer_tags_on_root_span(span_type, expected_tags):
     reporter = mock.MagicMock()
     sampler = ConstSampler(True)
     with mock.patch('socket.gethostname', return_value='dream-host.com'):
-        tracer = Tracer(service_name='x', reporter=reporter, sampler=sampler)
+        tracer = Tracer(service_name='x',
+                        reporter=reporter,
+                        sampler=sampler,
+                        tags={'global-tag': 'global-tag'})
         span = tracer.start_span(operation_name='root')
         if span_type == 'child':
             span = tracer.start_span('child', child_of=span)

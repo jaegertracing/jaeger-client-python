@@ -19,6 +19,7 @@
 # THE SOFTWARE.
 
 from __future__ import absolute_import
+import os
 import unittest
 from jaeger_client import Config, ConstSampler, ProbabilisticSampler, RateLimitingSampler
 
@@ -36,6 +37,11 @@ class ConfigTests(unittest.TestCase):
         assert c.reporter_batch_size == 12345
         c = Config({}, service_name='x')
         assert c.reporter_batch_size == 10
+
+    def test_tags(self):
+        os.environ['JAEGER_TAGS'] = 'a=b,c=d'
+        c = Config({'tags': {'e': 'f'}}, service_name='x')
+        assert c.tags == {'a': 'b', 'c': 'd', 'e': 'f'}
 
     def test_no_sampler(self):
         c = Config({}, service_name='x')
