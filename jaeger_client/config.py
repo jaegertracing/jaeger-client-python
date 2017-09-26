@@ -22,6 +22,7 @@ from __future__ import absolute_import
 
 from builtins import object
 import logging
+import os
 import threading
 
 import opentracing
@@ -228,6 +229,20 @@ class Config(object):
     def max_operations(self):
         return self.config.get('max_operations', None)
 
+    @property
+    def tags(self):
+        """
+        :return: Returns tags from config and `JAEGER_TAGS` environment variable
+        to use as process-wide tracer tags
+        """
+        tags = self.config.get('tags', {})
+        env_tags = os.environ.get('JAEGER_TAGS', '')
+        if env_tags:
+            for kv in env_tags.split(','):
+                key, value = kv.split('=')
+                tags[key.strip()] = value.strip()
+        return tags
+
     @staticmethod
     def initialized():
         with Config._initialized_lock:
@@ -274,6 +289,7 @@ class Config(object):
         tracer = self.create_tracer(
             reporter=reporter,
             sampler=sampler,
+            tags=self.tags,
         )
 
         self._initialize_global_tracer(tracer=tracer)
