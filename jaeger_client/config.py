@@ -289,7 +289,6 @@ class Config(object):
         tracer = self.create_tracer(
             reporter=reporter,
             sampler=sampler,
-            tags=self.tags,
         )
 
         self._initialize_global_tracer(tracer=tracer)
@@ -304,6 +303,7 @@ class Config(object):
             trace_id_header=self.trace_id_header,
             baggage_header_prefix=self.baggage_header_prefix,
             debug_id_header=self.debug_id_header,
+            tags=self.tags,
         )
 
     def _initialize_global_tracer(self, tracer):
