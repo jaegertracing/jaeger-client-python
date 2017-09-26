@@ -22,6 +22,7 @@ from __future__ import absolute_import
 import os
 import unittest
 from jaeger_client import Config, ConstSampler, ProbabilisticSampler, RateLimitingSampler
+from jaeger_client.reporter import NullReporter
 
 
 class ConfigTests(unittest.TestCase):
@@ -42,6 +43,7 @@ class ConfigTests(unittest.TestCase):
         os.environ['JAEGER_TAGS'] = 'a=b,c=d'
         c = Config({'tags': {'e': 'f'}}, service_name='x')
         assert c.tags == {'a': 'b', 'c': 'd', 'e': 'f'}
+        c.create_tracer(NullReporter(), ConstSampler(True))
 
     def test_no_sampler(self):
         c = Config({}, service_name='x')
