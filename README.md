@@ -138,9 +138,9 @@ We will welcome PRs that provide that functionality.
 
 [The MIT License](LICENSE).
 
-[ci-img]: https://travis-ci.org/uber/jaeger-client-python.svg?branch=master
-[ci]: https://travis-ci.org/uber/jaeger-client-python
-[cov-img]: https://coveralls.io/repos/uber/jaeger-client-python/badge.svg?branch=master
-[cov]: https://coveralls.io/github/uber/jaeger-client-python?branch=master
+[ci-img]: https://travis-ci.org/jaegertracing/jaeger-client-python.svg?branch=master
+[ci]: https://travis-ci.org/jaegertracing/jaeger-client-python
+[cov-img]: https://coveralls.io/repos/jaegertracing/jaeger-client-python/badge.svg?branch=master
+[cov]: https://coveralls.io/github/jaegertracing/jaeger-client-python?branch=master
 [pypi-img]: https://badge.fury.io/py/jaeger-client.svg
 [pypi]: https://badge.fury.io/py/jaeger-client
