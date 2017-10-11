@@ -9,6 +9,18 @@ it easier to get your contribution accepted.
 
 We gratefully welcome improvements to documentation as well as to code.
 
+## Developing
+
+Jaeger Python client currently only supports Python 2.7.
+
+This repository uses [virtualenv](https://pypi.python.org/pypi/virtualenv) and `pip` to manage dependencies.
+To install all dependencies, run:
+
+ 1. `virtualenv env`
+ 2. `source env/bin/activate`
+ 3. `make bootstrap`
+ 4. `make test`
+
 ## Making A Change
 
 *Before making any significant changes, please [open an issue](https://github.com/jaegertracing/jaeger-client-python/issues).*
