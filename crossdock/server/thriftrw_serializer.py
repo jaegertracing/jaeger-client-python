@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 def trace_response_to_thriftrw(service, tr):
     if tr is None:
         return None
