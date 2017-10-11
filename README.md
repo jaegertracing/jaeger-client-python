@@ -7,6 +7,10 @@ for distributed trace collection, and to send those traces to Jaeger.
 See the [OpenTracing Python API](https://github.com/opentracing/opentracing-python)
 for additional detail.
 
+## Contributing and Developing
+
+Please see [CONTRIBUTING.md](./CONTRIBUTING.md).
+
 ## Installation
 
 ```bash
@@ -46,7 +50,7 @@ if __name__ == "__main__":
         with tracer.start_span('ChildSpan', child_of=span) as child_span:
             span.log_event('down below')
 
-    time.sleep(2)   # yield to IOLoop to flush the spans - https://github.com/uber/jaeger-client-python/issues/50
+    time.sleep(2)   # yield to IOLoop to flush the spans - https://github.com/jaegertracing/jaeger-client-python/issues/50
     tracer.close()  # flush any buffered spans
 ```
 
@@ -130,13 +134,13 @@ it needs:
   2. a reporter that will submit traces to Zipkin backend over Zipkin-supported 
      transports like Kafka or HTTP
 
-Both of these things are easy to add (e.g. it was done in https://github.com/uber/jaeger-client-java/pull/34), 
+Both of these things are easy to add (e.g. it was done in https://github.com/jaegertracing/jaeger-client-java/pull/34), 
 but it is not a priority for the Uber team since we are using a different backend.
 We will welcome PRs that provide that functionality.
 
 ## License
 
-[The MIT License](LICENSE).
+[Apache 2.0 License](./LICENSE).
 
 [ci-img]: https://travis-ci.org/jaegertracing/jaeger-client-python.svg?branch=master
 [ci]: https://travis-ci.org/jaegertracing/jaeger-client-python
