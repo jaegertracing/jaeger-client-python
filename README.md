@@ -64,6 +64,10 @@ At Uber we are mostly using the [opentracing_instrumentation](https://github.com
 
 ## Initialization & Configuration
 
+Note: do not initialize the tracer during import, it may cause a deadlock (see issues #31, #60).
+Instead define a function that returns a tracer (see example below) and call that function explicitly
+after all the imports are done.
+
 ### Production
 
 The recommended way to initialize the tracer for production use:
@@ -71,11 +75,12 @@ The recommended way to initialize the tracer for production use:
 ```python
 from jaeger_client import Config
 
-config = Config(config={}, service_name='your-app-name')
-tracer = config.initialize_tracer()
+def init_jaeger_tracer(service_name='your-app-name'):
+    config = Config(config={}, service_name=service_name)
+    return config.initialize_tracer()
 ```
 
-Note that the last line also sets the `opentracing.tracer` global variable.
+Note that the call `initialize_tracer()` also sets the `opentracing.tracer` global variable.
 
 ### Development
 
@@ -88,7 +93,7 @@ When Jaeger tracer is initialized, it may start a new background thread. If the 
 it might cause issues or hang the application (due to exclusive lock on the interpreter).
 Therefore, it is recommended that the tracer is not initialized until after the child processes
 are forked. Depending on the WSGI framework you might be able to use `@postfork` decorator
-to delay tracer initialization.
+to delay tracer initialization (see also issues #31, #60).
 
 ## Debug Traces (Forced Sampling)
 
