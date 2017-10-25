@@ -1,4 +1,4 @@
-FROM python:2.7
+FROM python:2.7-alpine
 
 ENV APPDIR /usr/src/app/
 RUN mkdir -p ${APPDIR}
