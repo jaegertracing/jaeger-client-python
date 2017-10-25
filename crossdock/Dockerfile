@@ -1,4 +1,4 @@
-FROM python:2.7-slim
+FROM python:2.7-alpine
 
 ENV APPDIR /usr/src/app/
 RUN mkdir -p ${APPDIR}
@@ -14,6 +14,9 @@ COPY setup.cfg ${APPDIR}
 COPY jaeger_client ${APPDIR}/jaeger_client/
 COPY idl ${APPDIR}/idl/
 
+# Install the bare minimum dependencies to install the requirements
+RUN apk add --no-cache --virtual build-dependencies gcc musl-dev libffi-dev openssl-dev
+
 # RUN pip install -U 'pip>=7,<8'
 RUN pip install --no-cache-dir -r requirements-dev.txt
 RUN pip install --no-cache-dir -r requirements-tests.txt
@@ -26,6 +29,9 @@ RUN python setup_crossdock.py install
 
 # TODO Remove this after the tchannel-python crossdock is no longer a package
 RUN rm -rf /usr/local/lib/python2.7/site-packages/crossdock
+
+# Remove build dependencies to reduce the size of the image
+RUN apk del build-dependencies
 
 CMD ["crossdock"]
 EXPOSE 8080-8082
