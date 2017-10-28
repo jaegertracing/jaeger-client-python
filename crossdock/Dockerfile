@@ -1,5 +1,7 @@
-FROM python:2.7
+FROM alpine
 
+RUN apk update
+RUN apk add python sqlite sqlite-libs py-pip gcc python-dev musl-dev libffi-dev openssl-dev
 ENV APPDIR /usr/src/app/
 RUN mkdir -p ${APPDIR}
 WORKDIR ${APPDIR}
