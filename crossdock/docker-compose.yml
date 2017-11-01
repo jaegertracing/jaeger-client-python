@@ -40,6 +40,8 @@ services:
         image: jaegertracing/xdock-java
         ports:
             - "8080-8082"
+        links:
+           - "jaeger-agent:test_driver"
 
     python:
         build:
@@ -48,14 +50,11 @@ services:
         ports:
             - "8080-8082"
 
-    cassandra:
-        image: "cassandra:3.9"
-
     test_driver:
         image: jaegertracing/test-driver
-        links:
-            - cassandra
         depends_on:
-            - cassandra
+            - jaeger-query
+            - jaeger-collector
+            - jaeger-agent
         ports:
             - "8080"

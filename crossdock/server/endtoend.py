@@ -14,6 +14,7 @@
 
 import tornado.web
 import json
+import os
 
 from jaeger_client.local_agent_net import LocalAgentSender
 from jaeger_client.config import (
@@ -101,7 +102,7 @@ class EndToEndHandler(object):
     @property
     def local_agent_sender(self):
         return LocalAgentSender(
-            host='test_driver',
+            host=os.getenv('AGENT_HOST', 'jaeger-agent'),
             sampling_port=DEFAULT_SAMPLING_PORT,
             reporting_port=DEFAULT_REPORTING_PORT,
         )

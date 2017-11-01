@@ -56,3 +56,4 @@ perf.svg
 *.swp
 .idea/
 
+crossdock/jaeger-docker-compose.yml
