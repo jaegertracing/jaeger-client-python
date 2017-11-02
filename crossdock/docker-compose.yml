@@ -40,8 +40,6 @@ services:
         image: jaegertracing/xdock-java
         ports:
             - "8080-8082"
-        links:
-           - "jaeger-agent:test_driver"
 
     python:
         build:
