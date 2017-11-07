@@ -65,11 +65,15 @@ shell:
 	ipython
 
 # Generate jaeger thrifts
-THRIFT_GEN_DIR=jaeger_client/thrift_gen
 THRIFT_VER=0.9.3
 THRIFT_IMG=thrift:$(THRIFT_VER)
 THRIFT_PY_ARGS=new_style,tornado
 THRIFT=docker run -v "${PWD}:/data" $(THRIFT_IMG) thrift
+THRIFT_GEN_DIR=jaeger_client/thrift_gen_$(strip $(shell echo $(THRIFT_VER) | sed 's/\./_/g'))
+
+xxx:
+	echo $(THRIFT_GEN_DIR)
+	make xxx THRIFT_VER=0.10.0
 
 idl-submodule:
 	git submodule init
@@ -79,7 +83,13 @@ thrift-image:
 	$(THRIFT) -version
 
 .PHONY: thrift
-thrift: idl-submodule thrift-image
+thrift: idl-submodule
+	make thrift_gen
+	make thrift_gen THRIFT_VER=0.10.0 THRIFT_PY_ARGS=tornado
+
+.PHONY: thrift_gen
+thrift_gen: thrift-image
+	[ -d $(THRIFT_GEN_DIR) ] || mkdir -p $(THRIFT_GEN_DIR)
 	${THRIFT} -o /data --gen py:${THRIFT_PY_ARGS} -out /data/$(THRIFT_GEN_DIR) /data/idl/thrift/zipkinCore.thrift
 	${THRIFT} -o /data --gen py:${THRIFT_PY_ARGS} -out /data/$(THRIFT_GEN_DIR) /data/idl/thrift/agent.thrift
 	${THRIFT} -o /data --gen py:${THRIFT_PY_ARGS} -out /data/$(THRIFT_GEN_DIR) /data/idl/thrift/sampling.thrift
