@@ -38,6 +38,8 @@ services:
 
     java:
         image: jaegertracing/xdock-java
+        depends_on:
+            - jaeger-agent
         ports:
             - "8080-8082"
 
