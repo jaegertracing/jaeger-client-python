@@ -14,8 +14,7 @@ if [[ "$BRANCH" == "master" && "$TRAVIS_SECURE_ENV_VARS" == "true" ]]; then
   echo 'upload to Docker Hub'
 else 
   echo 'skip docker upload for PR'
-  # TODO uncomment once it builds
-  # exit 0
+  exit 0
 fi
 
 docker login -u $DOCKER_USER -p $DOCKER_PASS
