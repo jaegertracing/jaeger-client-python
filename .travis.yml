@@ -23,17 +23,13 @@ env:
     # DOCKER_PASS
     - secure: "xxoMQo7hF+yr8SyITXonPQahEDcy5Y+uyX4kiVQxtlRIN/Nd1vL64PIocB/M4k9MhSMmz15fFjTtHuzk/tVKpHpgX9SFVCRRAt5qbzekm9NOce25BqJm33zgEKO979sNtn5Aen8ocU5uIar9IKhzV/SaEXPDqNmCGlnF/xAbvKjtTq+PjLy4xj6UKHTvSfYQFsOBgVzmZk759XVAiODN2szIzzXTNMfxOK6FG7w7O2U9VZ7lsvqC7NymXSocp4iF4kOlvAq13sFGYYMJ+1yReODAGNsUZv0TPgPT5NSxPA5OxjVNlPnlmvD6IjZvzpkciPyjsUTV8OIiuyE8GdUKc1FHKvUavN16ac7vC2dAv1VYNFvlr61RIpUAMNk+7k9fX6M5mHBzhnfNSjF2MmKyVDv4PqgLAQOtk9Vbhd8EdZS+/3MRg8DZDWQE8h0rPJQTPWDTMQ4q4yQcpygBnICB0gACIlTFSevnvsTQGUQfR/0GPB8AGsEHTSw7FUQI7dD1JYteRlgk9vNeYpeYrtgom5v9KSeaio1gTB7OlTd3car2iTYSPUgYpXLLY4vV/HEVW+FUWtCkgojWACUmFschNGPxV+nkjjlgj+Nonnz4XK5Y4l4W8Y6N7fTpxEIB9O+5e+Xnf6RhvoWvw/uMbagvK2U+sqFcV0tj8KyfWqtAm3s="
 
-before_install:
-  - docker version
-  - if [ "$CROSSDOCK" = "1" ]; then make install_docker_ci ; fi
-
 install:
   - make bootstrap
-  - if [ "$CROSSDOCK" == true ]; then bash ./scripts/install-crossdock-deps.sh ; fi
+  - if [ "$CROSSDOCK" == "1" ]; then bash ./scripts/install-crossdock-deps.sh ; fi
 
 script:
   - if [ "$CROSSDOCK" != "1" ]; then make test_ci ; fi
-  - if [ "$CROSSDOCK" == true ]; then bash ./travis/build-crossdock.sh ; else echo 'skipping crossdock'; fi
+  - if [ "$CROSSDOCK" == "1" ]; then bash ./travis/build-crossdock.sh ; else echo 'skipping crossdock'; fi
 
 after_failure:
   - timeout 5 if [ "$CROSSDOCK" = "1" ]; then docker-compose -f crossdock/docker-compose.yml logs ; fi
