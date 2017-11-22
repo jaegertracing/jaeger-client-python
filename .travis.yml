@@ -23,31 +23,16 @@ env:
     # DOCKER_PASS
     - secure: "xxoMQo7hF+yr8SyITXonPQahEDcy5Y+uyX4kiVQxtlRIN/Nd1vL64PIocB/M4k9MhSMmz15fFjTtHuzk/tVKpHpgX9SFVCRRAt5qbzekm9NOce25BqJm33zgEKO979sNtn5Aen8ocU5uIar9IKhzV/SaEXPDqNmCGlnF/xAbvKjtTq+PjLy4xj6UKHTvSfYQFsOBgVzmZk759XVAiODN2szIzzXTNMfxOK6FG7w7O2U9VZ7lsvqC7NymXSocp4iF4kOlvAq13sFGYYMJ+1yReODAGNsUZv0TPgPT5NSxPA5OxjVNlPnlmvD6IjZvzpkciPyjsUTV8OIiuyE8GdUKc1FHKvUavN16ac7vC2dAv1VYNFvlr61RIpUAMNk+7k9fX6M5mHBzhnfNSjF2MmKyVDv4PqgLAQOtk9Vbhd8EdZS+/3MRg8DZDWQE8h0rPJQTPWDTMQ4q4yQcpygBnICB0gACIlTFSevnvsTQGUQfR/0GPB8AGsEHTSw7FUQI7dD1JYteRlgk9vNeYpeYrtgom5v9KSeaio1gTB7OlTd3car2iTYSPUgYpXLLY4vV/HEVW+FUWtCkgojWACUmFschNGPxV+nkjjlgj+Nonnz4XK5Y4l4W8Y6N7fTpxEIB9O+5e+Xnf6RhvoWvw/uMbagvK2U+sqFcV0tj8KyfWqtAm3s="
 
-before_install:
-  - docker version
-  - if [ "$CROSSDOCK" = "1" ]; then make install_docker_ci ; fi
-
 install:
   - make bootstrap
+  - if [ "$CROSSDOCK" == "1" ]; then bash ./scripts/install-crossdock-deps.sh ; fi
 
 script:
   - if [ "$CROSSDOCK" != "1" ]; then make test_ci ; fi
-  - if [ "$COVER" = "1" ]; then coveralls -v ; fi
-  - if [ "$CROSSDOCK" = "1" ]; then make crossdock ; fi
-
-after_failure:
-  - timeout 5 if [ "$CROSSDOCK" = "1" ]; then docker-compose -f crossdock/docker-compose.yml logs ; fi
+  - if [ "$CROSSDOCK" == "1" ]; then bash ./scripts/build-crossdock.sh ; else echo 'skipping crossdock'; fi
 
 after_success:
-  - export REPO=jaegertracing/xdock-py
-  - export PR=https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls/$TRAVIS_PULL_REQUEST
-  - export BRANCH=$(if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then echo $TRAVIS_BRANCH; else echo `curl -s $PR | jq -r .head.ref`; fi)
-  - export TAG=`if [ "$BRANCH" == "master" ]; then echo "latest"; else echo $BRANCH; fi`
-  - echo "TRAVIS_BRANCH=$TRAVIS_BRANCH, REPO=$REPO, PR=$PR, BRANCH=$BRANCH, TAG=$TAG"
-  - if [ "$BRANCH" == "master" ] && [ "$CROSSDOCK" == "1" ]; then echo 'upload to Docker Hub'; else echo 'skip docker upload for PR'; exit 0; fi
-  - docker login -u $DOCKER_USER -p $DOCKER_PASS
-  - docker build -f crossdock/Dockerfile -t $REPO:$COMMIT .
-  - docker tag $REPO:$COMMIT $REPO:$TAG
-  - docker tag $REPO:$COMMIT $REPO:travis-$TRAVIS_BUILD_NUMBER
-  - docker push $REPO
+  - if [ "$COVER" = "1" ]; then coveralls -v ; fi
 
+after_failure:
+  - timeout 5 if [ "$CROSSDOCK" = "1" ]; then make crossdock-logs ; fi
