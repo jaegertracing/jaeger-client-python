@@ -29,10 +29,10 @@ install:
 
 script:
   - if [ "$CROSSDOCK" != "1" ]; then make test_ci ; fi
-  - if [ "$CROSSDOCK" == "1" ]; then bash ./travis/build-crossdock.sh ; else echo 'skipping crossdock'; fi
-
-after_failure:
-  - timeout 5 if [ "$CROSSDOCK" = "1" ]; then docker-compose -f crossdock/docker-compose.yml logs ; fi
+  - if [ "$CROSSDOCK" == "1" ]; then bash ./scripts/build-crossdock.sh ; else echo 'skipping crossdock'; fi
 
 after_success:
   - if [ "$COVER" = "1" ]; then coveralls -v ; fi
+
+after_failure:
+  - timeout 5 if [ "$CROSSDOCK" = "1" ]; then make crossdock-logs ; fi
