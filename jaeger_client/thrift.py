@@ -58,6 +58,8 @@ def port_to_int(port):
 
 
 def id_to_int(big_id):
+    if big_id is None:
+        return None
     # zipkincore.thrift defines ID fields as i64, which is signed,
     # therefore we convert large IDs (> 2^63) to negative longs
     if big_id > _max_signed_id:

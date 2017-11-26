@@ -83,6 +83,8 @@ thrift: idl-submodule thrift-image
 	${THRIFT} -o /data --gen py:${THRIFT_PY_ARGS} -out /data/$(THRIFT_GEN_DIR) /data/idl/thrift/zipkinCore.thrift
 	${THRIFT} -o /data --gen py:${THRIFT_PY_ARGS} -out /data/$(THRIFT_GEN_DIR) /data/idl/thrift/agent.thrift
 	${THRIFT} -o /data --gen py:${THRIFT_PY_ARGS} -out /data/$(THRIFT_GEN_DIR) /data/idl/thrift/sampling.thrift
+	find jaeger_client/thrift_gen -iname '*.py' -exec sed -i.bak 's/from ttype/from .ttype/g' {} \;
+	rm jaeger_client/thrift_gen/{**/*.bak,*.bak}
 	rm -rf ${THRIFT_GEN_DIR}/*/*-remote
 
 update-license:
