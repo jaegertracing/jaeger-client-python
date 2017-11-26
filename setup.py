@@ -33,9 +33,10 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Natural Language :: English',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.6',
     ],
     install_requires=[
-        'futures',
+        'futures;python_version<"3"',
         'threadloop>=1,<2',
         # we want thrift>=0.9.2.post1,<0.9.3, but we let the users pin to that
         'thrift',
