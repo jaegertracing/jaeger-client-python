@@ -111,7 +111,7 @@ class TestCodecs(unittest.TestCase):
             assert carrier == {'trace-id': '100:7f:0:1'}
 
             ctx._baggage = {
-                'fry': 'Leela',
+                'fry': u'Leela',
                 'bender': 'Countess de la Roca',
             }
             carrier = {}
@@ -126,6 +126,9 @@ class TestCodecs(unittest.TestCase):
                     'trace-id': '100:7f:0:1',
                     'trace-attr-bender': 'Countess de la Roca',
                     'trace-attr-fry': 'Leela'}
+            for key, val in carrier.iteritems():
+                assert isinstance(key, str)
+                assert isinstance(val, str)
 
     def test_context_from_bad_readable_headers(self):
         codec = TextCodec(trace_id_header='Trace_ID',
