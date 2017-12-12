@@ -70,7 +70,9 @@ class TextCodec(Codec):
                     encoded_value = urllib.parse.quote(value)
                 else:
                     encoded_value = value
-                carrier['%s%s' % (self.baggage_prefix, key)] = encoded_value
+                header_key = '%s%s' % (self.baggage_prefix, key.encode('utf-8'))
+                header_value = encoded_value.encode('utf-8')
+                carrier[header_key] = header_value
 
     def extract(self, carrier):
         if not hasattr(carrier, 'iteritems'):
