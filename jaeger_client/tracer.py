@@ -46,7 +46,7 @@ class Tracer(opentracing.Tracer):
                  trace_id_header=constants.TRACE_ID_HEADER,
                  baggage_header_prefix=constants.BAGGAGE_HEADER_PREFIX,
                  debug_id_header=constants.DEBUG_ID_HEADER_KEY,
-                 one_span_per_rpc=True, extra_codecs=None,
+                 one_span_per_rpc=False, extra_codecs=None,
                  tags=None):
         self.service_name = service_name
         self.reporter = reporter
