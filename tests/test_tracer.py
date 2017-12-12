@@ -68,7 +68,7 @@ def test_forced_sampling(tracer):
     assert span.is_debug()
 
 
-@pytest.mark.parametrize('mode', ['arg', 'ref'])
+@pytest.mark.parametrize('mode,', ['arg', 'ref'])
 def test_start_child(tracer, mode):
     root = tracer.start_span("test")
     if mode == 'arg':
@@ -90,6 +90,21 @@ def test_start_child(tracer, mode):
     tracer.reporter.assert_called_once()
     tracer.close()
 
+@pytest.mark.parametrize('one_span_per_rpc,', [True, False])
+def test_one_span_per_rpc(tracer, one_span_per_rpc):
+    tracer.one_span_per_rpc = one_span_per_rpc
+    span = tracer.start_span("client")
+    span.set_tag(ext_tags.SPAN_KIND, ext_tags.SPAN_KIND_RPC_CLIENT)
+    child = tracer.start_span(
+        "server", 
+        references=child_of(span.context),
+        tags={ext_tags.SPAN_KIND: ext_tags.SPAN_KIND_RPC_SERVER},
+    )
+    assert span.trace_id == child.trace_id, "Must have the same trace ids"
+    if one_span_per_rpc:
+        assert span.span_id == child.span_id, "Must have the same span ids"
+    else:
+        assert span.span_id != child.span_id, "Must have different span ids"
 
 def test_child_span(tracer):
     span = tracer.start_span("test")
