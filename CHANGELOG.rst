@@ -3,10 +3,10 @@
 History
 -------
 
-3.6.2 (unreleased)
+3.7.0 (2017-12-12)
 ------------------
 
-- Nothing changed yet.
+- Change default for one_span_per_rpc to False (#105)
 
 
 3.6.1 (2017-09-26)
