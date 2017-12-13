@@ -326,7 +326,7 @@ def test_debug_id():
     assert tags[0].value == 'Coraline'
 
 
-def test_non_unicode_baggage(httpserver):
+def test_non_ascii_baggage(httpserver):
     # httpserver is provided by pytest-localserver
     httpserver.serve_content(content='Hello', code=200, headers=None)
 
