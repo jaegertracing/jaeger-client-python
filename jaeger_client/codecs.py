@@ -71,9 +71,10 @@ class TextCodec(Codec):
                     encoded_value = urllib.parse.quote(value)
                     # we assume that self.url_encoding means we are injecting
                     # into HTTP headers. httplib does not like unicode strings
-                    # so we convert the key to utf-8. We do not need to encode
-                    # the value since it's already URL-encoded.
-                    if isinstance(key, unicode):
+                    # so we convert them to utf-8.
+                    if isinstance(encoded_value, unicode):
+                        encoded_value = encoded_value.encode('utf-8')
+                    if isinstance(encoded_key, unicode):
                         encoded_key = key.encode('utf-8')
                 else:
                     encoded_value = value

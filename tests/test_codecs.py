@@ -17,6 +17,7 @@ from __future__ import absolute_import
 import unittest
 from collections import namedtuple
 import urllib2
+import six
 
 import mock
 import pytest
@@ -122,14 +123,14 @@ class TestCodecs(unittest.TestCase):
                     'trace-id': '100:7f:0:1',
                     'trace-attr-bender': 'Countess%20de%20la%20Roca',
                     'trace-attr-fry': 'Leela'}
+                for key, val in six.iteritems(carrier):
+                    assert isinstance(key, str)
+                    assert isinstance(val, str)
             else:
                 assert carrier == {
                     'trace-id': '100:7f:0:1',
                     'trace-attr-bender': 'Countess de la Roca',
                     'trace-attr-fry': 'Leela'}
-            for key, val in carrier.iteritems():
-                assert isinstance(key, str)
-                assert isinstance(val, str)
 
     def test_context_from_bad_readable_headers(self):
         codec = TextCodec(trace_id_header='Trace_ID',
@@ -326,6 +327,7 @@ def test_debug_id():
 
 
 def test_non_unicode_baggage(httpserver):
+    # httpserver is provided by pytest-localserver
     httpserver.serve_content(content='Hello', code=200, headers=None)
 
     tracer = Tracer(
