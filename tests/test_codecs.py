@@ -115,6 +115,10 @@ class TestCodecs(unittest.TestCase):
             ctx._baggage = {
                 'fry': u'Leela',
                 'bender': 'Countess de la Roca',
+                b'key1': bytes(chr(255)),
+                u'key2-caf\xe9': 'caf\xc3\xa9',
+                u'key3': u'caf\xe9',
+                'key4-caf\xc3\xa9': 'value',
             }
             carrier = {}
             codec.inject(ctx, carrier)
@@ -122,7 +126,12 @@ class TestCodecs(unittest.TestCase):
                 assert carrier == {
                     'trace-id': '100:7f:0:1',
                     'trace-attr-bender': 'Countess%20de%20la%20Roca',
-                    'trace-attr-fry': 'Leela'}
+                    'trace-attr-fry': 'Leela',
+                    'trace-attr-key1': '%FF',
+                    'trace-attr-key2-caf\xc3\xa9': 'caf%C3%A9',
+                    'trace-attr-key3': 'caf%C3%A9',
+                    'trace-attr-key4-caf\xc3\xa9': 'value',
+                }, 'with url_encoding = %s' % url_encoding
                 for key, val in six.iteritems(carrier):
                     assert isinstance(key, str)
                     assert isinstance(val, str)
@@ -130,7 +139,12 @@ class TestCodecs(unittest.TestCase):
                 assert carrier == {
                     'trace-id': '100:7f:0:1',
                     'trace-attr-bender': 'Countess de la Roca',
-                    'trace-attr-fry': 'Leela'}
+                    'trace-attr-fry': 'Leela',
+                    'trace-attr-key1': '\xff',
+                    u'trace-attr-key2-caf\xe9': 'caf\xc3\xa9',
+                    u'trace-attr-key3': u'caf\xe9',
+                    'trace-attr-key4-caf\xc3\xa9': 'value',
+                }, 'with url_encoding = %s' % url_encoding
 
     def test_context_from_bad_readable_headers(self):
         codec = TextCodec(trace_id_header='Trace_ID',
