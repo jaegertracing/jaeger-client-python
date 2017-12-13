@@ -16,6 +16,7 @@ from __future__ import absolute_import
 
 import unittest
 from collections import namedtuple
+import urllib2
 
 import mock
 import pytest
@@ -319,3 +320,36 @@ def test_debug_id():
     tags = [t for t in span.tags if t.key == debug_header]
     assert len(tags) == 1
     assert tags[0].value == 'Coraline'
+
+
+def test_non_unicode_baggage(httpserver):
+    httpserver.serve_content(content='Hello', code=200, headers=None)
+
+    tracer = Tracer(
+        service_name='test',
+        reporter=InMemoryReporter(),
+        # don't sample to avoid logging baggage to the span
+        sampler=ConstSampler(False),
+    )
+    tracer.codecs[Format.TEXT_MAP] = TextCodec(url_encoding=True)
+
+    baggage = [
+        (b'key', b'value'),
+        (u'key', b'value'),
+        (b'key', bytes(chr(255))),
+        (u'caf\xe9', 'caf\xc3\xa9'),
+        ('caf\xc3\xa9', 'value'),
+    ]
+    for b in baggage:
+        span = tracer.start_span('test')
+        span.set_baggage_item(b[0], b[1])
+
+        headers = {}
+        tracer.inject(
+            span_context=span.context, format=Format.TEXT_MAP, carrier=headers
+        )
+        # make sure httplib doesn't blow up
+        request = urllib2.Request(httpserver.url, None, headers)
+        response = urllib2.urlopen(request)
+        assert response.read() == 'Hello'
+        response.close()
