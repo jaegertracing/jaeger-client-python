@@ -18,6 +18,7 @@ import unittest
 from collections import namedtuple
 import urllib2
 import six
+from future.types.newstr import newstr
 
 import mock
 import pytest
@@ -122,6 +123,9 @@ class TestCodecs(unittest.TestCase):
             }
             carrier = {}
             codec.inject(ctx, carrier)
+            # NB: the reverse transformation is not exact, e.g. this fails:
+            #   assert ctx._baggage == codec.extract(carrier)._baggage
+            # But fully supporting lossless Unicode baggage is not the goal.
             if url_encoding:
                 assert carrier == {
                     'trace-id': '100:7f:0:1',
@@ -133,8 +137,8 @@ class TestCodecs(unittest.TestCase):
                     'trace-attr-key4-caf\xc3\xa9': 'value',
                 }, 'with url_encoding = %s' % url_encoding
                 for key, val in six.iteritems(carrier):
-                    assert isinstance(key, str)
-                    assert isinstance(val, str)
+                    assert isinstance(key, str) or isinstance(key, newstr)
+                    assert isinstance(val, str) or isinstance(val, newstr), '%s' % type(val)
             else:
                 assert carrier == {
                     'trace-id': '100:7f:0:1',
@@ -340,7 +344,7 @@ def test_debug_id():
     assert tags[0].value == 'Coraline'
 
 
-def test_non_ascii_baggage(httpserver):
+def test_non_ascii_baggage_with_httplib(httpserver):
     # httpserver is provided by pytest-localserver
     httpserver.serve_content(content='Hello', code=200, headers=None)
 
