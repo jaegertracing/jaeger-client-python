@@ -3,10 +3,10 @@
 History
 -------
 
-3.7.1 (unreleased)
+3.7.1 (2017-12-14)
 ------------------
 
-- Nothing changed yet.
+- Encode unicode baggage keys/values to UTF-8 (#109)
 
 
 3.7.0 (2017-12-12)
