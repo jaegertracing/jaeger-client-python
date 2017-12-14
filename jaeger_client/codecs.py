@@ -66,11 +66,19 @@ class TextCodec(Codec):
         baggage = span_context.baggage
         if baggage:
             for key, value in six.iteritems(baggage):
+                encoded_key = key
                 if self.url_encoding:
                     encoded_value = urllib.parse.quote(value)
+                    # we assume that self.url_encoding means we are injecting
+                    # into HTTP headers. httplib does not like unicode strings
+                    # so we convert the key to utf-8. The URL-encoded value is
+                    # already a plain string.
+                    if isinstance(key, unicode):
+                        encoded_key = key.encode('utf-8')
                 else:
                     encoded_value = value
-                carrier['%s%s' % (self.baggage_prefix, key)] = encoded_value
+                header_key = '%s%s' % (self.baggage_prefix, encoded_key)
+                carrier[header_key] = encoded_value
 
     def extract(self, carrier):
         if not hasattr(carrier, 'iteritems'):

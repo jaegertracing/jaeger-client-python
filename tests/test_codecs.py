@@ -16,6 +16,9 @@ from __future__ import absolute_import
 
 import unittest
 from collections import namedtuple
+import urllib2
+import six
+from future.types.newstr import newstr
 
 import mock
 import pytest
@@ -111,21 +114,41 @@ class TestCodecs(unittest.TestCase):
             assert carrier == {'trace-id': '100:7f:0:1'}
 
             ctx._baggage = {
-                'fry': 'Leela',
+                'fry': u'Leela',
                 'bender': 'Countess de la Roca',
+                b'key1': bytes(chr(255)),
+                u'key2-caf\xe9': 'caf\xc3\xa9',
+                u'key3': u'caf\xe9',
+                'key4-caf\xc3\xa9': 'value',
             }
             carrier = {}
             codec.inject(ctx, carrier)
+            # NB: the reverse transformation is not exact, e.g. this fails:
+            #   assert ctx._baggage == codec.extract(carrier)._baggage
+            # But fully supporting lossless Unicode baggage is not the goal.
             if url_encoding:
                 assert carrier == {
                     'trace-id': '100:7f:0:1',
                     'trace-attr-bender': 'Countess%20de%20la%20Roca',
-                    'trace-attr-fry': 'Leela'}
+                    'trace-attr-fry': 'Leela',
+                    'trace-attr-key1': '%FF',
+                    'trace-attr-key2-caf\xc3\xa9': 'caf%C3%A9',
+                    'trace-attr-key3': 'caf%C3%A9',
+                    'trace-attr-key4-caf\xc3\xa9': 'value',
+                }, 'with url_encoding = %s' % url_encoding
+                for key, val in six.iteritems(carrier):
+                    assert isinstance(key, str) or isinstance(key, newstr)
+                    assert isinstance(val, str) or isinstance(val, newstr), '%s' % type(val)
             else:
                 assert carrier == {
                     'trace-id': '100:7f:0:1',
                     'trace-attr-bender': 'Countess de la Roca',
-                    'trace-attr-fry': 'Leela'}
+                    'trace-attr-fry': 'Leela',
+                    'trace-attr-key1': '\xff',
+                    u'trace-attr-key2-caf\xe9': 'caf\xc3\xa9',
+                    u'trace-attr-key3': u'caf\xe9',
+                    'trace-attr-key4-caf\xc3\xa9': 'value',
+                }, 'with url_encoding = %s' % url_encoding
 
     def test_context_from_bad_readable_headers(self):
         codec = TextCodec(trace_id_header='Trace_ID',
@@ -319,3 +342,37 @@ def test_debug_id():
     tags = [t for t in span.tags if t.key == debug_header]
     assert len(tags) == 1
     assert tags[0].value == 'Coraline'
+
+
+def test_non_ascii_baggage_with_httplib(httpserver):
+    # httpserver is provided by pytest-localserver
+    httpserver.serve_content(content='Hello', code=200, headers=None)
+
+    tracer = Tracer(
+        service_name='test',
+        reporter=InMemoryReporter(),
+        # don't sample to avoid logging baggage to the span
+        sampler=ConstSampler(False),
+    )
+    tracer.codecs[Format.TEXT_MAP] = TextCodec(url_encoding=True)
+
+    baggage = [
+        (b'key', b'value'),
+        (u'key', b'value'),
+        (b'key', bytes(chr(255))),
+        (u'caf\xe9', 'caf\xc3\xa9'),
+        ('caf\xc3\xa9', 'value'),
+    ]
+    for b in baggage:
+        span = tracer.start_span('test')
+        span.set_baggage_item(b[0], b[1])
+
+        headers = {}
+        tracer.inject(
+            span_context=span.context, format=Format.TEXT_MAP, carrier=headers
+        )
+        # make sure httplib doesn't blow up
+        request = urllib2.Request(httpserver.url, None, headers)
+        response = urllib2.urlopen(request)
+        assert response.read() == 'Hello'
+        response.close()
