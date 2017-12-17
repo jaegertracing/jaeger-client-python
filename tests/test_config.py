@@ -17,6 +17,7 @@ import os
 import unittest
 from jaeger_client import Config, ConstSampler, ProbabilisticSampler, RateLimitingSampler
 from jaeger_client.reporter import NullReporter
+from jaeger_client import constants
 
 
 class ConfigTests(unittest.TestCase):
@@ -82,3 +83,13 @@ class ConfigTests(unittest.TestCase):
 
         c = Config({'local_agent': {'reporting_host': 'jaeger.local'}}, service_name='x')
         assert c.local_agent_reporting_host == 'jaeger.local'
+
+    def test_max_tag_value_length(self):
+        c = Config({}, service_name='x')
+        assert c.max_tag_value_length == constants.MAX_TAG_VALUE_LENGTH
+
+        c = Config({'max_tag_value_length': 333}, service_name='x')
+        assert c.max_tag_value_length == 333
+
+        t = c.create_tracer(NullReporter(), ConstSampler(True))
+        assert t.max_tag_value_length == 333

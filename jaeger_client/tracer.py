@@ -41,13 +41,16 @@ class Tracer(opentracing.Tracer):
     """
     N.B. metrics has been deprecated, use metrics_factory instead.
     """
-    def __init__(self, service_name, reporter, sampler, metrics=None,
-                 metrics_factory=None,
-                 trace_id_header=constants.TRACE_ID_HEADER,
-                 baggage_header_prefix=constants.BAGGAGE_HEADER_PREFIX,
-                 debug_id_header=constants.DEBUG_ID_HEADER_KEY,
-                 one_span_per_rpc=False, extra_codecs=None,
-                 tags=None):
+    def __init__(
+        self, service_name, reporter, sampler, metrics=None,
+        metrics_factory=None,
+        trace_id_header=constants.TRACE_ID_HEADER,
+        baggage_header_prefix=constants.BAGGAGE_HEADER_PREFIX,
+        debug_id_header=constants.DEBUG_ID_HEADER_KEY,
+        one_span_per_rpc=False, extra_codecs=None,
+        tags=None,
+        max_tag_value_length=constants.MAX_TAG_VALUE_LENGTH,
+    ):
         self.service_name = service_name
         self.reporter = reporter
         self.sampler = sampler
@@ -56,6 +59,7 @@ class Tracer(opentracing.Tracer):
         self.metrics = TracerMetrics(self.metrics_factory)
         self.random = random.Random(time.time() * (os.getpid() or 1))
         self.debug_id_header = debug_id_header
+        self.max_tag_value_length = max_tag_value_length
         self.codecs = {
             Format.TEXT_MAP: TextCodec(
                 url_encoding=False,

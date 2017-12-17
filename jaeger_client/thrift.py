@@ -76,9 +76,9 @@ def make_endpoint(ipv4, port, service_name):
     return zipkin_collector.Endpoint(ipv4, port, service_name.lower())
 
 
-def make_string_tag(key, value):
-    if len(value) > 256:
-        value = value[:256]
+def make_string_tag(key, value, max_length):
+    if len(value) > max_length:
+        value = value[:max_length]
     return zipkin_collector.BinaryAnnotation(
         key, value, zipkin_collector.AnnotationType.STRING)
 

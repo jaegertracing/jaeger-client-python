@@ -232,3 +232,12 @@ def test_span_component(tracer):
 
     span.set_tag(ext_tags.COMPONENT, 'crypt')
     assert span.component == 'crypt'
+
+
+def test_span_tag_value_max_length(tracer):
+    tracer.max_tag_value_length = 42
+    span = tracer.start_span(operation_name='x')
+    span.set_tag('x', 'x' * 50)
+    tag_n = len(span.tags) - 1
+    assert span.tags[tag_n].key == 'x'
+    assert span.tags[tag_n].value == 'x' * 42
