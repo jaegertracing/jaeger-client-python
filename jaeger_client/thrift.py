@@ -102,7 +102,7 @@ def make_jaeger_batch(spans, process):
                 traceIdLow=id_to_int(span.trace_id),
                 traceIdHigh=0,
                 spanId=id_to_int(span.span_id),
-                parentSpanId=id_to_int(span.parent_id) or None,
+                parentSpanId=id_to_int(span.parent_id) or 0,
                 operationName=span.operation_name,
                 # references = references, # TODO
                 flags=span.context.flags,
