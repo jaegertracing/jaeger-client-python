@@ -120,10 +120,10 @@ class Reporter(NullReporter):
         self._process_lock = Lock()
         self._process = None
 
-    def set_process(self, service_name, tags):
+    def set_process(self, service_name, tags, max_length):
         with self._process_lock:
             self._process = thrift.make_process(
-                service_name=service_name, tags=tags,
+                service_name=service_name, tags=tags, max_length=max_length,
             )
 
     def report_span(self, span):

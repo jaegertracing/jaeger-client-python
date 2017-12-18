@@ -102,6 +102,7 @@ class Span(opentracing.Span):
             log = thrift.make_log(
                 timestamp=timestamp if timestamp else time.time(),
                 fields=key_values,
+                max_length=self._tracer.max_tag_value_length,
             )
             with self.update_lock:
                 self.logs.append(log)

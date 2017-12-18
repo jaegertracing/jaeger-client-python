@@ -69,25 +69,25 @@ def timestamp_micros(ts):
     return long(ts * 1000000)
 
 
-def make_tags(tags):
+def make_tags(tags, max_length):
     # TODO extend to support non-string tag values
     return [
-        make_string_tag(key=k, value=str(v), max_length=1024)
+        make_string_tag(key=k, value=str(v), max_length=max_length)
         for k, v in six.iteritems(tags or {})
     ]
 
 
-def make_log(timestamp, fields):
+def make_log(timestamp, fields, max_length):
     return ttypes.Log(
         timestamp=timestamp_micros(ts=timestamp),
-        fields=make_tags(tags=fields),
+        fields=make_tags(tags=fields, max_length=max_length),
     )
 
 
-def make_process(service_name, tags):
+def make_process(service_name, tags, max_length):
     return ttypes.Process(
         serviceName=service_name,
-        tags=make_tags(tags=tags),
+        tags=make_tags(tags=tags, max_length=max_length),
     )
 
 

@@ -92,7 +92,9 @@ class Tracer(opentracing.Tracer):
             logger.exception('Unable to determine host name')
         if hasattr(self.reporter, 'set_process'):
             self.reporter.set_process(
-                service_name=self.service_name, tags=tags,
+                service_name=self.service_name,
+                tags=tags,
+                max_length=self.max_tag_value_length,
             )
 
     def start_span(self,

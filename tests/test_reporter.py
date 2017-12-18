@@ -149,7 +149,7 @@ class ReporterTest(AsyncTestCase):
                             metrics_factory=FakeMetricsFactory(),
                             error_reporter=HardErrorReporter(),
                             queue_capacity=queue_cap)
-        reporter.set_process('service', {})
+        reporter.set_process('service', {}, max_length=0)
         sender = FakeSender()
         reporter._send = sender
         return reporter, sender

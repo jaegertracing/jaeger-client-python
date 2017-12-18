@@ -16,14 +16,15 @@ from __future__ import absolute_import
 
 import collections
 import json
+import mock
 
 from opentracing.ext import tags as ext_tags
-from jaeger_client import Span, SpanContext, ConstSampler, thrift
+from jaeger_client import Span, SpanContext, ConstSampler
 
 
 def test_baggage():
     ctx = SpanContext(trace_id=1, span_id=2, parent_id=None, flags=1)
-    span = Span(context=ctx, operation_name='x', tracer=None)
+    span = Span(context=ctx, operation_name='x', tracer=mock.MagicMock())
     assert span.get_baggage_item('x') is None
     span.set_baggage_item('x', 'y').\
         set_baggage_item('z', 'why')
@@ -45,7 +46,7 @@ def _fields_to_dict(span_log):
 
 def test_baggage_logs():
     ctx = SpanContext(trace_id=1, span_id=2, parent_id=None, flags=1)
-    span = Span(context=ctx, operation_name='x', tracer=None)
+    span = Span(context=ctx, operation_name='x', tracer=mock.MagicMock())
     span.set_baggage_item('x', 'a')
     assert span.get_baggage_item('x') == 'a'
     assert len(span.logs) == 1
