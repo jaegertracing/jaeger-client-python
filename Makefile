@@ -80,6 +80,7 @@ thrift-image:
 
 .PHONY: thrift
 thrift: idl-submodule thrift-image
+	${THRIFT} -o /data --gen py:${THRIFT_PY_ARGS} -out /data/$(THRIFT_GEN_DIR) /data/idl/thrift/jaeger.thrift
 	${THRIFT} -o /data --gen py:${THRIFT_PY_ARGS} -out /data/$(THRIFT_GEN_DIR) /data/idl/thrift/zipkinCore.thrift
 	${THRIFT} -o /data --gen py:${THRIFT_PY_ARGS} -out /data/$(THRIFT_GEN_DIR) /data/idl/thrift/agent.thrift
 	${THRIFT} -o /data --gen py:${THRIFT_PY_ARGS} -out /data/$(THRIFT_GEN_DIR) /data/idl/thrift/sampling.thrift
