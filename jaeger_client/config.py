@@ -42,6 +42,7 @@ from .constants import (
     TRACE_ID_HEADER,
     BAGGAGE_HEADER_PREFIX,
     DEBUG_ID_HEADER_KEY,
+    MAX_TAG_VALUE_LENGTH,
 )
 from .metrics import LegacyMetricsFactory, MetricsFactory, Metrics
 from .utils import get_boolean, ErrorReporter
@@ -154,6 +155,14 @@ class Config(object):
         as a correlation ID.
         """
         return self.config.get('debug_id_header', DEBUG_ID_HEADER_KEY)
+
+    @property
+    def max_tag_value_length(self):
+        """
+        :return: Returns max allowed tag value length. Longer values will
+        be truncated.
+        """
+        return self.config.get('max_tag_value_length', MAX_TAG_VALUE_LENGTH)
 
     @property
     def sampler(self):
@@ -298,6 +307,7 @@ class Config(object):
             baggage_header_prefix=self.baggage_header_prefix,
             debug_id_header=self.debug_id_header,
             tags=self.tags,
+            max_tag_value_length=self.max_tag_value_length,
         )
 
     def _initialize_global_tracer(self, tracer):

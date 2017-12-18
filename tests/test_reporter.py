@@ -225,7 +225,7 @@ class ReporterTest(AsyncTestCase):
 
     @gen_test
     def test_submit_batch_size_2(self):
-        reporter, sender = self._new_reporter(batch_size=2, flush=0.005)
+        reporter, sender = self._new_reporter(batch_size=2, flush=0.01)
         reporter.report_span(self._new_span('1'))
         yield tornado.gen.sleep(0.001)
         assert 0 == len(sender.futures)
@@ -242,7 +242,7 @@ class ReporterTest(AsyncTestCase):
         assert 1 == len(sender.futures)
         yield tornado.gen.sleep(0.001)
         assert 1 == len(sender.futures)
-        yield tornado.gen.sleep(0.005)
+        yield tornado.gen.sleep(0.01)
         assert 2 == len(sender.futures)
         sender.futures[1].set_result(1)
 

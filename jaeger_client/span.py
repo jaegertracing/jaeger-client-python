@@ -93,7 +93,11 @@ class Span(opentracing.Span):
             if special is not None and callable(special):
                 handled = special(self, value)
             if not handled:
-                tag = thrift.make_string_tag(key, str(value))
+                tag = thrift.make_string_tag(
+                    key=key,
+                    value=str(value),
+                    max_length=self.tracer.max_tag_value_length,
+                )
                 with self.update_lock:
                     self.tags.append(tag)
         return self

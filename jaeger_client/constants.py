@@ -65,3 +65,6 @@ SAMPLER_TYPE_RATE_LIMITING = 'ratelimiting'
 # of traces per second.
 # noinspection SpellCheckingInspection
 SAMPLER_TYPE_LOWER_BOUND = 'lowerbound'
+
+# max length for tag values. Longer values will be truncated.
+MAX_TAG_VALUE_LENGTH = 1024

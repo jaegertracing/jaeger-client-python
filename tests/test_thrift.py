@@ -123,7 +123,7 @@ def test_large_ids(tracer):
 
 
 def test_large_tags():
-    tag = thrift.make_string_tag('x', 'y' * 300)
+    tag = thrift.make_string_tag('x', 'y' * 300, max_length=256)
     assert len(tag.value) <= 256
 
 
