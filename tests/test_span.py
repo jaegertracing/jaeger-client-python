@@ -18,8 +18,7 @@ import collections
 import json
 
 from opentracing.ext import tags as ext_tags
-from jaeger_client import Span, SpanContext, ConstSampler
-from jaeger_client.thrift import add_zipkin_annotations
+from jaeger_client import Span, SpanContext, ConstSampler, thrift
 
 
 def test_baggage():
@@ -40,17 +39,25 @@ def test_baggage():
     assert span.get_baggage_item('x-Y') is None
 
 
+def _fields_to_dict(span_log):
+    return {f.key: f.vStr for f in span_log.fields}
+
+
 def test_baggage_logs():
     ctx = SpanContext(trace_id=1, span_id=2, parent_id=None, flags=1)
     span = Span(context=ctx, operation_name='x', tracer=None)
     span.set_baggage_item('x', 'a')
     assert span.get_baggage_item('x') == 'a'
     assert len(span.logs) == 1
-    assert span.logs[0].value == '{"value": "a", "event": "baggage", "key": "x"}'
+    assert _fields_to_dict(span.logs[0]) == {
+        "value": "a", "event": "baggage", "key": "x"
+    }
     span.set_baggage_item('x', 'b')  # override
     assert span.get_baggage_item('x') == 'b'
     assert len(span.logs) == 2
-    assert span.logs[1].value == '{"override": "true", "value": "b", "event": "baggage", "key": "x"}'
+    assert _fields_to_dict(span.logs[1]) == {
+        "override": "true", "value": "b", "event": "baggage", "key": "x"
+    }
 
 
 def test_sampling_priority(tracer):
@@ -71,6 +78,8 @@ def test_span_logging(tracer):
 
     def test(method, expected,
              args=None, kwargs=None, error=False, timestamp=None):
+        if isinstance(expected, str):
+            expected = {'event': expected}
         return tpl(
             method=method,
             args=args if args else [],
@@ -169,18 +178,11 @@ def test_span_logging(tracer):
 
         assert len(span.logs) == 1, name
         log = span.logs[0]
-        if isinstance(test.expected, dict):
-            log.value = from_json(log.value)
-        assert log.value == test.expected
+        log_fields = _fields_to_dict(log)
+        assert log_fields == test.expected
 
         if test.timestamp:
             assert log.timestamp == test.timestamp
-
-        if test.error:
-            assert len(span.tags) == 1, name
-            assert span.tags[0].key == 'error'
-        else:
-            assert len(span.tags) == 0, name
 
 
 def test_span_to_string(tracer):
@@ -190,54 +192,10 @@ def test_span_to_string(tracer):
     assert '%s' % span == '1:1:1:1 unittest.crypt'
 
 
-def test_span_peer_tags(tracer):
-    for test in [[1, 2, 3], [2, 1, 3], [3, 2, 1]]:
-        span = tracer.start_span(operation_name='x')
-        span.set_tag(ext_tags.SPAN_KIND, ext_tags.SPAN_KIND_RPC_SERVER)
-        for t in test:
-            # either of peer tags can initialize span.peer dictionary, so
-            # we try permutations such that each gets a change to be first.
-            if t == 1:
-                span.set_tag(ext_tags.PEER_SERVICE, 'downstream')
-            elif t == 2:
-                span.set_tag(ext_tags.PEER_HOST_IPV4, 127 << 24 | 1)
-            elif t == 3:
-                span.set_tag(ext_tags.PEER_PORT, 12345)
-        span.finish()
-        add_zipkin_annotations(span, None)
-        ca = [e for e in span.tags if e.key == 'ca'][0]
-        assert ca.host.service_name == 'downstream'
-        assert ca.host.ipv4 == 127 << 24 | 1
-        assert ca.host.port == 12345
-
-
-def test_span_kind(tracer):
-    span = tracer.start_span(operation_name='x')
-
-    span.set_tag(ext_tags.SPAN_KIND, ext_tags.SPAN_KIND_RPC_SERVER)
-    assert span.kind == ext_tags.SPAN_KIND_RPC_SERVER
-    assert len([e for e in span.tags if e.key == 'span.kind']) == 0
-
-    span.set_tag(ext_tags.SPAN_KIND, ext_tags.SPAN_KIND_RPC_CLIENT)
-    assert span.kind == ext_tags.SPAN_KIND_RPC_CLIENT
-    assert len([e for e in span.tags if e.key == 'span.kind']) == 0
-
-    span.set_tag(ext_tags.SPAN_KIND, 'garbage')
-    assert len([e for e in span.tags if e.key == 'span.kind']) == 1
-
-
-def test_span_component(tracer):
-    span = tracer.start_span(operation_name='x')
-    assert span.component is None
-
-    span.set_tag(ext_tags.COMPONENT, 'crypt')
-    assert span.component == 'crypt'
-
-
 def test_span_tag_value_max_length(tracer):
     tracer.max_tag_value_length = 42
     span = tracer.start_span(operation_name='x')
     span.set_tag('x', 'x' * 50)
     tag_n = len(span.tags) - 1
     assert span.tags[tag_n].key == 'x'
-    assert span.tags[tag_n].value == 'x' * 42
+    assert span.tags[tag_n].vStr == 'x' * 42

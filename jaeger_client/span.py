@@ -15,7 +15,6 @@
 from __future__ import absolute_import
 
 from builtins import str
-import json
 import six
 import threading
 import time
@@ -29,11 +28,11 @@ DEBUG_FLAG = 0x02
 
 
 class Span(opentracing.Span):
-    """Implements opentracing.Span with Zipkin semantics."""
+    """Implements opentracing.Span."""
 
     __slots__ = ['_tracer', '_context',
-                 'operation_name', 'start_time', 'end_time', 'kind',
-                 'peer', 'component', 'logs', 'tags', 'update_lock']
+                 'operation_name', 'start_time', 'end_time',
+                 'logs', 'tags', 'update_lock']
 
     def __init__(self, context, tracer, operation_name,
                  tags=None, start_time=None):
@@ -41,12 +40,8 @@ class Span(opentracing.Span):
         self.operation_name = operation_name
         self.start_time = start_time or time.time()
         self.end_time = None
-        self.kind = None  # default to local span, unless RPC kind is set
-        self.peer = None
-        self.component = None
         self.update_lock = threading.Lock()
-        # we store tags and logs as Zipkin native thrift BinaryAnnotation and
-        # Annotation structures, to avoid creating intermediate objects
+        # we store tags and logs as Thrift objects to avoid extra allocations
         self.tags = []
         self.logs = []
         if tags:
@@ -85,55 +80,29 @@ class Span(opentracing.Span):
         :param key:
         :param value:
         """
-        if key == ext_tags.SAMPLING_PRIORITY:
-            _set_sampling_priority(self, value)
-        elif self.is_sampled():
-            special = SPECIAL_TAGS.get(key, None)
-            handled = False
-            if special is not None and callable(special):
-                handled = special(self, value)
-            if not handled:
+        with self.update_lock:
+            if key == ext_tags.SAMPLING_PRIORITY:
+                if value > 0:
+                    self.context.flags |= SAMPLED_FLAG | DEBUG_FLAG
+                else:
+                    self.context.flags &= ~SAMPLED_FLAG
+            elif self.is_sampled():
                 tag = thrift.make_string_tag(
                     key=key,
                     value=str(value),
                     max_length=self.tracer.max_tag_value_length,
                 )
-                with self.update_lock:
-                    self.tags.append(tag)
-        return self
-
-    def info(self, message, payload=None):
-        """DEPRECATED"""
-        if payload:
-            self.log(event=message, payload=payload)
-        else:
-            self.log(event=message)
-        return self
-
-    def error(self, message, payload=None):
-        """DEPRECATED"""
-        self.set_tag('error', True)
-        if payload:
-            self.log(event=message, payload=payload)
-        else:
-            self.log(event=message)
+                self.tags.append(tag)
         return self
 
     def log_kv(self, key_values, timestamp=None):
         if self.is_sampled():
             timestamp = timestamp if timestamp else time.time()
-            event = key_values.get('event', None)
-            if event and len(key_values) == 1:
-                log = thrift.make_event(timestamp=timestamp, name=event)
-            else:
-                # Since Zipkin format does not support kv-logs,
-                # we convert key_values to JSON.
-                # TODO handle exception logging, 'python.exception.type' etc.
-                value = json.dumps(
-                    key_values,
-                    default=lambda x: '%s' % (x,)  # avoid exceptions
-                )
-                log = thrift.make_event(timestamp=timestamp, name=value)
+            # TODO handle exception logging, 'python.exception.type' etc.
+            log = thrift.make_log(
+                timestamp=timestamp if timestamp else time.time(),
+                fields=key_values,
+            )
             with self.update_lock:
                 self.logs.append(log)
         return self
@@ -165,11 +134,17 @@ class Span(opentracing.Span):
         return self.context.flags & DEBUG_FLAG == DEBUG_FLAG
 
     def is_rpc(self):
-        return self.kind == ext_tags.SPAN_KIND_RPC_CLIENT or \
-            self.kind == ext_tags.SPAN_KIND_RPC_SERVER
+        for tag in self.tags:
+            if tag.key == ext_tags.SPAN_KIND:
+                return tag.vStr == ext_tags.SPAN_KIND_RPC_CLIENT or \
+                    tag.vStr == ext_tags.SPAN_KIND_RPC_SERVER
+        return False
 
     def is_rpc_client(self):
-        return self.kind == ext_tags.SPAN_KIND_RPC_CLIENT
+        for tag in self.tags:
+            if tag.key == ext_tags.SPAN_KIND:
+                return tag.vStr == ext_tags.SPAN_KIND_RPC_CLIENT
+        return False
 
     @property
     def trace_id(self):
@@ -193,65 +168,19 @@ class Span(opentracing.Span):
             parent_id=self.context.parent_id, flags=self.context.flags)
         return '%s %s.%s' % (c, self.tracer.service_name, self.operation_name)
 
-
-def _set_sampling_priority(span, value):
-    with span.update_lock:
-        if value > 0:
-            span.context.flags |= SAMPLED_FLAG | DEBUG_FLAG
+    def info(self, message, payload=None):
+        """DEPRECATED"""
+        if payload:
+            self.log(event=message, payload=payload)
         else:
-            span.context.flags &= ~SAMPLED_FLAG
-    return True
+            self.log(event=message)
+        return self
 
-
-def _set_peer_service(span, value):
-    with span.update_lock:
-        if span.peer is None:
-            span.peer = {'service_name': value}
+    def error(self, message, payload=None):
+        """DEPRECATED"""
+        self.set_tag('error', True)
+        if payload:
+            self.log(event=message, payload=payload)
         else:
-            span.peer['service_name'] = value
-    return True
-
-
-def _set_peer_host_ipv4(span, value):
-    with span.update_lock:
-        if span.peer is None:
-            span.peer = {'ipv4': value}
-        else:
-            span.peer['ipv4'] = value
-    return True
-
-
-def _set_peer_port(span, value):
-    with span.update_lock:
-        if span.peer is None:
-            span.peer = {'port': value}
-        else:
-            span.peer['port'] = value
-    return True
-
-
-def _set_span_kind(span, value):
-    with span.update_lock:
-        if value is None or value == ext_tags.SPAN_KIND_RPC_CLIENT or \
-                value == ext_tags.SPAN_KIND_RPC_SERVER:
-            span.kind = value
-            return True
-    return False
-
-
-def _set_component(span, value):
-    with span.update_lock:
-        span.component = value
-    return True
-
-
-# Register handlers for special tags.
-# Handler returns True if special tag was processed.
-# If handler returns False, the tag should still be added to the Span.
-SPECIAL_TAGS = {
-    ext_tags.PEER_SERVICE: _set_peer_service,
-    ext_tags.PEER_HOST_IPV4: _set_peer_host_ipv4,
-    ext_tags.PEER_PORT: _set_peer_port,
-    ext_tags.SPAN_KIND: _set_span_kind,
-    ext_tags.COMPONENT: _set_component,
-}
+            self.log(event=message)
+        return self

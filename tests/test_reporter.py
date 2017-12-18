@@ -130,7 +130,8 @@ class ReporterTest(AsyncTestCase):
     def thread_loop(self):
         yield
 
-    def _new_span(self, name):
+    @staticmethod
+    def _new_span(name):
         tracer = FakeTrace(ip_address='127.0.0.1',
                            service_name='reporter_test')
         ctx = SpanContext(trace_id=1, span_id=1, parent_id=None, flags=1)
@@ -139,7 +140,8 @@ class ReporterTest(AsyncTestCase):
         span.end_time = span.start_time + 0.001  # 1ms
         return span
 
-    def _new_reporter(self, batch_size, flush=None, queue_cap=100):
+    @staticmethod
+    def _new_reporter(batch_size, flush=None, queue_cap=100):
         reporter = Reporter(channel=mock.MagicMock(),
                             io_loop=IOLoop.current(),
                             batch_size=batch_size,
@@ -147,6 +149,7 @@ class ReporterTest(AsyncTestCase):
                             metrics_factory=FakeMetricsFactory(),
                             error_reporter=HardErrorReporter(),
                             queue_capacity=queue_cap)
+        reporter.set_process('service', {})
         sender = FakeSender()
         reporter._send = sender
         return reporter, sender
@@ -159,7 +162,7 @@ class ReporterTest(AsyncTestCase):
             if fn():
                 return
             yield tornado.gen.sleep(0.001)
-        print('waited for condition %f' % (time.time() - start))
+        print('waited for condition %f seconds' % (time.time() - start))
 
     @gen_test
     def test_submit_batch_size_1(self):
@@ -233,7 +236,7 @@ class ReporterTest(AsyncTestCase):
         reporter.report_span(self._new_span('2'))
         yield self._wait_for(lambda: len(sender.futures) > 0)
         assert 1 == len(sender.futures)
-        assert 2 == len(sender.requests[0])
+        assert 2 == len(sender.requests[0].spans)
         sender.futures[0].set_result(1)
 
         # 3rd span will not be submitted right away, but after `flush` interval
@@ -247,7 +250,6 @@ class ReporterTest(AsyncTestCase):
         sender.futures[1].set_result(1)
 
         yield reporter.close()
-
 
     @gen_test
     def test_close_drains_queue(self):

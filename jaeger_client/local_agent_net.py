@@ -41,7 +41,7 @@ class LocalAgentHTTP(object):
 
 class LocalAgentSender(TBufferedTransport):
     """
-    LocalAgentSender implements a everything necessary to communicate with
+    LocalAgentSender implements everything necessary to communicate with
     local jaeger-agent. This class is designed to work in tornado and
     non-tornado environments. If in torndado, pass in the ioloop, if not
     then LocalAgentSender will create one for itself.

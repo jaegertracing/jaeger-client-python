@@ -59,6 +59,7 @@ class Tracer(opentracing.Tracer):
         self.metrics = TracerMetrics(self.metrics_factory)
         self.random = random.Random(time.time() * (os.getpid() or 1))
         self.debug_id_header = debug_id_header
+        self.one_span_per_rpc = one_span_per_rpc
         self.max_tag_value_length = max_tag_value_length
         self.codecs = {
             Format.TEXT_MAP: TextCodec(
@@ -83,13 +84,16 @@ class Tracer(opentracing.Tracer):
         }
         if tags:
             self.tags.update(tags)
-        self.one_span_per_rpc = one_span_per_rpc
         # noinspection PyBroadException
         try:
             hostname = socket.gethostname()
             self.tags[constants.JAEGER_HOSTNAME_TAG_KEY] = hostname
         except:
             logger.exception('Unable to determine host name')
+        if hasattr(self.reporter, 'set_process'):
+            self.reporter.set_process(
+                service_name=self.service_name, tags=tags,
+            )
 
     def start_span(self,
                    operation_name=None,
@@ -164,11 +168,6 @@ class Tracer(opentracing.Tracer):
         span = Span(context=span_ctx, tracer=self,
                     operation_name=operation_name,
                     tags=tags, start_time=start_time)
-
-        if (rpc_server or not parent_id) and (flags & SAMPLED_FLAG):
-            # this is a first-in-process span, and is sampled
-            for k, v in six.iteritems(self.tags):
-                span.set_tag(k, v)
 
         self._emit_span_metrics(span=span, join=rpc_server)
 

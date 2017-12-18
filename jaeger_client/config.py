@@ -48,7 +48,7 @@ from .metrics import LegacyMetricsFactory, MetricsFactory, Metrics
 from .utils import get_boolean, ErrorReporter
 
 DEFAULT_REPORTING_HOST = 'localhost'
-DEFAULT_REPORTING_PORT = 5775
+DEFAULT_REPORTING_PORT = 6831
 DEFAULT_SAMPLING_PORT = 5778
 LOCAL_AGENT_DEFAULT_ENABLED = True
 

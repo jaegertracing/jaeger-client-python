@@ -16,7 +16,7 @@ from future import standard_library
 standard_library.install_aliases()
 from io import BytesIO
 
-import jaeger_client.thrift_gen.zipkincore.ZipkinCollector as zipkin_collector
+import jaeger_client.thrift_gen.jaeger.ttypes as ttypes
 import jaeger_client.thrift_gen.sampling.SamplingManager as sampling_manager
 from opentracing import child_of
 from jaeger_client import ProbabilisticSampler, RateLimitingSampler
@@ -31,25 +31,6 @@ def test_ipv4_to_int():
     assert thrift.ipv4_to_int('localhost') == base
     assert thrift.ipv4_to_int('::1') == base
     assert thrift.ipv4_to_int('a:b:1') == 0
-
-
-def test_port_to_int():
-    assert thrift.port_to_int('123') == 123
-    assert thrift.port_to_int(32768) == -32768
-    assert thrift.port_to_int((1 << 16) - 1) == -1
-    assert thrift.port_to_int('bad') is None
-
-
-def test_make_endpoint():
-    endpoint1 = thrift.make_endpoint(ipv4='localhost', port='',
-                                     service_name='XYZ')
-    target = zipkin_collector.Endpoint(
-        ipv4=127 << 24 | 1, port=0, service_name='xyz')
-    assert endpoint1 == target
-
-    endpoint2 = thrift.make_endpoint(ipv4='127.0.0.1', port='',
-                                     service_name='XYZ')
-    assert endpoint2 == target
 
 
 def test_submit_batch(tracer):
@@ -75,10 +56,11 @@ def _marshall_span(span):
             """
             self._buffer = BytesIO(self.getvalue())
 
-    spans = thrift.make_zipkin_spans([span])
+    batch = thrift.make_jaeger_batch(
+        spans=[span], process=ttypes.Process(serviceName='x', tags={}))
 
     # write and read them to test encoding
-    args = Agent.emitZipkinBatch_args(spans)
+    args = Agent.emitBatch_args(batch)
     t = TestTrans()
     prot = TCompactProtocol(t)
     args.write(prot)
@@ -124,7 +106,7 @@ def test_large_ids(tracer):
 
 def test_large_tags():
     tag = thrift.make_string_tag('x', 'y' * 300, max_length=256)
-    assert len(tag.value) <= 256
+    assert len(tag.vStr) <= 256
 
 
 def test_parse_sampling_strategy():
