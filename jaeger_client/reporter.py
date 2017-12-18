@@ -39,6 +39,9 @@ class NullReporter(object):
     def report_span(self, span):
         pass
 
+    def set_process(self, service_name, tags, max_length):
+        pass
+
     def close(self):
         fut = Future()
         fut.set_result(True)
@@ -243,6 +246,10 @@ class CompositeReporter(NullReporter):
     """Delegates reporting to one or more underlying reporters."""
     def __init__(self, *reporters):
         self.reporters = reporters
+
+    def set_process(self, service_name, tags, max_length):
+        for reporter in self.reporters:
+            reporter.set_process(service_name, tags, max_length)
 
     def report_span(self, span):
         for reporter in self.reporters:
