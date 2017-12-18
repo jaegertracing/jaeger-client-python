@@ -64,18 +64,20 @@ def test_baggage_logs():
 
 
 def test_is_rpc():
+    mock_tracer = mock.MagicMock()
+    mock_tracer.max_tag_value_length = 100
     ctx = SpanContext(trace_id=1, span_id=2, parent_id=None, flags=1)
 
-    span = Span(context=ctx, operation_name='x', tracer=mock.MagicMock())
+    span = Span(context=ctx, operation_name='x', tracer=mock_tracer)
     assert span.is_rpc() is False
     assert span.is_rpc_client() is False
 
-    span = Span(context=ctx, operation_name='x', tracer=mock.MagicMock())
+    span = Span(context=ctx, operation_name='x', tracer=mock_tracer)
     span.set_tag(ext_tags.SPAN_KIND, ext_tags.SPAN_KIND_RPC_SERVER)
     assert span.is_rpc() is True
     assert span.is_rpc_client() is False
 
-    span = Span(context=ctx, operation_name='x', tracer=mock.MagicMock())
+    span = Span(context=ctx, operation_name='x', tracer=mock_tracer)
     span.set_tag(ext_tags.SPAN_KIND, ext_tags.SPAN_KIND_RPC_CLIENT)
     assert span.is_rpc() is True
     assert span.is_rpc_client() is True
