@@ -209,7 +209,6 @@ class Reporter(NullReporter):
         Send batch of spans out via thrift transport. Any exceptions thrown
         will be caught above in the exception handler of _submit().
         """
-        print('emitting batch %s' % batch)
         return self.agent.emitBatch(batch)
 
     def close(self):
