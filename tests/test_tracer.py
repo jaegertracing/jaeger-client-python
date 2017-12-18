@@ -178,6 +178,19 @@ def test_tracer_tags_hostname():
         assert t.tags.get(c.JAEGER_HOSTNAME_TAG_KEY) == 'dream-host.com'
 
 
+def test_tracer_tags_passed_to_reporter():
+    reporter = mock.MagicMock()
+    reporter.set_process = mock.MagicMock()
+    sampler = ConstSampler(True)
+    tracer = Tracer(
+        service_name='x', reporter=reporter, sampler=sampler,
+        max_tag_value_length=123,
+    )
+    reporter.set_process.assert_called_once_with(
+        service_name='x', tags=tracer.tags, max_length=123,
+    )
+
+
 def test_tracer_tags_no_hostname():
     reporter = mock.MagicMock()
     sampler = ConstSampler(True)

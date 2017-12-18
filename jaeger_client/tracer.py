@@ -93,7 +93,7 @@ class Tracer(opentracing.Tracer):
 
         self.reporter.set_process(
             service_name=self.service_name,
-            tags=tags,
+            tags=self.tags,
             max_length=self.max_tag_value_length,
         )
 
