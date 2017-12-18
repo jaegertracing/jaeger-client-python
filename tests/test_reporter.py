@@ -61,6 +61,13 @@ def test_composite_reporter():
     reporter = jaeger_client.reporter.CompositeReporter(
         jaeger_client.reporter.NullReporter(),
         jaeger_client.reporter.LoggingReporter())
+    with mock.patch('jaeger_client.reporter.NullReporter.set_process') \
+            as null_mock:
+        with mock.patch('jaeger_client.reporter.LoggingReporter.set_process') \
+                as log_mock:
+            reporter.set_process('x', {}, 123)
+            null_mock.assert_called_with('x', {}, 123)
+            log_mock.assert_called_with('x', {}, 123)
     with mock.patch('jaeger_client.reporter.NullReporter.report_span') \
             as null_mock:
         with mock.patch('jaeger_client.reporter.LoggingReporter.report_span') \
