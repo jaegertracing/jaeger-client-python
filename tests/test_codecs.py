@@ -24,7 +24,7 @@ import mock
 import pytest
 from jaeger_client import Span, SpanContext, Tracer, ConstSampler
 from jaeger_client.codecs import (
-    Codec, TextCodec, BinaryCodec, ZipkinCodec, ZipkinSpanFormat,
+    Codec, TextCodec, BinaryCodec, ZipkinCodec, ZipkinSpanFormat, B3Codec,
     span_context_from_string,
     span_context_to_string,
 )
@@ -298,6 +298,32 @@ class TestCodecs(unittest.TestCase):
         codec.inject(span_context=span, carrier=carrier)
         assert carrier == {'span_id': 127, 'parent_id': None,
                            'trace_id': 256, 'traceflags': 1}
+
+    def test_zipkin_b3_codec_inject(self):
+        codec = B3Codec()
+
+        with self.assertRaises(InvalidCarrierException):
+            codec.inject(span_context=None, carrier=[])
+
+        ctx = SpanContext(trace_id=256, span_id=127, parent_id=None, flags=1)
+        span = Span(context=ctx, operation_name='x', tracer=None, start_time=1)
+        carrier = {}
+        codec.inject(span_context=span, carrier=carrier)
+        assert carrier == {'X-B3-SpanId': format(127, 'x'),
+                           'X-B3-TraceId': format(256, 'x'), 'X-B3-Flags': '1'}
+
+    def test_zipkin_b3_codec_inject_parent(self):
+        codec = B3Codec()
+
+        with self.assertRaises(InvalidCarrierException):
+            codec.inject(span_context=None, carrier=[])
+
+        ctx = SpanContext(trace_id=256, span_id=127, parent_id=32, flags=1)
+        span = Span(context=ctx, operation_name='x', tracer=None, start_time=1)
+        carrier = {}
+        codec.inject(span_context=span, carrier=carrier)
+        assert carrier == {'X-B3-SpanId': format(127, 'x'),'X-B3-ParentSpanId': format(32, 'x'),
+                           'X-B3-TraceId': format(256, 'x'), 'X-B3-Flags': '1'}
 
     def test_binary_codec(self):
         codec = BinaryCodec()

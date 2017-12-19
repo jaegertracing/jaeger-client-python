@@ -93,3 +93,10 @@ class ConfigTests(unittest.TestCase):
 
         t = c.create_tracer(NullReporter(), ConstSampler(True))
         assert t.max_tag_value_length == 333
+
+    def test_b3_codec(self):
+        c = Config({}, service_name='x')
+        assert c.extra_codecs == {}
+
+        c = Config({'b3_codec': True}, service_name='x')
+        assert c.extra_codecs
