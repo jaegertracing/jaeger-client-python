@@ -291,7 +291,7 @@ class PerOperationSamplingStrategies(object):
         if ftype == TType.LIST:
           self.perOperationStrategies = []
           (_etype3, _size0) = iprot.readListBegin()
-          for _i4 in xrange(_size0):
+          for _i4 in range(_size0):
             _elem5 = OperationSamplingStrategy()
             _elem5.read(iprot)
             self.perOperationStrategies.append(_elem5)

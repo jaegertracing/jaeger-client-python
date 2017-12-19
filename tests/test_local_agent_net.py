@@ -53,4 +53,4 @@ def test_request_sampling_strategy(http_client, base_url):
         reporting_port=DEFAULT_REPORTING_PORT
     )
     response = yield sender.request_sampling_strategy(service_name='svc', timeout=15)
-    assert response.body == test_strategy
+    assert response.body.decode() == test_strategy

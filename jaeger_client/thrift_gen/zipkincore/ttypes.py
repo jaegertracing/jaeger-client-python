@@ -482,7 +482,7 @@ class Span(object):
         if ftype == TType.LIST:
           self.annotations = []
           (_etype3, _size0) = iprot.readListBegin()
-          for _i4 in xrange(_size0):
+          for _i4 in range(_size0):
             _elem5 = Annotation()
             _elem5.read(iprot)
             self.annotations.append(_elem5)
@@ -493,7 +493,7 @@ class Span(object):
         if ftype == TType.LIST:
           self.binary_annotations = []
           (_etype9, _size6) = iprot.readListBegin()
-          for _i10 in xrange(_size6):
+          for _i10 in range(_size6):
             _elem11 = BinaryAnnotation()
             _elem11.read(iprot)
             self.binary_annotations.append(_elem11)

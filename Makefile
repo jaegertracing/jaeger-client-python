@@ -20,7 +20,7 @@ PY_PATH = $(PYTHONPATH):$(PWD)
 bootstrap:
 	[ "$$VIRTUAL_ENV" != "" ]
 	rm -rf *.egg-info || true
-	pip install -U 'pip>=7.0,<8.0'
+	pip install -U 'pip>=7.0,<8.0' 'setuptools>=20.8.1'
 	pip install -r requirements.txt
 	pip install -r requirements-dev.txt
 	pip install -r requirements-tests.txt
@@ -84,6 +84,7 @@ thrift: idl-submodule thrift-image
 	${THRIFT} -o /data --gen py:${THRIFT_PY_ARGS} -out /data/$(THRIFT_GEN_DIR) /data/idl/thrift/agent.thrift
 	${THRIFT} -o /data --gen py:${THRIFT_PY_ARGS} -out /data/$(THRIFT_GEN_DIR) /data/idl/thrift/sampling.thrift
 	find jaeger_client/thrift_gen -iname '*.py' -exec sed -i.bak 's/from ttype/from .ttype/g' {} \;
+	find jaeger_client/thrift_gen -iname '*.py' -exec sed -i.bak 's/xrange/range/g' {} \;
 	rm jaeger_client/thrift_gen/{**/*.bak,*.bak}
 	rm -rf ${THRIFT_GEN_DIR}/*/*-remote
 

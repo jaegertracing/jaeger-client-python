@@ -139,7 +139,7 @@ class emitZipkinBatch_args(object):
         if ftype == TType.LIST:
           self.spans = []
           (_etype3, _size0) = iprot.readListBegin()
-          for _i4 in xrange(_size0):
+          for _i4 in range(_size0):
             _elem5 = zipkincore.ttypes.Span()
             _elem5.read(iprot)
             self.spans.append(_elem5)

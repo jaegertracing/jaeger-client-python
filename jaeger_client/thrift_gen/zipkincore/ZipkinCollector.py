@@ -160,7 +160,7 @@ class submitZipkinBatch_args(object):
         if ftype == TType.LIST:
           self.spans = []
           (_etype17, _size14) = iprot.readListBegin()
-          for _i18 in xrange(_size14):
+          for _i18 in range(_size14):
             _elem19 = Span()
             _elem19.read(iprot)
             self.spans.append(_elem19)
@@ -233,7 +233,7 @@ class submitZipkinBatch_result(object):
         if ftype == TType.LIST:
           self.success = []
           (_etype24, _size21) = iprot.readListBegin()
-          for _i25 in xrange(_size21):
+          for _i25 in range(_size21):
             _elem26 = Response()
             _elem26.read(iprot)
             self.success.append(_elem26)
