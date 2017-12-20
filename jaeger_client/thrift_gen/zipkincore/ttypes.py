@@ -68,6 +68,7 @@ class Endpoint(object):
    - service_name: Service name in lowercase, such as "memcache" or "zipkin-web"
 
   Conventionally, when the service name isn't known, service_name = "unknown".
+   - ipv6: IPv6 host address packed into 16 bytes. Ex Inet6Address.getBytes()
   """
 
   thrift_spec = (
@@ -75,12 +76,14 @@ class Endpoint(object):
     (1, TType.I32, 'ipv4', None, None, ), # 1
     (2, TType.I16, 'port', None, None, ), # 2
     (3, TType.STRING, 'service_name', None, None, ), # 3
+    (4, TType.STRING, 'ipv6', None, None, ), # 4
   )
 
-  def __init__(self, ipv4=None, port=None, service_name=None,):
+  def __init__(self, ipv4=None, port=None, service_name=None, ipv6=None,):
     self.ipv4 = ipv4
     self.port = port
     self.service_name = service_name
+    self.ipv6 = ipv6
 
   def read(self, iprot):
     if iprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None and fastbinary is not None:
@@ -106,6 +109,11 @@ class Endpoint(object):
           self.service_name = iprot.readString()
         else:
           iprot.skip(ftype)
+      elif fid == 4:
+        if ftype == TType.STRING:
+          self.ipv6 = iprot.readString()
+        else:
+          iprot.skip(ftype)
       else:
         iprot.skip(ftype)
       iprot.readFieldEnd()
@@ -128,6 +136,10 @@ class Endpoint(object):
       oprot.writeFieldBegin('service_name', TType.STRING, 3)
       oprot.writeString(self.service_name)
       oprot.writeFieldEnd()
+    if self.ipv6 is not None:
+      oprot.writeFieldBegin('ipv6', TType.STRING, 4)
+      oprot.writeString(self.ipv6)
+      oprot.writeFieldEnd()
     oprot.writeFieldStop()
     oprot.writeStructEnd()
 
@@ -140,6 +152,7 @@ class Endpoint(object):
     value = (value * 31) ^ hash(self.ipv4)
     value = (value * 31) ^ hash(self.port)
     value = (value * 31) ^ hash(self.service_name)
+    value = (value * 31) ^ hash(self.ipv6)
     return value
 
   def __repr__(self):
@@ -421,6 +434,8 @@ class Span(object):
   this field non-atomically is implementation-specific.
 
   This field is i64 vs i32 to support spans longer than 35 minutes.
+   - trace_id_high: Optional unique 8-byte additional identifier for a trace. If non zero, this
+  means the trace uses 128 bit traceIds instead of 64 bit.
   """
 
   thrift_spec = (
@@ -436,9 +451,10 @@ class Span(object):
     (9, TType.BOOL, 'debug', None, False, ), # 9
     (10, TType.I64, 'timestamp', None, None, ), # 10
     (11, TType.I64, 'duration', None, None, ), # 11
+    (12, TType.I64, 'trace_id_high', None, None, ), # 12
   )
 
-  def __init__(self, trace_id=None, name=None, id=None, parent_id=None, annotations=None, binary_annotations=None, debug=thrift_spec[9][4], timestamp=None, duration=None,):
+  def __init__(self, trace_id=None, name=None, id=None, parent_id=None, annotations=None, binary_annotations=None, debug=thrift_spec[9][4], timestamp=None, duration=None, trace_id_high=None,):
     self.trace_id = trace_id
     self.name = name
     self.id = id
@@ -448,6 +464,7 @@ class Span(object):
     self.debug = debug
     self.timestamp = timestamp
     self.duration = duration
+    self.trace_id_high = trace_id_high
 
   def read(self, iprot):
     if iprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None and fastbinary is not None:
@@ -515,6 +532,11 @@ class Span(object):
           self.duration = iprot.readI64()
         else:
           iprot.skip(ftype)
+      elif fid == 12:
+        if ftype == TType.I64:
+          self.trace_id_high = iprot.readI64()
+        else:
+          iprot.skip(ftype)
       else:
         iprot.skip(ftype)
       iprot.readFieldEnd()
@@ -567,6 +589,10 @@ class Span(object):
       oprot.writeFieldBegin('duration', TType.I64, 11)
       oprot.writeI64(self.duration)
       oprot.writeFieldEnd()
+    if self.trace_id_high is not None:
+      oprot.writeFieldBegin('trace_id_high', TType.I64, 12)
+      oprot.writeI64(self.trace_id_high)
+      oprot.writeFieldEnd()
     oprot.writeFieldStop()
     oprot.writeStructEnd()
 
@@ -585,6 +611,7 @@ class Span(object):
     value = (value * 31) ^ hash(self.debug)
     value = (value * 31) ^ hash(self.timestamp)
     value = (value * 31) ^ hash(self.duration)
+    value = (value * 31) ^ hash(self.trace_id_high)
     return value
 
   def __repr__(self):

@@ -341,7 +341,7 @@ def test_debug_id():
     assert span.is_sampled()
     tags = [t for t in span.tags if t.key == debug_header]
     assert len(tags) == 1
-    assert tags[0].value == 'Coraline'
+    assert tags[0].vStr == 'Coraline'
 
 
 def test_non_ascii_baggage_with_httplib(httpserver):

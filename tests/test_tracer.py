@@ -23,12 +23,13 @@ from opentracing import Format, child_of
 from opentracing.ext import tags as ext_tags
 from jaeger_client import ConstSampler, Tracer
 from jaeger_client import constants as c
-from jaeger_client.thrift_gen.zipkincore import constants as g
-from jaeger_client.thrift import add_zipkin_annotations
 
 
-def log_exists(span, value):
-    return [x for x in span.logs if x.value == value] != []
+def find_tag(span, key):
+    for tag in span.tags:
+        if tag.key == key:
+            return tag.vStr
+    return None
 
 
 def test_start_trace(tracer):
@@ -42,7 +43,7 @@ def test_start_trace(tracer):
         span.set_tag(ext_tags.SPAN_KIND, ext_tags.SPAN_KIND_RPC_SERVER)
         assert span, "Span must not be nil"
         assert span.tracer == tracer, "Tracer must be referenced from span"
-        assert span.kind == ext_tags.SPAN_KIND_RPC_SERVER, \
+        assert find_tag(span, 'span.kind') == ext_tags.SPAN_KIND_RPC_SERVER, \
             'Span must be server-side'
         assert span.trace_id == 12345, "Must match trace_id"
         assert span.is_sampled(), "Must be sampled"
@@ -51,10 +52,6 @@ def test_start_trace(tracer):
 
         span.finish()
         assert span.end_time is not None, "Must have end_time defined"
-        add_zipkin_annotations(span, None)
-        assert len(span.logs) == 2, "Must have two events"
-        assert log_exists(span, g.SERVER_RECV), 'Must have sr event'
-        assert log_exists(span, g.SERVER_SEND), 'Must have ss event'
         tracer.reporter.assert_called_once()
 
     tracer.close()
@@ -83,12 +80,9 @@ def test_start_child(tracer, mode):
     assert span.parent_id == root.span_id, "Must inherit parent id"
     span.finish()
     assert span.end_time is not None, "Must have end_time set"
-    add_zipkin_annotations(span, None)
-    assert len(span.logs) == 2, "Must have two events"
-    assert log_exists(span, g.SERVER_SEND), 'Must have ss event'
-    assert log_exists(span, g.SERVER_RECV), 'Must have sr event'
     tracer.reporter.assert_called_once()
     tracer.close()
+
 
 @pytest.mark.parametrize('one_span_per_rpc,', [True, False])
 def test_one_span_per_rpc(tracer, one_span_per_rpc):
@@ -106,6 +100,7 @@ def test_one_span_per_rpc(tracer, one_span_per_rpc):
     else:
         assert span.span_id != child.span_id, "Must have different span ids"
 
+
 def test_child_span(tracer):
     span = tracer.start_span("test")
     child = tracer.start_span("child", references=child_of(span.context))
@@ -117,12 +112,6 @@ def test_child_span(tracer):
     tracer.reporter.report_span.assert_called_once()
     assert len(span.logs) == 0, 'Parent span is Local, must not have events'
     assert len(child.logs) == 1, 'Child must have one events'
-    add_zipkin_annotations(span=span, endpoint=None)
-    add_zipkin_annotations(span=child, endpoint=None)
-    assert len([t for t in span.tags if t.key == g.LOCAL_COMPONENT]) == 1
-    assert len(child.logs) == 3, 'Child must have three events'
-    assert log_exists(child, g.CLIENT_SEND), 'Must have cs event'
-    assert log_exists(child, g.CLIENT_RECV), 'Must have cr event'
 
     tracer.sampler = ConstSampler(False)
     span = tracer.start_span("test")
@@ -189,6 +178,19 @@ def test_tracer_tags_hostname():
         assert t.tags.get(c.JAEGER_HOSTNAME_TAG_KEY) == 'dream-host.com'
 
 
+def test_tracer_tags_passed_to_reporter():
+    reporter = mock.MagicMock()
+    reporter.set_process = mock.MagicMock()
+    sampler = ConstSampler(True)
+    tracer = Tracer(
+        service_name='x', reporter=reporter, sampler=sampler,
+        max_tag_value_length=123,
+    )
+    reporter.set_process.assert_called_once_with(
+        service_name='x', tags=tracer.tags, max_length=123,
+    )
+
+
 def test_tracer_tags_no_hostname():
     reporter = mock.MagicMock()
     sampler = ConstSampler(True)
@@ -203,21 +205,14 @@ def test_tracer_tags_no_hostname():
 
 @pytest.mark.parametrize('span_type,expected_tags', [
     ('root', {
-        'jaeger.version': c.JAEGER_CLIENT_VERSION,
-        'jaeger.hostname': 'dream-host.com',
         'sampler.type': 'const',
         'sampler.param': 'True',
-        'global-tag': 'global-tag'
     }),
     ('child', {
-        'jaeger.version': None,
-        'jaeger.hostname': None,
         'sampler.type': None,
         'sampler.param': None,
     }),
     ('rpc-server', {
-        'jaeger.version': c.JAEGER_CLIENT_VERSION,
-        'jaeger.hostname': 'dream-host.com',
         'sampler.type': None,
         'sampler.param': None,
     }),
@@ -239,18 +234,12 @@ def test_tracer_tags_on_root_span(span_type, expected_tags):
                 tags={ext_tags.SPAN_KIND: ext_tags.SPAN_KIND_RPC_SERVER}
             )
         for key, value in six.iteritems(expected_tags):
-            found_tag = None
-            for tag in span.tags:
-                if tag.key == key:
-                    found_tag = tag
+            found_tag = find_tag(span, key)
             if value is None:
                 assert found_tag is None, 'test (%s)' % span_type
                 continue
 
-            assert found_tag is not None, 'test (%s): expecting tag %s' % (
-                span_type, key
-            )
-            assert found_tag.value == value, \
+            assert found_tag == value, \
                 'test (%s): expecting tag %s=%s' % (span_type, key, value)
 
 

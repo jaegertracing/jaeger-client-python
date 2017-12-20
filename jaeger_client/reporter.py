@@ -39,6 +39,9 @@ class NullReporter(object):
     def report_span(self, span):
         pass
 
+    def set_process(self, service_name, tags, max_length):
+        pass
+
     def close(self):
         fut = Future()
         fut.set_result(True)
@@ -115,8 +118,16 @@ class Reporter(NullReporter):
             self.stopped = False
             self.stop_lock = Lock()
             self.flush_interval = flush_interval or None
-
             self.io_loop.spawn_callback(self._consume_queue)
+
+        self._process_lock = Lock()
+        self._process = None
+
+    def set_process(self, service_name, tags, max_length):
+        with self._process_lock:
+            self._process = thrift.make_process(
+                service_name=service_name, tags=tags, max_length=max_length,
+            )
 
     def report_span(self, span):
         # We should not be calling `queue.put_nowait()` from random threads,
@@ -178,31 +189,30 @@ class Reporter(NullReporter):
     def _submit(self, spans):
         if not spans:
             return
+        with self._process_lock:
+            process = self._process
+            if not process:
+                return
         try:
-            spans = thrift.make_zipkin_spans(spans)
-            yield self._send(spans)
+            batch = thrift.make_jaeger_batch(spans=spans, process=process)
+            yield self._send(batch)
             self.metrics.reporter_success(len(spans))
         except socket.error as e:
             self.metrics.reporter_socket(len(spans))
             self.error_reporter.error(
-                'Failed to submit trace to jaeger-agent socket: %s', e)
+                'Failed to submit traces to jaeger-agent socket: %s', e)
         except Exception as e:
             self.metrics.reporter_failure(len(spans))
             self.error_reporter.error(
-                'Failed to submit trace to jaeger-agent: %s', e)
+                'Failed to submit traces to jaeger-agent: %s', e)
 
     @tornado.gen.coroutine
-    def _send(self, spans):
+    def _send(self, batch):
         """
-        Send spans out the thrift transport.
-
-        Any exceptions thrown will be caught above in the _submit exception
-        handler.'''
-
-        :param spans:
-        :return:
+        Send batch of spans out via thrift transport. Any exceptions thrown
+        will be caught above in the exception handler of _submit().
         """
-        return self.agent.emitZipkinBatch(spans)
+        return self.agent.emitBatch(batch)
 
     def close(self):
         """
@@ -236,6 +246,10 @@ class CompositeReporter(NullReporter):
     """Delegates reporting to one or more underlying reporters."""
     def __init__(self, *reporters):
         self.reporters = reporters
+
+    def set_process(self, service_name, tags, max_length):
+        for reporter in self.reporters:
+            reporter.set_process(service_name, tags, max_length)
 
     def report_span(self, span):
         for reporter in self.reporters:
