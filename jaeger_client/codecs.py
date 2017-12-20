@@ -30,12 +30,10 @@ from .constants import (
     TRACE_ID_HEADER,
 )
 from .span_context import SpanContext
+from .constants import SAMPLED_FLAG, DEBUG_FLAG
 
 import six
 import urllib.parse
-
-SAMPLED_FLAG = 0x01
-DEBUG_FLAG = 0x02
 
 
 class Codec(object):
@@ -239,8 +237,14 @@ class ZipkinCodec(Codec):
 
 def header_to_hex(header):
     if not isinstance(header, (str, unicode)):
-        return None
-    return int(header, 16)
+        raise SpanContextCorruptedException(
+            'malformed trace context "%s", expected hex string' % header)
+    try:
+        cast_header = int(header, 16)
+    except ValueError:
+        raise SpanContextCorruptedException(
+            'malformed trace context "%s", expected hex string' % header)
+    return cast_header
 
 
 class B3Codec(Codec):
@@ -277,8 +281,6 @@ class B3Codec(Codec):
         debug = carrier.get(self.flags_header.lower())
         if debug == '1':
             flags |= DEBUG_FLAG
-        if not trace_id:
-            return None
         return SpanContext(trace_id=trace_id, span_id=span_id,
                            parent_id=parent_id, flags=flags,
                            baggage=None)

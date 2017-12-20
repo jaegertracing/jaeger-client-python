@@ -312,7 +312,7 @@ class TestCodecs(unittest.TestCase):
         assert carrier == {'X-B3-SpanId': format(127, 'x'),
                            'X-B3-TraceId': format(256, 'x'), 'X-B3-Flags': '1'}
 
-    def test_zipkin_b3_codec_inject_parent(self):
+    def test_b3_codec_inject_parent(self):
         codec = B3Codec()
 
         with self.assertRaises(InvalidCarrierException):
@@ -324,6 +324,33 @@ class TestCodecs(unittest.TestCase):
         codec.inject(span_context=span, carrier=carrier)
         assert carrier == {'X-B3-SpanId': format(127, 'x'),'X-B3-ParentSpanId': format(32, 'x'),
                            'X-B3-TraceId': format(256, 'x'), 'X-B3-Flags': '1'}
+
+    def test_b3_extract(self):
+        codec = B3Codec()
+
+        with self.assertRaises(InvalidCarrierException):
+            codec.extract([])
+
+        carrier = {'x-b3-spanid': format(127, 'x'), 'x-b3-parentspanid': format(32, 'x'),
+         'x-b3-traceid': format(256, 'x'), 'x-b3-flags': '1'}
+
+        span_context = codec.extract(carrier)
+        assert span_context.span_id == 127
+        assert span_context.trace_id == 256
+        assert span_context.parent_id == 32
+        assert span_context.flags == 0x02
+
+        carrier = {'x-b3-spanid': format(127, 'x'), 'x-b3-parentspanid': format(32, 'x'),
+                   'x-b3-traceid': format(256, 'x'), 'x-b3-sampled': '1'}
+
+        span_context = codec.extract(carrier)
+        assert span_context.flags == 0x01
+
+        with self.assertRaises(SpanContextCorruptedException):
+            codec.extract({'x-b3-traceid': 'z'})
+
+        with self.assertRaises(SpanContextCorruptedException):
+            codec.extract({'x-b3-traceid': 123})
 
     def test_binary_codec(self):
         codec = BinaryCodec()

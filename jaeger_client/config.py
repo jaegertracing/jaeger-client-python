@@ -249,9 +249,9 @@ class Config(object):
         return tags
 
     @property
-    def extra_codecs(self):
-        b3_codec = get_boolean(self.config.get('b3_codec', False), False)
-        if b3_codec:
+    def propagation(self):
+        propagation = self.config.get('propagation', None)
+        if propagation == 'b3':
             # replace the codec with a B3 enabled instance
             return {Format.HTTP_HEADERS: B3Codec()}
         return {}
@@ -318,7 +318,7 @@ class Config(object):
             debug_id_header=self.debug_id_header,
             tags=self.tags,
             max_tag_value_length=self.max_tag_value_length,
-            extra_codecs=self.extra_codecs,
+            extra_codecs=self.propagation,
         )
 
     def _initialize_global_tracer(self, tracer):

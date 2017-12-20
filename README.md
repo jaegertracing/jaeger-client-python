@@ -133,15 +133,13 @@ This allows using Jaeger UI to find the trace by this tag.
 
 This library internally uses Zipkin Thrift data model and conventions, 
 but if you want to use it directly with other Zipkin libraries & backend, 
-it needs:
-  1. different [wire codecs](./jaeger_client/codecs.py) to transmit 
-     trace context as `X-B3-*` headers
-  2. a reporter that will submit traces to Zipkin backend over Zipkin-supported 
-     transports like Kafka or HTTP
+you can provide the configuration property `propagation: 'b3'` and the
+`X-B3-*` HTTP headers will be supported.
 
-Both of these things are easy to add (e.g. it was done in https://github.com/jaegertracing/jaeger-client-java/pull/34), 
-but it is not a priority for the Uber team since we are using a different backend.
-We will welcome PRs that provide that functionality.
+The B3 codec assumes it will receive lowercase HTTP headers, as this seems
+to be the standard in the popular frameworks like Flask and Django.
+Please make sure your framework does the same.
+
 
 ## License
 

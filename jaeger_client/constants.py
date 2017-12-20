@@ -68,3 +68,9 @@ SAMPLER_TYPE_LOWER_BOUND = 'lowerbound'
 
 # max length for tag values. Longer values will be truncated.
 MAX_TAG_VALUE_LENGTH = 1024
+
+# Constant for sampled flag
+SAMPLED_FLAG = 0x01
+
+# Constant for debug flag
+DEBUG_FLAG = 0x02

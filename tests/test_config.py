@@ -94,9 +94,9 @@ class ConfigTests(unittest.TestCase):
         t = c.create_tracer(NullReporter(), ConstSampler(True))
         assert t.max_tag_value_length == 333
 
-    def test_b3_codec(self):
+    def test_propagation(self):
         c = Config({}, service_name='x')
-        assert c.extra_codecs == {}
+        assert c.propagation == {}
 
-        c = Config({'b3_codec': True}, service_name='x')
-        assert c.extra_codecs
+        c = Config({'propagation': 'b3'}, service_name='x')
+        assert len(c.propagation) == 1
