@@ -20,6 +20,7 @@ import os
 import threading
 
 import opentracing
+from opentracing.propagation import Format
 from . import Tracer
 from .local_agent_net import LocalAgentSender
 from .reporter import (
@@ -46,6 +47,7 @@ from .constants import (
 )
 from .metrics import LegacyMetricsFactory, MetricsFactory, Metrics
 from .utils import get_boolean, ErrorReporter
+from .codecs import B3Codec
 
 DEFAULT_REPORTING_HOST = 'localhost'
 DEFAULT_REPORTING_PORT = 6831
@@ -246,6 +248,14 @@ class Config(object):
                 tags[key.strip()] = value.strip()
         return tags
 
+    @property
+    def propagation(self):
+        propagation = self.config.get('propagation', None)
+        if propagation == 'b3':
+            # replace the codec with a B3 enabled instance
+            return {Format.HTTP_HEADERS: B3Codec()}
+        return {}
+
     @staticmethod
     def initialized():
         with Config._initialized_lock:
@@ -308,6 +318,7 @@ class Config(object):
             debug_id_header=self.debug_id_header,
             tags=self.tags,
             max_tag_value_length=self.max_tag_value_length,
+            extra_codecs=self.propagation,
         )
 
     def _initialize_global_tracer(self, tracer):

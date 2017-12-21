@@ -30,6 +30,7 @@ from .constants import (
     TRACE_ID_HEADER,
 )
 from .span_context import SpanContext
+from .constants import SAMPLED_FLAG, DEBUG_FLAG
 
 import six
 import urllib.parse
@@ -229,6 +230,57 @@ class ZipkinCodec(Codec):
                 raise InvalidCarrierException('carrier has no traceflags')
         if not trace_id:
             return None
+        return SpanContext(trace_id=trace_id, span_id=span_id,
+                           parent_id=parent_id, flags=flags,
+                           baggage=None)
+
+
+def header_to_hex(header):
+    if not isinstance(header, (str, unicode)):
+        raise SpanContextCorruptedException(
+            'malformed trace context "%s", expected hex string' % header)
+
+    try:
+        return int(header, 16)
+    except ValueError:
+        raise SpanContextCorruptedException(
+            'malformed trace context "%s", expected hex string' % header)
+
+
+class B3Codec(Codec):
+    """
+    Support B3 header properties
+
+    """
+    def __init__(self):
+        self.trace_header = 'X-B3-TraceId'
+        self.span_header = 'X-B3-SpanId'
+        self.parent_span_header = 'X-B3-ParentSpanId'
+        self.sampled_header = 'X-B3-Sampled'
+        self.flags_header = 'X-B3-Flags'
+
+    def inject(self, span_context, carrier):
+        if not isinstance(carrier, dict):
+            raise InvalidCarrierException('carrier not a dictionary')
+        carrier[self.trace_header] = format(span_context.trace_id, 'x').zfill(16)
+        carrier[self.span_header] = format(span_context.span_id, 'x').zfill(16)
+        if span_context.parent_id is not None:
+            carrier[self.parent_span_header] = format(span_context.parent_id, 'x').zfill(16)
+        carrier[self.flags_header] = str(span_context.flags)
+
+    def extract(self, carrier):
+        if not isinstance(carrier, dict):
+            raise InvalidCarrierException('carrier not a dictionary')
+        trace_id = header_to_hex(carrier.get(self.trace_header.lower()))
+        span_id = header_to_hex(carrier.get(self.span_header.lower()))
+        parent_id = header_to_hex(carrier.get(self.parent_span_header.lower()))
+        flags = 0x00
+        sampled = carrier.get(self.sampled_header.lower())
+        if sampled == '1':
+            flags |= SAMPLED_FLAG
+        debug = carrier.get(self.flags_header.lower())
+        if debug == '1':
+            flags |= DEBUG_FLAG
         return SpanContext(trace_id=trace_id, span_id=span_id,
                            parent_id=parent_id, flags=flags,
                            baggage=None)

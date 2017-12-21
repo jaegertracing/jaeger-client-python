@@ -22,9 +22,7 @@ import time
 import opentracing
 from opentracing.ext import tags as ext_tags
 from . import codecs, thrift
-
-SAMPLED_FLAG = 0x01
-DEBUG_FLAG = 0x02
+from .constants import SAMPLED_FLAG, DEBUG_FLAG
 
 
 class Span(opentracing.Span):

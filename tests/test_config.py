@@ -93,3 +93,10 @@ class ConfigTests(unittest.TestCase):
 
         t = c.create_tracer(NullReporter(), ConstSampler(True))
         assert t.max_tag_value_length == 333
+
+    def test_propagation(self):
+        c = Config({}, service_name='x')
+        assert c.propagation == {}
+
+        c = Config({'propagation': 'b3'}, service_name='x')
+        assert len(c.propagation) == 1
