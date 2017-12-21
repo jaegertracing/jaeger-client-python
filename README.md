@@ -131,8 +131,7 @@ This allows using Jaeger UI to find the trace by this tag.
 
 ## Zipkin Compatibility
 
-This library internally uses Zipkin Thrift data model and conventions, 
-but if you want to use it directly with other Zipkin libraries & backend, 
+To use this library directly with other Zipkin libraries & backend,
 you can provide the configuration property `propagation: 'b3'` and the
 `X-B3-*` HTTP headers will be supported.
 

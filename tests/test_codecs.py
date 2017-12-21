@@ -322,7 +322,7 @@ class TestCodecs(unittest.TestCase):
         span = Span(context=ctx, operation_name='x', tracer=None, start_time=1)
         carrier = {}
         codec.inject(span_context=span, carrier=carrier)
-        assert carrier == {'X-B3-SpanId': format(127, 'x'),'X-B3-ParentSpanId': format(32, 'x'),
+        assert carrier == {'X-B3-SpanId': format(127, 'x'), 'X-B3-ParentSpanId': format(32, 'x'),
                            'X-B3-TraceId': format(256, 'x'), 'X-B3-Flags': '1'}
 
     def test_b3_extract(self):
@@ -331,24 +331,33 @@ class TestCodecs(unittest.TestCase):
         with self.assertRaises(InvalidCarrierException):
             codec.extract([])
 
-        carrier = {'x-b3-spanid': format(127, 'x'), 'x-b3-parentspanid': format(32, 'x'),
-         'x-b3-traceid': format(256, 'x'), 'x-b3-flags': '1'}
+        carrier = {'x-b3-spanid': 'a2fb4a1d1a96d312', 'x-b3-parentspanid': '0020000000000001',
+                   'x-b3-traceid': '463ac35c9f6413ad48485a3953bb6124', 'x-b3-flags': '1'}
 
         span_context = codec.extract(carrier)
-        assert span_context.span_id == 127
-        assert span_context.trace_id == 256
-        assert span_context.parent_id == 32
+        assert span_context.span_id == int('a2fb4a1d1a96d312', 16)
+        assert span_context.trace_id == int('463ac35c9f6413ad48485a3953bb6124', 16)
+        assert span_context.parent_id == int('0020000000000001', 16)
         assert span_context.flags == 0x02
 
-        carrier = {'x-b3-spanid': format(127, 'x'), 'x-b3-parentspanid': format(32, 'x'),
-                   'x-b3-traceid': format(256, 'x'), 'x-b3-sampled': '1'}
+        carrier.update({'x-b3-sampled': '1'})
 
         span_context = codec.extract(carrier)
-        assert span_context.flags == 0x01
+        assert span_context.flags == 0x03
 
+        # validate invalid hex string
         with self.assertRaises(SpanContextCorruptedException):
-            codec.extract({'x-b3-traceid': 'z'})
+            codec.extract({'x-b3-traceid': 'a2fb4a1d1a96d312z'})
 
+        # validate invalid length span
+        with self.assertRaises(SpanContextCorruptedException):
+            codec.extract({'x-b3-traceid': 'a2fb4a1d1a96d312', 'x-b3-spanid': 'beef'})
+
+        # validate invalid length trace
+        with self.assertRaises(SpanContextCorruptedException):
+            codec.extract({'x-b3-traceid': 'a2fb4a1d1a96d3123'})
+
+        # validate non-string header
         with self.assertRaises(SpanContextCorruptedException):
             codec.extract({'x-b3-traceid': 123})
 

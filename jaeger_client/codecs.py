@@ -235,16 +235,18 @@ class ZipkinCodec(Codec):
                            baggage=None)
 
 
-def header_to_hex(header):
+def header_to_hex(header, trace_header=False):
     if not isinstance(header, (str, unicode)):
         raise SpanContextCorruptedException(
-            'malformed trace context "%s", expected hex string' % header)
+            'malformed trace context "%s", expected 16 or 32 character hex string' % header)
+    if len(header) != 16 and (trace_header and len(header) != 32):
+        raise SpanContextCorruptedException(
+            'malformed trace context "%s", expected 16 or 32 character hex string' % header)
     try:
-        cast_header = int(header, 16)
+        return int(header, 16)
     except ValueError:
         raise SpanContextCorruptedException(
-            'malformed trace context "%s", expected hex string' % header)
-    return cast_header
+            'malformed trace context "%s", expected 16 or 32 character hex string' % header)
 
 
 class B3Codec(Codec):
@@ -271,7 +273,7 @@ class B3Codec(Codec):
     def extract(self, carrier):
         if not isinstance(carrier, dict):
             raise InvalidCarrierException('carrier not a dictionary')
-        trace_id = header_to_hex(carrier.get(self.trace_header.lower()))
+        trace_id = header_to_hex(carrier.get(self.trace_header.lower()), trace_header=True)
         span_id = header_to_hex(carrier.get(self.span_header.lower()))
         parent_id = header_to_hex(carrier.get(self.parent_span_header.lower()))
         flags = 0x00
