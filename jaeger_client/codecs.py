@@ -235,18 +235,16 @@ class ZipkinCodec(Codec):
                            baggage=None)
 
 
-def header_to_hex(header, trace_header=False):
+def header_to_hex(header):
     if not isinstance(header, (str, unicode)):
         raise SpanContextCorruptedException(
-            'malformed trace context "%s", expected 16 or 32 character hex string' % header)
-    if len(header) != 16 and (trace_header and len(header) != 32):
-        raise SpanContextCorruptedException(
-            'malformed trace context "%s", expected 16 or 32 character hex string' % header)
+            'malformed trace context "%s", expected hex string' % header)
+
     try:
         return int(header, 16)
     except ValueError:
         raise SpanContextCorruptedException(
-            'malformed trace context "%s", expected 16 or 32 character hex string' % header)
+            'malformed trace context "%s", expected hex string' % header)
 
 
 class B3Codec(Codec):
@@ -264,16 +262,16 @@ class B3Codec(Codec):
     def inject(self, span_context, carrier):
         if not isinstance(carrier, dict):
             raise InvalidCarrierException('carrier not a dictionary')
-        carrier[self.trace_header] = format(span_context.trace_id, 'x')
-        carrier[self.span_header] = format(span_context.span_id, 'x')
+        carrier[self.trace_header] = format(span_context.trace_id, 'x').zfill(16)
+        carrier[self.span_header] = format(span_context.span_id, 'x').zfill(16)
         if span_context.parent_id is not None:
-            carrier[self.parent_span_header] = format(span_context.parent_id, 'x')
+            carrier[self.parent_span_header] = format(span_context.parent_id, 'x').zfill(16)
         carrier[self.flags_header] = str(span_context.flags)
 
     def extract(self, carrier):
         if not isinstance(carrier, dict):
             raise InvalidCarrierException('carrier not a dictionary')
-        trace_id = header_to_hex(carrier.get(self.trace_header.lower()), trace_header=True)
+        trace_id = header_to_hex(carrier.get(self.trace_header.lower()))
         span_id = header_to_hex(carrier.get(self.span_header.lower()))
         parent_id = header_to_hex(carrier.get(self.parent_span_header.lower()))
         flags = 0x00
