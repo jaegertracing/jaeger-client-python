@@ -82,7 +82,7 @@ class TextCodec(Codec):
                 carrier[header_key] = encoded_value
 
     def extract(self, carrier):
-        if not hasattr(carrier, 'iteritems'):
+        if not hasattr(carrier, 'items'):
             raise InvalidCarrierException('carrier not a collection')
         trace_id, span_id, parent_id, flags = None, None, None, None
         baggage = None
