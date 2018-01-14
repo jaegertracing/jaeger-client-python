@@ -5,6 +5,8 @@
 #
 #  options string: py:new_style,tornado
 #
+import six
+from past.builtins import xrange
 
 from thrift.Thrift import TType, TMessageType, TException, TApplicationException
 import jaeger.ttypes
