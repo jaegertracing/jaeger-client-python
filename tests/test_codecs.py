@@ -16,7 +16,6 @@ from __future__ import absolute_import
 
 import unittest
 from collections import namedtuple
-import urllib2
 import six
 from future.types.newstr import newstr
 
@@ -37,7 +36,12 @@ from opentracing.propagation import (
 )
 
 
+byte255 = bytes(chr(255)) if six.PY2 else bytes([255])
+
+
 class TestCodecs(unittest.TestCase):
+
+
     def test_abstract_codec(self):
         codec = Codec()
         with self.assertRaises(NotImplementedError):
@@ -116,7 +120,7 @@ class TestCodecs(unittest.TestCase):
             ctx._baggage = {
                 'fry': u'Leela',
                 'bender': 'Countess de la Roca',
-                b'key1': bytes(chr(255)),
+                b'key1': byte255,
                 u'key2-caf\xe9': 'caf\xc3\xa9',
                 u'key3': u'caf\xe9',
                 'key4-caf\xc3\xa9': 'value',
@@ -399,6 +403,13 @@ def test_debug_id():
 
 
 def test_non_ascii_baggage_with_httplib(httpserver):
+    # TODO this test requires `futurize`. Unfortunately, that also changes
+    # how the test works under Py2.
+    # Some observation:
+    # - In Py2, the httplib does not like unicode strings, maybe we need to convert everything to bytes.
+    # - Not sure yet what's the story with httplib in Py3, it seems not to like raw bytes.
+    if six.PY3:
+        raise ValueError('this test does not work with Py3')
     # httpserver is provided by pytest-localserver
     httpserver.serve_content(content='Hello', code=200, headers=None)
 
@@ -413,7 +424,7 @@ def test_non_ascii_baggage_with_httplib(httpserver):
     baggage = [
         (b'key', b'value'),
         (u'key', b'value'),
-        (b'key', bytes(chr(255))),
+        (b'key', byte255),
         (u'caf\xe9', 'caf\xc3\xa9'),
         ('caf\xc3\xa9', 'value'),
     ]
@@ -426,7 +437,8 @@ def test_non_ascii_baggage_with_httplib(httpserver):
             span_context=span.context, format=Format.TEXT_MAP, carrier=headers
         )
         # make sure httplib doesn't blow up
+        import urllib2
         request = urllib2.Request(httpserver.url, None, headers)
         response = urllib2.urlopen(request)
-        assert response.read() == 'Hello'
+        assert response.read() == b'Hello'
         response.close()
