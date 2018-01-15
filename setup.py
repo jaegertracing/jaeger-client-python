@@ -35,13 +35,13 @@ setup(
         'Programming Language :: Python :: 2.7',
     ],
     install_requires=[
-        'futures',
+        'futures;python_version<"3"',
         'threadloop>=1,<2',
         # we want thrift>=0.9.2.post1,<0.9.3, but we let the users pin to that
         'thrift',
         'tornado>=4.3,<5',
-        'opentracing>=1.2.2,<1.3',
-        "future",
+        'opentracing>=1.2.2,<1.4',
+        'future',
     ],
     # Uncomment below if need to test with unreleased version of opentracing
     # dependency_links=[
@@ -61,7 +61,7 @@ setup(
             'flake8<3',  # see https://github.com/zheller/flake8-quotes/issues/29
             'flake8-quotes',
             'coveralls',
-            'tchannel>=0.27',
+            'tchannel>=0.27;python_version<"3"',
             'opentracing_instrumentation>=2,<3',
         ]
     },

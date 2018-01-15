@@ -20,7 +20,8 @@ PY_PATH = $(PYTHONPATH):$(PWD)
 bootstrap:
 	[ "$$VIRTUAL_ENV" != "" ]
 	rm -rf *.egg-info || true
-	pip install -U 'pip>=7.0,<8.0'
+	pip install -U 'pip>=9.0'
+	pip install 'setuptools>=20.8.1'
 	pip install -r requirements.txt
 	pip install -r requirements-dev.txt
 	pip install -r requirements-tests.txt

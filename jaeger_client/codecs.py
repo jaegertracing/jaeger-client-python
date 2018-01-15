@@ -74,7 +74,7 @@ class TextCodec(Codec):
                     # into HTTP headers. httplib does not like unicode strings
                     # so we convert the key to utf-8. The URL-encoded value is
                     # already a plain string.
-                    if isinstance(key, unicode):
+                    if six.PY2 and isinstance(key, six.text_type):
                         encoded_key = key.encode('utf-8')
                 else:
                     encoded_value = value
@@ -236,7 +236,7 @@ class ZipkinCodec(Codec):
 
 
 def header_to_hex(header):
-    if not isinstance(header, (str, unicode)):
+    if not isinstance(header, (str, six.text_type)):
         raise SpanContextCorruptedException(
             'malformed trace context "%s", expected hex string' % header)
 
