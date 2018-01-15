@@ -20,8 +20,7 @@ PY_PATH = $(PYTHONPATH):$(PWD)
 bootstrap:
 	[ "$$VIRTUAL_ENV" != "" ]
 	rm -rf *.egg-info || true
-	if [ "$(python --version 2>&1)" =~ 'Python 2' ] ;  pip install -U 'pip>=7.0,<8.0'; fi
-	if [ "$(python --version 2>&1)" =~ 'Python 3' ] ;  pip install -U 'pip>=9.0'; fi
+	pip install -U 'pip>=9.0'
 	pip install 'setuptools>=20.8.1'
 	pip install -r requirements.txt
 	pip install -r requirements-dev.txt
