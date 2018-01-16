@@ -21,7 +21,6 @@ pip install jaeger-client
 ## Getting Started
 
 ```python
-import opentracing
 import logging
 import time
 from jaeger_client import Config
