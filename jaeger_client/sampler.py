@@ -231,7 +231,7 @@ class GuaranteedThroughputProbabilisticSampler(Sampler):
             self.lower_bound = lower_bound
 
     def __str__(self):
-        return 'GuaranteedThroughputProbabilisticSampler(%s, %s, %s)' \
+        return 'GuaranteedThroughputProbabilisticSampler(%s, %f, %f)' \
                % (self.operation, self.rate, self.lower_bound)
 
 
@@ -307,7 +307,7 @@ class AdaptiveSampler(Sampler):
             sampler.close()
 
     def __str__(self):
-        return 'AdaptiveSampler(%s, %s, %s)' \
+        return 'AdaptiveSampler(%f, %f, %d)' \
                % (self.default_sampling_probability, self.lower_bound,
                   self.max_operations)
 
@@ -388,11 +388,7 @@ class RemoteControlledSampler(Sampler):
                     'Delaying sampling strategy polling by %d sec', delay)
 
     def _delayed_polling(self):
-        periodic = PeriodicCallback(
-            callback=self._poll_sampling_manager,
-            # convert interval to milliseconds
-            callback_time=self.sampling_refresh_interval * 1000,
-            io_loop=self.io_loop)
+        periodic = self._create_periodic_callback()
         self._poll_sampling_manager()  # Initialize sampler now
         with self.lock:
             if self.running:
@@ -401,6 +397,13 @@ class RemoteControlledSampler(Sampler):
                 self.logger.info(
                     'Tracing sampler started with sampling refresh '
                     'interval %d sec', self.sampling_refresh_interval)
+
+    def _create_periodic_callback(self):
+        return PeriodicCallback(
+            callback=self._poll_sampling_manager,
+            # convert interval to milliseconds
+            callback_time=self.sampling_refresh_interval * 1000,
+            io_loop=self.io_loop)
 
     def _sampling_request_callback(self, future):
         exception = future.exception()

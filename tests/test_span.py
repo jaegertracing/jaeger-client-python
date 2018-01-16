@@ -23,8 +23,10 @@ from jaeger_client import Span, SpanContext, ConstSampler
 
 
 def test_baggage():
+    mock_tracer = mock.MagicMock()
+    mock_tracer.max_tag_value_length = 100
     ctx = SpanContext(trace_id=1, span_id=2, parent_id=None, flags=1)
-    span = Span(context=ctx, operation_name='x', tracer=mock.MagicMock())
+    span = Span(context=ctx, operation_name='x', tracer=mock_tracer)
     assert span.get_baggage_item('x') is None
     span.set_baggage_item('x', 'y').\
         set_baggage_item('z', 'why')

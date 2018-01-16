@@ -157,7 +157,7 @@ def test_guaranteed_throughput_probabilistic_sampler():
     assert tags == get_tags('lowerbound', 0.5)
     sampled, _ = sampler.is_sampled(MAX_INT+10)
     assert not sampled
-    assert '%s' % sampler == 'GuaranteedThroughputProbabilisticSampler(op, 0.5, 2)'
+    assert '%s' % sampler == 'GuaranteedThroughputProbabilisticSampler(op, 0.500000, 2.000000)'
 
     sampler.update(3, 0.51)
     sampled, tags = sampler.is_sampled(MAX_INT-10)
@@ -167,7 +167,7 @@ def test_guaranteed_throughput_probabilistic_sampler():
     assert sampled
     assert tags == get_tags('lowerbound', 0.51)
 
-    assert '%s' % sampler == 'GuaranteedThroughputProbabilisticSampler(op, 0.51, 3)'
+    assert '%s' % sampler == 'GuaranteedThroughputProbabilisticSampler(op, 0.510000, 3.000000)'
     sampler.close()
 
 
@@ -205,7 +205,7 @@ def test_adaptive_sampler():
     assert tags == get_tags('probabilistic', 0.51)
     sampled, _ = sampler.is_sampled(MAX_INT+(MAX_INT/4), "new_op_2")
     assert not sampled
-    assert '%s' % sampler == 'AdaptiveSampler(0.51, 3, 2)'
+    assert '%s' % sampler == 'AdaptiveSampler(0.510000, 3.000000, 2)'
 
     # Update the strategies
     strategies = {
@@ -238,19 +238,19 @@ def test_adaptive_sampler():
     sampled, tags = sampler.is_sampled(MAX_INT-10, 'new_op_3')
     assert sampled
     assert tags == get_tags('probabilistic', 0.53)
-    assert '%s' % sampler == 'AdaptiveSampler(0.52, 4, 2)'
+    assert '%s' % sampler == 'AdaptiveSampler(0.520000, 4.000000, 2)'
 
     sampler.close()
 
 
 def test_adaptive_sampler_default_values():
     adaptive_sampler = AdaptiveSampler({}, 2)
-    assert '%s' % adaptive_sampler == 'AdaptiveSampler(0.001, 0.00166666666667, 2)', 'sampler should use default values'
+    assert '%s' % adaptive_sampler == 'AdaptiveSampler(0.001000, 0.001667, 2)', 'sampler should use default values'
 
     sampled, tags = adaptive_sampler.is_sampled(0, 'op')
     assert sampled
     assert tags == get_tags('probabilistic', 0.001), 'should use default probability'
-    assert '%s' % adaptive_sampler.samplers['op'] == 'GuaranteedThroughputProbabilisticSampler(op, 0.001, 0.00166666666667)'
+    assert '%s' % adaptive_sampler.samplers['op'] == 'GuaranteedThroughputProbabilisticSampler(op, 0.001000, 0.001667)'
 
     adaptive_sampler.update(strategies = {
         "defaultLowerBoundTracesPerSecond":4,
@@ -264,18 +264,18 @@ def test_adaptive_sampler_default_values():
                 }
             ]
     })
-    assert '%s' % adaptive_sampler == 'AdaptiveSampler(0.001, 4, 2)'
+    assert '%s' % adaptive_sampler == 'AdaptiveSampler(0.001000, 4.000000, 2)'
 
     sampled, tags = adaptive_sampler.is_sampled(0, 'new_op')
     assert sampled
     assert tags == get_tags('probabilistic', 0.002)
-    assert '%s' % adaptive_sampler.samplers['new_op'] == 'GuaranteedThroughputProbabilisticSampler(new_op, 0.002, 4)'
+    assert '%s' % adaptive_sampler.samplers['new_op'] == 'GuaranteedThroughputProbabilisticSampler(new_op, 0.002000, 4.000000)'
 
     sampled, tags = adaptive_sampler.is_sampled(0, 'op')
     assert sampled
     assert tags == get_tags('probabilistic', 0.001)
     # TODO ruh roh, the lowerbound isn't changed if the operation isn't included in perOperationStrategies
-    assert '%s' % adaptive_sampler.samplers['op'] == 'GuaranteedThroughputProbabilisticSampler(op, 0.001, 0.00166666666667)'
+    assert '%s' % adaptive_sampler.samplers['op'] == 'GuaranteedThroughputProbabilisticSampler(op, 0.001000, 0.001667)'
 
 
 
@@ -329,6 +329,9 @@ def test_remotely_controlled_sampler():
     sampler.io_loop = mock.MagicMock()
     # noinspection PyProtectedMember
     sampler._init_polling()
+    assert sampler.io_loop.call_later.call_count == 1
+
+    sampler._create_periodic_callback = mock.MagicMock()
     # noinspection PyProtectedMember
     sampler._delayed_polling()
     sampler.close()
@@ -391,7 +394,7 @@ def test_sampling_request_callback():
     return_value.result = lambda *args: \
         type('obj', (object,), {'body': adaptive_sampling_strategy})()
     sampler._sampling_request_callback(return_value)
-    assert '%s' % sampler.sampler == 'AdaptiveSampler(0.001, 2, 10)', 'sampler should have changed to adaptive'
+    assert '%s' % sampler.sampler == 'AdaptiveSampler(0.001000, 2.000000, 10)', 'sampler should have changed to adaptive'
     prev_sampler = sampler.sampler
 
     sampler._sampling_request_callback(return_value)
@@ -548,7 +551,7 @@ def test_update_sampler_adaptive_sampler():
     }
 
     remote_sampler._update_sampler(response)
-    assert '%s' % remote_sampler.sampler == 'AdaptiveSampler(0.001, 2, 10)'
+    assert '%s' % remote_sampler.sampler == 'AdaptiveSampler(0.001000, 2.000000, 10)'
 
     new_response = {
         "strategyType":1,
@@ -569,14 +572,14 @@ def test_update_sampler_adaptive_sampler():
     }
 
     remote_sampler._update_sampler(new_response)
-    assert '%s' % remote_sampler.sampler == 'AdaptiveSampler(0.51, 3, 10)'
+    assert '%s' % remote_sampler.sampler == 'AdaptiveSampler(0.510000, 3.000000, 10)'
 
     remote_sampler._update_sampler({"strategyType":0,"probabilisticSampling":{"samplingRate":0.004}})
     assert '%s' % remote_sampler.sampler == 'ProbabilisticSampler(0.004)', \
         'should not fail going from adaptive sampler to probabilistic sampler'
 
     remote_sampler._update_sampler({"strategyType":1,"operationSampling":{"defaultSamplingProbability":0.4}})
-    assert '%s' % remote_sampler.sampler == 'AdaptiveSampler(0.4, 0.00166666666667, 10)'
+    assert '%s' % remote_sampler.sampler == 'AdaptiveSampler(0.400000, 0.001667, 10)'
 
     remote_sampler.close()
 
