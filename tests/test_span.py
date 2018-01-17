@@ -232,7 +232,7 @@ def test_span_tag_value_unicode_latin1(tracer):
     span.set_tag('x', latin1_encoded_string)
     tag_n = len(span.tags) - 1
     assert span.tags[tag_n].key == 'x'
-    assert span.tags[tag_n].vStr == u'caf\xe9'
+    assert span.tags[tag_n].vStr == 'caf\xe9'
 
 
 def test_span_tag_value_actual_unicode(tracer):
