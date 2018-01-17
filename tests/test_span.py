@@ -226,10 +226,18 @@ def test_span_tag_value_max_length(tracer):
     assert span.tags[tag_n].vStr == 'x' * 42
 
 
-def test_span_tag_value_unicode(tracer):
+def test_span_tag_value_unicode_latin1(tracer):
     span = tracer.start_span(operation_name='x')
     latin1_encoded_string = u'caf\xe9'.encode('latin1')
     span.set_tag('x', latin1_encoded_string)
     tag_n = len(span.tags) - 1
     assert span.tags[tag_n].key == 'x'
-    assert span.tags[tag_n].vStr == 'x' * 42
+    assert span.tags[tag_n].vStr == u'caf\xe9'
+
+
+def test_span_tag_value_actual_unicode(tracer):
+    span = tracer.start_span(operation_name='x')
+    span.set_tag('x', u'caf\xe9')
+    tag_n = len(span.tags) - 1
+    assert span.tags[tag_n].key == 'x'
+    assert span.tags[tag_n].vStr == u'caf\xe9'

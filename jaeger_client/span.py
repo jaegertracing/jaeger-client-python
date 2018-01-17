@@ -85,6 +85,13 @@ class Span(opentracing.Span):
                 else:
                     self.context.flags &= ~SAMPLED_FLAG
             elif self.is_sampled():
+
+                if isinstance(value, basestring):
+                    try:
+                        value = value.decode('latin1')
+                    except UnicodeEncodeError:
+                        pass
+
                 tag = thrift.make_string_tag(
                     key=key,
                     value=str(value),
