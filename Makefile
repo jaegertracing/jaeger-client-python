@@ -84,13 +84,12 @@ thrift: idl-submodule thrift-image
 	rm -rf $(THRIFT_GEN_DIR)
 	mkdir $(THRIFT_GEN_DIR)
 	${THRIFT} -o /data --gen py:${THRIFT_PY_ARGS} -out /data/$(THRIFT_GEN_DIR) /data/idl/thrift/jaeger.thrift
-	${THRIFT} -o /data --gen py:${THRIFT_PY_ARGS} -out /data/$(THRIFT_GEN_DIR) /data/idl/thrift/zipkinCore.thrift
-	mv $(THRIFT_GEN_DIR)/zipkinCore $(THRIFT_GEN_DIR)/zipkincore
+	${THRIFT} -o /data --gen py:${THRIFT_PY_ARGS} -out /data/$(THRIFT_GEN_DIR) /data/idl/thrift/zipkincore.thrift
 	${THRIFT} -o /data --gen py:${THRIFT_PY_ARGS} -out /data/$(THRIFT_GEN_DIR) /data/idl/thrift/agent.thrift
 	${THRIFT} -o /data --gen py:${THRIFT_PY_ARGS} -out /data/$(THRIFT_GEN_DIR) /data/idl/thrift/sampling.thrift
 	rm -rf ${THRIFT_GEN_DIR}/*/*-remote
 	set -e; \
-	for f in $$(find jaeger_client/thrift_gen -iname '*.py'); do \
+	for f in $$(find ${THRIFT_GEN_DIR} -iname '*.py'); do \
 	  echo fixing $$f; \
 	  awk -f thrift-gen-fix.awk $$f > tmp; \
 	  mv tmp $$f; \
