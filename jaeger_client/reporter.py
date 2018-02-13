@@ -233,13 +233,13 @@ class Reporter(NullReporter):
 class ReporterMetrics(object):
     def __init__(self, metrics_factory):
         self.reporter_success = \
-            metrics_factory.create_counter(name='jaeger.spans', tags={'reported': 'true'})
+            metrics_factory.create_counter(name='jaeger.reporter_spans', tags={'result': 'ok'})
         self.reporter_failure = \
-            metrics_factory.create_counter(name='jaeger.spans', tags={'reported': 'false'})
+            metrics_factory.create_counter(name='jaeger.reporter_spans', tags={'result': 'err'})
         self.reporter_dropped = \
-            metrics_factory.create_counter(name='jaeger.spans', tags={'dropped': 'true'})
+            metrics_factory.create_counter(name='jaeger.reporter_spans', tags={'result': 'dropped'})
         self.reporter_socket = \
-            metrics_factory.create_counter(name='jaeger.spans', tags={'socket_error': 'true'})
+            metrics_factory.create_counter(name='jaeger.reporter_spans', tags={'result': 'socket_error'})
 
 
 class CompositeReporter(NullReporter):

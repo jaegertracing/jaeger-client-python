@@ -344,7 +344,7 @@ class RemoteControlledSampler(Sampler):
         self.metrics_factory = kwargs.get('metrics_factory', None) \
             or LegacyMetricsFactory(kwargs.get('metrics', None) or Metrics())
         self.sampler_errors = \
-            self.metrics_factory.create_counter('jaeger.sampler', {'error': 'true'})
+            self.metrics_factory.create_counter(name='jaeger.sampler', tags={'result': 'err'})
         self.error_reporter = kwargs.get('error_reporter') or \
             ErrorReporter(Metrics())
         self.max_operations = kwargs.get('max_operations', DEFAULT_MAX_OPERATIONS)

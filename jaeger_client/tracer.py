@@ -234,14 +234,14 @@ class TracerMetrics(object):
 
     def __init__(self, metrics_factory):
         self.traces_started_sampled = \
-            metrics_factory.create_counter(name='jaeger.traces-started', tags={'sampled': 'true'})
+            metrics_factory.create_counter(name='jaeger.traces', tags={'state': 'started', 'sampled': 'y'})
         self.traces_started_not_sampled = \
-            metrics_factory.create_counter(name='jaeger.traces-started', tags={'sampled': 'false'})
+            metrics_factory.create_counter(name='jaeger.traces', tags={'state': 'started', 'sampled': 'n'})
         self.traces_joined_sampled = \
-            metrics_factory.create_counter(name='jaeger.traces-joined', tags={'sampled': 'true'})
+            metrics_factory.create_counter(name='jaeger.traces', tags={'state': 'joined', 'sampled': 'y'})
         self.traces_joined_not_sampled = \
-            metrics_factory.create_counter(name='jaeger.traces-joined', tags={'sampled': 'false'})
+            metrics_factory.create_counter(name='jaeger.traces', tags={'state': 'joined', 'sampled': 'n'})
         self.spans_sampled = \
-            metrics_factory.create_counter(name='jaeger.spans', tags={'sampled': 'true'})
+            metrics_factory.create_counter(name='jaeger.started_spans', tags={'sampled': 'y'})
         self.spans_not_sampled = \
-            metrics_factory.create_counter(name='jaeger.spans', tags={'sampled': 'false'})
+            metrics_factory.create_counter(name='jaeger.started_spans', tags={'sampled': 'n'})
