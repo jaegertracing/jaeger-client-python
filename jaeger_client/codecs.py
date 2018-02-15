@@ -72,10 +72,10 @@ class TextCodec(Codec):
                     encoded_value = urllib.parse.quote(value)
                     # we assume that self.url_encoding means we are injecting
                     # into HTTP headers. httplib does not like unicode strings
-                    # so we convert the key to utf-8. The URL-encoded value is
-                    # already a plain string.
+                    # so we convert the key to utf-8.
                     if six.PY2 and isinstance(key, six.text_type):
                         encoded_key = key.encode('utf-8')
+                        encoded_value = encoded_value.encode('utf-8')
                 else:
                     encoded_value = value
                 header_key = '%s%s' % (self.baggage_prefix, encoded_key)
