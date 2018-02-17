@@ -89,14 +89,14 @@ def test_trace_propagation(
     level2["downstream"] = level3
 
     level1 = dict()
-    level1["baggage"] = "Zoidberg"
+    level1["baggage"] = "Zoidberg-caf\xc3\xa9"
     level1["serverRole"] = "s1"
     level1["sampled"] = sampled
     level1["downstream"] = level2
     body = json.dumps(level1)
 
     with mock.patch('opentracing.tracer', tracer):
-        assert opentracing.tracer == tracer # sanity check that patch worked
+        assert opentracing.tracer == tracer  # sanity check that patch worked
 
         req = HTTPRequest(url="%s/start_trace" % base_url, method="POST",
                           headers={"Content-Type": "application/json"},
@@ -108,15 +108,15 @@ def test_trace_propagation(
         tr = server.serializer.traceresponse_from_json(response.body)
         assert tr is not None
         assert tr.span is not None
-        assert tr.span.baggage == level1.get("baggage")
+        assert tr.span.baggage == level1.get("baggage").decode('utf-8')
         assert tr.span.sampled == sampled
         assert tr.span.traceId is not None
         assert tr.downstream is not None
-        assert tr.downstream.span.baggage == level1.get("baggage")
+        assert tr.downstream.span.baggage == level1.get("baggage").decode('utf-8')
         assert tr.downstream.span.sampled == sampled
         assert tr.downstream.span.traceId == tr.span.traceId
         assert tr.downstream.downstream is not None
-        assert tr.downstream.downstream.span.baggage == level1.get("baggage")
+        assert tr.downstream.downstream.span.baggage == level1.get("baggage").decode('utf-8')
         assert tr.downstream.downstream.span.sampled == sampled
         assert tr.downstream.downstream.span.traceId == tr.span.traceId
 
@@ -127,7 +127,7 @@ def test_endtoend_handler(tracer):
     payload = dict()
     payload["operation"] = "Zoidberg"
     payload["count"] = 2
-    payload["tags"] = {"key":"value"}
+    payload["tags"] = {"key": "value"}
     body = json.dumps(payload)
 
     h = EndToEndHandler()
