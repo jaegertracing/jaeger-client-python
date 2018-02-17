@@ -17,7 +17,7 @@ from __future__ import absolute_import
 import unittest
 from collections import namedtuple
 import six
-from future.types.newstr import newstr
+from future.types.newbytes import newbytes
 
 import mock
 import pytest
@@ -40,7 +40,6 @@ byte255 = bytes(chr(255)) if six.PY2 else bytes([255])
 
 
 class TestCodecs(unittest.TestCase):
-
 
     def test_abstract_codec(self):
         codec = Codec()
@@ -141,8 +140,10 @@ class TestCodecs(unittest.TestCase):
                     'trace-attr-key4-caf\xc3\xa9': 'value',
                 }, 'with url_encoding = %s' % url_encoding
                 for key, val in six.iteritems(carrier):
-                    assert isinstance(key, str) or isinstance(key, newstr)
-                    assert isinstance(val, str) or isinstance(val, newstr), '%s' % type(val)
+                    assert isinstance(key, str) or isinstance(key, newbytes)
+                    assert isinstance(val, str) or isinstance(
+                        val, newbytes), '%s' % type(val)
+
             else:
                 assert carrier == {
                     'trace-id': '100:7f:0:1',
@@ -340,7 +341,8 @@ class TestCodecs(unittest.TestCase):
 
         span_context = codec.extract(carrier)
         assert span_context.span_id == int('a2fb4a1d1a96d312', 16)
-        assert span_context.trace_id == int('463ac35c9f6413ad48485a3953bb6124', 16)
+        assert span_context.trace_id == int(
+            '463ac35c9f6413ad48485a3953bb6124', 16)
         assert span_context.parent_id == int('0020000000000001', 16)
         assert span_context.flags == 0x02
 
