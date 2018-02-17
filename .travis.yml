@@ -10,6 +10,12 @@ matrix:
     env: COVER=1
   - python: '2.7'
     env: CROSSDOCK=1
+  - python: '2.7.11'
+    env: CROSSDOCK=1
+  - python: '2.7.12'
+    env: CROSSDOCK=1
+  - python: '2.7.13'
+    env: CROSSDOCK=1
   - python: '3.3'
     env: CROSSDOCK=1
   - python: '3.4'
