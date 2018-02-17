@@ -70,14 +70,27 @@ class TextCodec(Codec):
                 encoded_key = key
                 if self.url_encoding:
                     encoded_value = urllib.parse.quote(value)
+
                     # we assume that self.url_encoding means we are injecting
                     # into HTTP headers. httplib does not like unicode strings
                     # so we convert the key to utf-8. The URL-encoded value is
                     # already a plain string.
                     if six.PY2 and isinstance(key, six.text_type):
                         encoded_key = key.encode('utf-8')
+
+                    # expected to be the case in python 2.7.x
+                    # as directed in docstring in `future/types/newstr`, presence
+                    # of `unicode_literals` module will make `isinstance(value, newstr)`
+                    # return True; otherwise that will evaluate to False.
+                    # But, having that import causes `type(self.baggage_prefix)`
+                    # to be `<type 'unicode'>` which will cause a decoding error
+                    # when we try to form the header key.
+                    if six.PY2:
+                        encoded_value = encoded_value.encode(u'utf_8')
+
                 else:
                     encoded_value = value
+
                 header_key = '%s%s' % (self.baggage_prefix, encoded_key)
                 carrier[header_key] = encoded_value
 
@@ -122,6 +135,7 @@ class BinaryCodec(Codec):
     BinaryCodec is a no-op.
 
     """
+
     def inject(self, span_context, carrier):
         if not isinstance(carrier, bytearray):
             raise InvalidCarrierException('carrier not a bytearray')
@@ -197,6 +211,7 @@ class ZipkinCodec(Codec):
     used by TChannel.
 
     """
+
     def inject(self, span_context, carrier):
         if not isinstance(carrier, dict):
             raise InvalidCarrierException('carrier not a dictionary')
@@ -252,6 +267,7 @@ class B3Codec(Codec):
     Support B3 header properties
 
     """
+
     def __init__(self):
         self.trace_header = 'X-B3-TraceId'
         self.span_header = 'X-B3-SpanId'
@@ -262,10 +278,12 @@ class B3Codec(Codec):
     def inject(self, span_context, carrier):
         if not isinstance(carrier, dict):
             raise InvalidCarrierException('carrier not a dictionary')
-        carrier[self.trace_header] = format(span_context.trace_id, 'x').zfill(16)
+        carrier[self.trace_header] = format(
+            span_context.trace_id, 'x').zfill(16)
         carrier[self.span_header] = format(span_context.span_id, 'x').zfill(16)
         if span_context.parent_id is not None:
-            carrier[self.parent_span_header] = format(span_context.parent_id, 'x').zfill(16)
+            carrier[self.parent_span_header] = format(
+                span_context.parent_id, 'x').zfill(16)
         carrier[self.flags_header] = str(span_context.flags)
 
     def extract(self, carrier):
