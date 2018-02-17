@@ -10,6 +10,14 @@ matrix:
     env: COVER=1
   - python: '2.7'
     env: CROSSDOCK=1
+  - python: '3.3'
+    env: CROSSDOCK=1
+  - python: '3.4'
+    env: CROSSDOCK=1
+  - python: '3.5'
+    env: CROSSDOCK=1
+  - python: '3.6'
+    env: CROSSDOCK=1
 
 services:
   - docker
