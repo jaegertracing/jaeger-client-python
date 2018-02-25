@@ -498,7 +498,7 @@ def get_rate_limit(strategy=None):
 
 
 class SamplerMetrics(object):
-    """Tracer specific metrics."""
+    """Sampler specific metrics."""
 
     def __init__(self, metrics_factory):
         self.sampler_retrieved = \
