@@ -50,9 +50,10 @@ setup(
     extras_require={
         'tests': [
             'mock==1.0.1',
+            'pycurl>=7.43,<8',
             'pytest>=2.7,<3',
             'pytest-cov',
-            'coverage<4.4', # can remove after https://bitbucket.org/ned/coveragepy/issues/581/44b1-44-breaking-in-ci
+            'coverage<4.4',  # can remove after https://bitbucket.org/ned/coveragepy/issues/581/44b1-44-breaking-in-ci
             'pytest-timeout',
             'pytest-tornado',
             'pytest-benchmark[histogram]>=3.0.0rc1',
