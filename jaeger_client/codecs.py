@@ -14,8 +14,8 @@
 
 from __future__ import absolute_import
 
-from future import standard_library
-standard_library.install_aliases()  # noqa
+# from future import standard_library
+# standard_library.install_aliases()  # noqa
 
 from builtins import object
 from past.builtins import basestring
@@ -33,7 +33,7 @@ from .span_context import SpanContext
 from .constants import SAMPLED_FLAG, DEBUG_FLAG
 
 import six
-import urllib.parse
+from six.moves import urllib_parse
 
 
 class Codec(object):
@@ -69,7 +69,10 @@ class TextCodec(Codec):
             for key, value in six.iteritems(baggage):
                 encoded_key = key
                 if self.url_encoding:
-                    encoded_value = urllib.parse.quote(value)
+                    if six.PY2 and isinstance(value, six.text_type):
+                        encoded_value = urllib_parse.quote(value.encode('utf-8'))
+                    else:
+                        encoded_value = urllib_parse.quote(value)
                     # we assume that self.url_encoding means we are injecting
                     # into HTTP headers. httplib does not like unicode strings
                     # so we convert the key to utf-8. The URL-encoded value is
@@ -91,12 +94,12 @@ class TextCodec(Codec):
             uc_key = key.lower()
             if uc_key == self.trace_id_header:
                 if self.url_encoding:
-                    value = urllib.parse.unquote(value)
+                    value = urllib_parse.unquote(value)
                 trace_id, span_id, parent_id, flags = \
                     span_context_from_string(value)
             elif uc_key.startswith(self.baggage_prefix):
                 if self.url_encoding:
-                    value = urllib.parse.unquote(value)
+                    value = urllib_parse.unquote(value)
                 attr_key = key[self.prefix_length:]
                 if baggage is None:
                     baggage = {attr_key.lower(): value}
@@ -104,7 +107,7 @@ class TextCodec(Codec):
                     baggage[attr_key.lower()] = value
             elif uc_key == self.debug_id_header:
                 if self.url_encoding:
-                    value = urllib.parse.unquote(value)
+                    value = urllib_parse.unquote(value)
                 debug_id = value
         if not trace_id and baggage:
             raise SpanContextCorruptedException('baggage without trace ctx')
