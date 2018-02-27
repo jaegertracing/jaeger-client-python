@@ -498,7 +498,7 @@ class FakeHandler(tornado.web.RequestHandler):
         span = self.tracer.start_span('server', child_of=span_context)
         print('baggage:', span_context.baggage)
         key = span.get_baggage_item('test-key')
-        value = span.get_baggage_item(key )
+        value = span.get_baggage_item(key)
 
         self.write('%s=%s' % (key, value))
 
@@ -522,6 +522,7 @@ def test_non_ascii_baggage_with_httplibs2(http_client, base_url, http_get):
         assert response.code == 200
         raise response.body
 
+    AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient')
     if http_get is None:
         http_get = _test_client
 
