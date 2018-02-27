@@ -171,6 +171,7 @@ class Reporter(NullReporter):
                         spans.append(span)
             if spans:
                 yield self._submit(spans)
+                self.metrics.reporter_queue_length(self.queue.qsize())
                 for _ in spans:
                     self.queue.task_done()
                 spans = spans[:0]
@@ -243,6 +244,8 @@ class ReporterMetrics(object):
         self.reporter_socket = \
             metrics_factory.create_counter(name='jaeger:reporter_spans',
                                            tags={'result': 'socket_error'})
+        self.reporter_queue_length = \
+            metrics_factory.create_gauge(name="jaeger:reporter_queue_length")
 
 
 class CompositeReporter(NullReporter):
