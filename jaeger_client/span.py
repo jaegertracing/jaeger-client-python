@@ -114,8 +114,8 @@ class Span(opentracing.Span):
         if self.is_sampled():
             logs = {
                 'event': 'baggage',
-                'key': key,
-                'value': value,
+                'key': key.encode('utf-8'),
+                'value': value.encode('utf-8'),
             }
             if prev_value:
                 # TODO add metric for this
