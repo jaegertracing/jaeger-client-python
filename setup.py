@@ -49,6 +49,7 @@ setup(
     test_suite='tests',
     extras_require={
         'tests': [
+            'pycurl>=7.43,<8',
             'mock==1.0.1',
             'pycurl>=7.43,<8',
             'pytest>=2.7,<3',

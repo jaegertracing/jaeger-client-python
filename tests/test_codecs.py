@@ -15,12 +15,21 @@
 from __future__ import absolute_import
 
 import unittest
+import mock
+import pytest
+
 from collections import namedtuple
 import six
 from future.types.newstr import newstr
 
-import mock
-import pytest
+import tornado.web
+from tornado.ioloop import IOLoop
+from tornado.httpclient import (
+    AsyncHTTPClient,
+    HTTPClient,
+    HTTPRequest
+)
+
 from jaeger_client import Span, SpanContext, Tracer, ConstSampler
 from jaeger_client.codecs import (
     Codec, TextCodec, BinaryCodec, ZipkinCodec, ZipkinSpanFormat, B3Codec,
@@ -40,7 +49,6 @@ byte255 = bytes(chr(255)) if six.PY2 else bytes([255])
 
 
 class TestCodecs(unittest.TestCase):
-
 
     def test_abstract_codec(self):
         codec = Codec()
@@ -442,3 +450,110 @@ def test_non_ascii_baggage_with_httplib(httpserver):
         response = urllib2.urlopen(request)
         assert response.read() == b'Hello'
         response.close()
+
+
+def _http_get_urllib2(url, headers):
+    # TODO this test requires `futurize`. Unfortunately, that also changes
+    # how the test works under Py2.
+    # Some observation:
+    # - In Py2, the httplib does not like unicode strings, maybe we need to convert everything to bytes.
+    # - Not sure yet what's the story with httplib in Py3, it seems not to like raw bytes.
+    if six.PY3:
+        raise ValueError('this test does not work with Py3')
+    import urllib2
+    request = urllib2.Request(url, None, headers)
+    response = urllib2.urlopen(request)
+    assert response.code == 200
+    body = response.read()
+    response.close()
+    return body
+
+
+def _http_get_tornado(url, headers):
+    # in case some other test has made a mess
+    IOLoop.clear_current()
+
+    AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient')
+    request = HTTPRequest(url, headers=headers)
+    response = HTTPClient(async_client_class=AsyncHTTPClient).fetch(request)
+    AsyncHTTPClient.configure(None)
+
+    assert response.code == 200
+    return response.body
+
+
+class FakeHandler(tornado.web.RequestHandler):
+
+    tracer = None
+
+    @property
+    def tracer(self):
+        return FakeHandler.tracer
+
+    def get(self):
+        headers = self.request.headers
+        print('headers:')
+        print(headers)
+        span_context = self.tracer.extract(format=Format.HTTP_HEADERS, carrier=headers)
+        span = self.tracer.start_span('server', child_of=span_context)
+        print('baggage:', span_context.baggage)
+        key = span.get_baggage_item('test-key')
+        value = span.get_baggage_item(key)
+
+        self.write('%s=%s' % (key, value))
+
+
+@pytest.fixture
+def app():
+    return tornado.web.Application([
+        (r"/", FakeHandler),
+    ])
+
+
+@pytest.mark.gen_test
+@pytest.mark.parametrize('http_get', [
+    None,
+    _http_get_urllib2,
+    _http_get_tornado,
+])
+def test_non_ascii_baggage_with_httplibs2(http_client, base_url, http_get):
+    def _test_client(url, headers):
+        response = yield http_client.fetch(url, headers=headers)
+        assert response.code == 200
+        raise response.body
+
+    AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient')
+    if http_get is None:
+        http_get = _test_client
+
+    tracer = Tracer(
+        service_name='test',
+        reporter=InMemoryReporter(),
+        # don't sample to avoid logging baggage to the span
+        sampler=ConstSampler(False),
+    )
+    tracer.codecs[Format.TEXT_MAP] = TextCodec(url_encoding=True)
+    FakeHandler.tracer = tracer
+
+    baggage = [
+        # (b'key', b'value'),
+        # (u'key', b'value'),
+        (u'key', u'value'),
+        # (b'key', byte255),
+        # (u'caf\xe9', 'caf\xc3\xa9'),
+        # ('caf\xc3\xa9', 'value'),
+    ]
+    for b in baggage:
+        span = tracer.start_span('test')
+        span.set_baggage_item(b[0], b[1])
+        span.set_baggage_item('test-key', b[0])
+
+        headers = {}
+        tracer.inject(
+            span_context=span.context, format=Format.HTTP_HEADERS, carrier=headers
+        )
+        # make sure httplib doesn't blow up
+        print('----------------------', 'test case', b[0], b[1], http_get, '----------------------')
+        response = yield http_client.fetch(base_url, headers=headers)
+        print('response', response.body)
+        # http_get(base_url, headers)
