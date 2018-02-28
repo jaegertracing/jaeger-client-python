@@ -15,7 +15,6 @@
 from __future__ import absolute_import
 
 from builtins import object
-from past.builtins import basestring
 
 from opentracing import (
     InvalidCarrierException,
@@ -164,7 +163,7 @@ def span_context_from_string(value):
             raise SpanContextCorruptedException(
                 'trace context must be a string or array of 1: "%s"' % value)
         value = value[0]
-    if not isinstance(value, basestring):
+    if not isinstance(value, six.string_types):
         raise SpanContextCorruptedException(
             'trace context not a string "%s"' % value)
     parts = value.split(':')
