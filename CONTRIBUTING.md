@@ -33,7 +33,7 @@ It can be fixed with:
 
 ```
 pip uninstall pycurl
-$ pip install --install-option="--with-openssl" --install-option="--openssl-dir=/usr/local/opt/openssl" pycurl
+pip install --install-option="--with-openssl" --install-option="--openssl-dir=/usr/local/opt/openssl" pycurl
 ```
 
 ## Making A Change
