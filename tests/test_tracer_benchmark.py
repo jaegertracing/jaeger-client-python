@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from builtins import range
+from six.moves import range
 import time
 from opentracing import Tracer as NoopTracer
 from jaeger_client.tracer import Tracer

@@ -14,7 +14,7 @@
 
 from __future__ import absolute_import
 from __future__ import division
-from builtins import object
+
 import json
 import logging
 import random

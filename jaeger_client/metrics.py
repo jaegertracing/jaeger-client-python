@@ -15,9 +15,6 @@
 from __future__ import absolute_import
 from __future__ import division
 
-from builtins import str
-from builtins import object
-
 import six
 
 

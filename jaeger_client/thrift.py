@@ -49,13 +49,25 @@ def id_to_int(big_id):
     return big_id
 
 
+def _to_string(s):
+    try:
+        if isinstance(s, six.text_type):  # This is unicode() in Python 2 and str in Python 3.
+            return s.encode('utf-8')
+        else:
+            return str(s)
+    except Exception as e:
+        return str(e)
+
+
 def make_string_tag(key, value, max_length):
+    key = _to_string(key)
+    value = _to_string(value)
     if len(value) > max_length:
         value = value[:max_length]
     return ttypes.Tag(
         key=key,
-        vType=ttypes.TagType.STRING,
         vStr=value,
+        vType=ttypes.TagType.STRING,
     )
 
 
@@ -72,7 +84,7 @@ def timestamp_micros(ts):
 def make_tags(tags, max_length):
     # TODO extend to support non-string tag values
     return [
-        make_string_tag(key=k, value=str(v), max_length=max_length)
+        make_string_tag(key=k, value=v, max_length=max_length)
         for k, v in six.iteritems(tags or {})
     ]
 

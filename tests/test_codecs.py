@@ -17,7 +17,6 @@ from __future__ import absolute_import
 import unittest
 from collections import namedtuple
 import six
-from future.types.newstr import newstr
 
 import mock
 import pytest
@@ -141,8 +140,8 @@ class TestCodecs(unittest.TestCase):
                     'trace-attr-key4-caf\xc3\xa9': 'value',
                 }, 'with url_encoding = %s' % url_encoding
                 for key, val in six.iteritems(carrier):
-                    assert isinstance(key, str) or isinstance(key, newstr)
-                    assert isinstance(val, str) or isinstance(val, newstr), '%s' % type(val)
+                    assert isinstance(key, str)
+                    assert isinstance(val, str), '%s' % type(val)
             else:
                 assert carrier == {
                     'trace-id': '100:7f:0:1',
