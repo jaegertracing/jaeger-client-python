@@ -443,9 +443,9 @@ class RemoteControlledSampler(Sampler):
     def _update_adaptive_sampler(self, per_operation_strategies):
         if isinstance(self.sampler, AdaptiveSampler):
             self.sampler.update(per_operation_strategies)
-            self.metrics.sampler_updated(1)
         else:
             self.sampler = AdaptiveSampler(per_operation_strategies, self.max_operations)
+        self.metrics.sampler_updated(1)
 
     def _update_rate_limiting_or_probabilistic_sampler(self, response):
         s_type = response.get(STRATEGY_TYPE_STR)
