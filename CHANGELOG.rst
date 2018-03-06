@@ -3,10 +3,18 @@
 History
 -------
 
-3.7.2 (unreleased)
+3.8.0 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Replace zipkin.thrift out-of-band span format with jaeger.thrift (#111)
+- Use only `six` for py2/py3 compatibility, drop `future` (#130)
+- Add codec for B3 trace context headers (#112) - thanks @gravelg
+- Increase max tag value length to 1024 and make it configurable (#110)
+- A number of fixes for Python 3.x compatibility
+  - Fix span and sampler tests to work under Py3 (#117)
+  - Fix dependencies for Py3 compatibility (#116)
+  - Fix xrange for Py3 in thrift generated files (#115)
+  - Add python3 compat, hasattr iteritems->itemx (#113) - thanks @kbroughton
 
 
 3.7.1 (2017-12-14)

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from builtins import range
+from six.moves import range
 import time
 import mock
 

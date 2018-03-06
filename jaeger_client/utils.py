@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from builtins import bytes
-from builtins import range
-from builtins import object
+
+from six.moves import range
+
 import fcntl
 import socket
 import struct

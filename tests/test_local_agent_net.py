@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from future import standard_library
-standard_library.install_aliases()
 import pytest
 import tornado.web
 from urllib.parse import urlparse
@@ -28,7 +26,7 @@ test_strategy = """
             "samplingRate":0.002
         }
     }
-    """
+"""
 
 
 class AgentHandler(tornado.web.RequestHandler):

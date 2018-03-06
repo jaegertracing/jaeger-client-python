@@ -14,7 +14,6 @@
 
 from __future__ import absolute_import
 
-from builtins import str
 import six
 import threading
 import time
@@ -87,7 +86,7 @@ class Span(opentracing.Span):
             elif self.is_sampled():
                 tag = thrift.make_string_tag(
                     key=key,
-                    value=str(value),
+                    value=value,
                     max_length=self.tracer.max_tag_value_length,
                 )
                 self.tags.append(tag)

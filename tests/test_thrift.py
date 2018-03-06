@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from future import standard_library
-standard_library.install_aliases()
 from io import BytesIO
 
 import jaeger_client.thrift_gen.jaeger.ttypes as ttypes
@@ -34,12 +32,11 @@ def test_ipv4_to_int():
 
 
 def test_submit_batch(tracer):
-    # peer = Endpoint(ipv4=thrift.ipv4_to_int('1.2.3.4'),
-    #                 port=9000, service_name="my_peer")
     span = tracer.start_span("test-span")
-    # add both types of annotations
     span.set_tag('bender', 'is great')
     span.set_tag('peer.ipv4', 123123)
+    span.set_tag('unicode_val', u'non-ascii: \xe9')
+    span.set_tag(u'unicode_key_\xe9', 'ascii val')
     span.log_event('kiss-my-shiny-metal-...')
     span.finish()  # to get the duration defined
     # verify that we can serialize the span

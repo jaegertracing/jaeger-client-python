@@ -15,6 +15,7 @@
 import mock
 import pytest
 from jaeger_client import ConstSampler, Tracer
+from tornado.httpclient import AsyncHTTPClient
 
 
 @pytest.fixture(scope='function')
@@ -23,3 +24,6 @@ def tracer():
     sampler = ConstSampler(True)
     return Tracer(
         service_name='test_service_1', reporter=reporter, sampler=sampler)
+
+AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient')
+print('Configured AsyncHTTPClient to use tornado.curl_httpclient.CurlAsyncHTTPClient')

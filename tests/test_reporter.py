@@ -12,8 +12,9 @@ from __future__ import print_function
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from builtins import range
-from builtins import object
+
+from six.moves import range
+
 import logging
 import time
 import collections

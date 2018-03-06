@@ -21,6 +21,21 @@ To install all dependencies, run:
  3. `make bootstrap`
  4. `make test`
 
+### pycurl
+
+On MacOS you may get an error:
+
+```
+ImportError: pycurl: libcurl link-time ssl backend (openssl) is different from compile-time ssl backend (none/other)
+```
+
+It can be fixed with:
+
+```
+pip uninstall pycurl
+pip install --install-option="--with-openssl" --install-option="--openssl-dir=/usr/local/opt/openssl" pycurl
+```
+
 ## Making A Change
 
 *Before making any significant changes, please [open an issue](https://github.com/jaegertracing/jaeger-client-python/issues).*
