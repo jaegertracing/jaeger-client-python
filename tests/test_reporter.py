@@ -185,7 +185,7 @@ class ReporterTest(AsyncTestCase):
         assert 1 == len(sender.futures)
 
         # send after close
-        span_dropped_key = 'jaeger.spans.dropped_true'
+        span_dropped_key = 'jaeger:reporter_spans.result_dropped'
         assert span_dropped_key not in reporter.metrics_factory.counters
         reporter.report_span(self._new_span('1'))
         assert 1 == reporter.metrics_factory.counters[span_dropped_key]
@@ -196,7 +196,7 @@ class ReporterTest(AsyncTestCase):
         reporter.error_reporter = ErrorReporter(
             metrics=Metrics(), logger=logging.getLogger())
 
-        reporter_failure_key = 'jaeger.spans.reported_false'
+        reporter_failure_key = 'jaeger:reporter_spans.result_err'
         assert reporter_failure_key not in reporter.metrics_factory.counters
 
         # simulate exception in send
@@ -219,7 +219,7 @@ class ReporterTest(AsyncTestCase):
         assert 1 == len(sender.futures)
         # the consumer is blocked on a future, so won't drain the queue
         reporter.report_span(self._new_span('2'))
-        span_dropped_key = 'jaeger.spans.dropped_true'
+        span_dropped_key = 'jaeger:reporter_spans.result_dropped'
         assert span_dropped_key not in reporter.metrics_factory.counters
         reporter.report_span(self._new_span('3'))
         yield self._wait_for(

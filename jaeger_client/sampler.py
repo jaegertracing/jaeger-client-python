@@ -343,8 +343,7 @@ class RemoteControlledSampler(Sampler):
             kwargs.get('sampling_refresh_interval', DEFAULT_SAMPLING_INTERVAL)
         self.metrics_factory = kwargs.get('metrics_factory', None) \
             or LegacyMetricsFactory(kwargs.get('metrics', None) or Metrics())
-        self.sampler_errors = \
-            self.metrics_factory.create_counter('jaeger.sampler', {'error': 'true'})
+        self.metrics = SamplerMetrics(self.metrics_factory)
         self.error_reporter = kwargs.get('error_reporter') or \
             ErrorReporter(Metrics())
         self.max_operations = kwargs.get('max_operations', DEFAULT_MAX_OPERATIONS)
@@ -408,7 +407,7 @@ class RemoteControlledSampler(Sampler):
     def _sampling_request_callback(self, future):
         exception = future.exception()
         if exception:
-            self.sampler_errors(1)
+            self.metrics.sampler_query_failure(1)
             self.error_reporter.error(
                 'Fail to get sampling strategy from jaeger-agent: %s',
                 exception)
@@ -417,8 +416,9 @@ class RemoteControlledSampler(Sampler):
         response = future.result()
         try:
             sampling_strategies_response = json.loads(response.body)
+            self.metrics.sampler_retrieved(1)
         except Exception as e:
-            self.sampler_errors(1)
+            self.metrics.sampler_query_failure(1)
             self.error_reporter.error(
                 'Fail to parse sampling strategy '
                 'from jaeger-agent: %s [%s]', e, response.body)
@@ -435,7 +435,7 @@ class RemoteControlledSampler(Sampler):
                 else:
                     self._update_rate_limiting_or_probabilistic_sampler(response)
             except Exception as e:
-                self.sampler_errors(1)
+                self.metrics.sampler_update_failure(1)
                 self.error_reporter.error(
                     'Fail to update sampler'
                     'from jaeger-agent: %s [%s]', e, response)
@@ -445,6 +445,7 @@ class RemoteControlledSampler(Sampler):
             self.sampler.update(per_operation_strategies)
         else:
             self.sampler = AdaptiveSampler(per_operation_strategies, self.max_operations)
+        self.metrics.sampler_updated(1)
 
     def _update_rate_limiting_or_probabilistic_sampler(self, response):
         s_type = response.get(STRATEGY_TYPE_STR)
@@ -463,6 +464,7 @@ class RemoteControlledSampler(Sampler):
 
         if self.sampler != new_sampler:
             self.sampler = new_sampler
+            self.metrics.sampler_updated(1)
 
     def _poll_sampling_manager(self):
         self.logger.debug('Requesting tracing sampler refresh')
@@ -493,3 +495,17 @@ def get_rate_limit(strategy=None):
     if not rate_limit_strategy:
         return DEFAULT_LOWER_BOUND
     return rate_limit_strategy.get(MAX_TRACES_PER_SECOND_STR, DEFAULT_LOWER_BOUND)
+
+
+class SamplerMetrics(object):
+    """Sampler specific metrics."""
+
+    def __init__(self, metrics_factory):
+        self.sampler_retrieved = \
+            metrics_factory.create_counter(name='jaeger:sampler_queries', tags={'result': 'ok'})
+        self.sampler_query_failure = \
+            metrics_factory.create_counter(name='jaeger:sampler_queries', tags={'result': 'err'})
+        self.sampler_updated = \
+            metrics_factory.create_counter(name='jaeger:sampler_updates', tags={'result': 'ok'})
+        self.sampler_update_failure = \
+            metrics_factory.create_counter(name='jaeger:sampler_updates', tags={'result': 'err'})

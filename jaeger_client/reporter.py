@@ -174,6 +174,7 @@ class Reporter(NullReporter):
                 for _ in spans:
                     self.queue.task_done()
                 spans = spans[:0]
+            self.metrics.reporter_queue_length(self.queue.qsize())
         self.logger.info('Span publisher exists')
 
     # method for protocol factory
@@ -198,7 +199,7 @@ class Reporter(NullReporter):
             yield self._send(batch)
             self.metrics.reporter_success(len(spans))
         except socket.error as e:
-            self.metrics.reporter_socket(len(spans))
+            self.metrics.reporter_failure(len(spans))
             self.error_reporter.error(
                 'Failed to submit traces to jaeger-agent socket: %s', e)
         except Exception as e:
@@ -231,15 +232,17 @@ class Reporter(NullReporter):
 
 
 class ReporterMetrics(object):
+    """Reporter specific metrics."""
+
     def __init__(self, metrics_factory):
         self.reporter_success = \
-            metrics_factory.create_counter(name='jaeger.spans', tags={'reported': 'true'})
+            metrics_factory.create_counter(name='jaeger:reporter_spans', tags={'result': 'ok'})
         self.reporter_failure = \
-            metrics_factory.create_counter(name='jaeger.spans', tags={'reported': 'false'})
+            metrics_factory.create_counter(name='jaeger:reporter_spans', tags={'result': 'err'})
         self.reporter_dropped = \
-            metrics_factory.create_counter(name='jaeger.spans', tags={'dropped': 'true'})
-        self.reporter_socket = \
-            metrics_factory.create_counter(name='jaeger.spans', tags={'socket_error': 'true'})
+            metrics_factory.create_counter(name='jaeger:reporter_spans', tags={'result': 'dropped'})
+        self.reporter_queue_length = \
+            metrics_factory.create_gauge(name='jaeger:reporter_queue_length')
 
 
 class CompositeReporter(NullReporter):
