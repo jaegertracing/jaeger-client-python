@@ -3,11 +3,11 @@
 History
 -------
 
-3.8.0 (unreleased)
+3.8.0 (2018-03-06)
 ------------------
 
 - Replace zipkin.thrift out-of-band span format with jaeger.thrift (#111)
-- Use only `six` for py2/py3 compatibility, drop `future` (#130)
+- Use only `six` for py2/py3 compatibility, drop `future` (#130, #134, #135)
 - Add codec for B3 trace context headers (#112) - thanks @gravelg
 - Increase max tag value length to 1024 and make it configurable (#110)
 - A number of fixes for Python 3.x compatibility
