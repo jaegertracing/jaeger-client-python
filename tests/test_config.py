@@ -100,3 +100,7 @@ class ConfigTests(unittest.TestCase):
 
         c = Config({'propagation': 'b3'}, service_name='x')
         assert len(c.propagation) == 1
+
+    def test_for_unexpected_config_entries(self):
+        with self.assertRaises(Exception):
+            _ = Config({"unexpected":"value"}, validate=True)

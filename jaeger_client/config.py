@@ -80,7 +80,8 @@ class Config(object):
     _initialized = False
     _initialized_lock = threading.Lock()
 
-    def __init__(self, config, metrics=None, service_name=None, metrics_factory=None):
+    def __init__(self, config, metrics=None, service_name=None, metrics_factory=None,
+                 validate=False):
         """
         :param metrics: an instance of Metrics class, or None. This parameter
             has been deprecated, please use metrics_factory instead.
@@ -88,6 +89,8 @@ class Config(object):
             Can be overwritten by config['service_name'].
         :param metrics_factory: an instance of MetricsFactory class, or None.
         """
+        if validate:
+            self._validate_config(config)
         self.config = config
         if get_boolean(self.config.get('metrics', True), True):
             self._metrics_factory = metrics_factory or LegacyMetricsFactory(metrics or Metrics())
@@ -102,6 +105,26 @@ class Config(object):
             metrics=Metrics(),
             logger=logger if self.logging else None,
         )
+
+    def _validate_config(self, config):
+        allowed_keys = ['logging',
+                        'local_agent',
+                        'sampler',
+                        'tags',
+                        'enabled',
+                        'reporter_batch_size',
+                        'propagation',
+                        'max_tag_value_length',
+                        'reporter_flush_interval',
+                        'sampling_refresh_interval',
+                        'trace_id_header',
+                        'baggage_header_prefix',
+                        'service_name']
+        config_keys = config.keys()
+        unexpected_config_keys = [k for k in config_keys if k not in allowed_keys]
+        if unexpected_config_keys:
+            raise ValueError('Unexpected keys found in config:{}'.
+                             format(','.join(unexpected_config_keys)))
 
     @property
     def service_name(self):
