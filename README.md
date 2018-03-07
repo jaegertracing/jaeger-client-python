@@ -39,6 +39,7 @@ if __name__ == "__main__":
             'logging': True,
         },  
         service_name='your-app-name',
+        validate=True,
     )
     # this call also sets opentracing.tracer
     tracer = config.initialize_tracer()
@@ -75,7 +76,7 @@ The recommended way to initialize the tracer for production use:
 from jaeger_client import Config
 
 def init_jaeger_tracer(service_name='your-app-name'):
-    config = Config(config={}, service_name=service_name)
+    config = Config(config={}, service_name=service_name, validate=True)
     return config.initialize_tracer()
 ```
 
