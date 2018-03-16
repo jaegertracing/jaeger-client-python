@@ -14,7 +14,6 @@ Please see [CONTRIBUTING.md](./CONTRIBUTING.md).
 ## Installation
 
 ```bash
-apt-get install python-dev
 pip install jaeger-client
 ```
 
