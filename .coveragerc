@@ -3,7 +3,6 @@ branch = True
 
 [report]
 omit = 
-  jaeger_client/metrics_factory/prometheus_metrics.py
   jaeger_client/thrift_gen/*
   jaeger_client/thrift_gen/*/*
   crossdock/thrift_gen/*
