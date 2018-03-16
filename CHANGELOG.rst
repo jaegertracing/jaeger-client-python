@@ -3,10 +3,11 @@
 History
 -------
 
-3.8.1 (unreleased)
+3.9.0 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Add ability to validate configuration (#124) <Gregory Reshetniak>
+- Make Metrics consistent with Go client (#129) <Eundoo Song>
 
 
 3.8.0 (2018-03-06)
