@@ -25,24 +25,24 @@ class PrometheusMetricsFactory(MetricsFactory):
         self._cache = defaultdict(object)
         self._namespace = namespace
 
-    def _get_tag_names(self, label):
-        if label is None:
+    def _get_tag_name_list(self, tags):
+        if tags is None:
             return []
         tag_name_list = []
-        for key in label.keys():
+        for key in tags.keys():
             tag_name_list.append(key)
         return tag_name_list
 
-    def _get_metric(self, metric, cache, name, label_name_list):
+    def _get_metric(self, metric, name, label_name_list):
         cache_key = name + ''.join(label_name_list)
-        cached_gauge = cache.get(cache_key)
-        if cached_gauge is None:
-            cache[cache_key] = metric(name, name, label_name_list, self._namespace)
-        return cache[cache_key]
+        if self._cache.get(cache_key) is None:
+            self._cache[cache_key] = metric(name=name, documentation=name,
+                                            labelnames=label_name_list, namespace=self._namespace)
+        return self._cache[cache_key]
 
     def create_counter(self, name, tags=None):
-        label_name_list = self._get_tag_names(tags)
-        counter = self._get_metric(Counter, self._cache, name, label_name_list)
+        label_name_list = self._get_tag_name_list(tags)
+        counter = self._get_metric(Counter, name, label_name_list)
         if tags is not None and len(tags) > 0:
             counter = counter.labels(**tags)
 
@@ -51,8 +51,8 @@ class PrometheusMetricsFactory(MetricsFactory):
         return increment
 
     def create_gauge(self, name, tags=None):
-        label_name_list = self._get_tag_names(tags)
-        gauge = self._get_metric(Gauge, self._cache, name, label_name_list)
+        label_name_list = self._get_tag_name_list(tags)
+        gauge = self._get_metric(Gauge, name, label_name_list)
         if tags is not None and len(tags) > 0:
             gauge = gauge.labels(**tags)
 

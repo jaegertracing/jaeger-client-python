@@ -2,7 +2,7 @@
 
 This module brings a [Prometheus](https://github.com/prometheus/client_python) integration to the internal Jaeger metrics.
 
-## Install
+## Installation
 
 ```
 pip install prometheus_client
