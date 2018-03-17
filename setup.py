@@ -62,6 +62,7 @@ setup(
             'coveralls',
             'tchannel>=0.27;python_version<"3"',
             'opentracing_instrumentation>=2,<3',
+            'prometheus_client',
         ]
     },
 )
