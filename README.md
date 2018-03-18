@@ -81,6 +81,23 @@ def init_jaeger_tracer(service_name='your-app-name'):
 
 Note that the call `initialize_tracer()` also sets the `opentracing.tracer` global variable.
 
+#### Prometheus metrics
+
+This module brings a [Prometheus](https://github.com/prometheus/client_python) integration to the internal Jaeger metrics.  
+The way to initialize the tracer with Prometheus metrics:
+
+```python
+from jaeger_client.metrics_factory.prometheus import PrometheusMetricsFactory
+
+config = Config(
+        config={},
+        service_name='your-app-name',
+        validate=True,
+        metrics_factory=PrometheusMetricsFactory(namespace='your-app-name')
+)
+tracer = config.initialize_tracer()
+```
+
 ### Development
 
 For development, some parameters can be passed via `config` dictionary, as in the Getting Started example above. For more details please see the [Config class](jaeger_client/config.py).
@@ -137,22 +154,6 @@ you can provide the configuration property `propagation: 'b3'` and the
 The B3 codec assumes it will receive lowercase HTTP headers, as this seems
 to be the standard in the popular frameworks like Flask and Django.
 Please make sure your framework does the same.
-
-## Prometheus metrics
-
-This module brings a [Prometheus](https://github.com/prometheus/client_python) integration to the internal Jaeger metrics.  
-The way to initialize the tracer with Prometheus metrics:  
-
-```python
-from jaeger_client.metrics_factory.prometheus_metrics import PrometheusMetricsFactory
-
-config = Config(
-        config={},
-        service_name='your-app-name',
-        metrics_factory=PrometheusMetricsFactory(namespace=service_name)
-)
-tracer = config.initialize_tracer()
-```
 
 ## License
 
