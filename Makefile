@@ -3,7 +3,7 @@ projects := jaeger_client crossdock
 flake8 := flake8
 COV_DIRS := $(projects:%=--cov %)
 pytest_args := -s --tb short --cov-config .coveragerc $(COV_DIRS) tests
-pytest := $(clay_config) py.test $(pytest_args)
+pytest := py.test $(pytest_args)
 sources := $(shell find $(projects) tests -name '*.py' | grep -v version.py | grep -v thrift_gen)
 
 test_args := --cov-report term-missing --cov-report xml --junitxml junit.xml
