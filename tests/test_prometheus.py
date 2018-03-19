@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from jaeger_client.metrics_factory.prometheus \
+from jaeger_client.metrics.prometheus \
     import PrometheusMetricsFactory
 from prometheus_client import REGISTRY
 

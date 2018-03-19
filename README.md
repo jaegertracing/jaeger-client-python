@@ -87,7 +87,7 @@ This module brings a [Prometheus](https://github.com/prometheus/client_python) i
 The way to initialize the tracer with Prometheus metrics:
 
 ```python
-from jaeger_client.metrics_factory.prometheus import PrometheusMetricsFactory
+from jaeger_client.metrics.prometheus import PrometheusMetricsFactory
 
 config = Config(
         config={},
