@@ -1,8 +1,8 @@
 [![Build Status][ci-img]][ci] [![Coverage Status][cov-img]][cov] [![PyPI version][pypi-img]][pypi] [![FOSSA Status][fossa-img]][fossa]
 
-# Jaeger Bindings for Python OpenTracing API 
+# Jaeger Bindings for Python OpenTracing API
 
-This is a client-side library that can be used to instrument Python apps 
+This is a client-side library that can be used to instrument Python apps
 for distributed trace collection, and to send those traces to Jaeger.
 See the [OpenTracing Python API](https://github.com/opentracing/opentracing-python)
 for additional detail.
@@ -44,10 +44,10 @@ if __name__ == "__main__":
     tracer = config.initialize_tracer()
 
     with tracer.start_span('TestSpan') as span:
-        span.log_event('test message', payload={'life': 42})
+        span.log_kv({'event': 'test message', 'life': 42})
 
         with tracer.start_span('ChildSpan', child_of=span) as child_span:
-            span.log_event('down below')
+            span.log_kv({'event': 'down below'})
 
     time.sleep(2)   # yield to IOLoop to flush the spans - https://github.com/jaegertracing/jaeger-client-python/issues/50
     tracer.close()  # flush any buffered spans
