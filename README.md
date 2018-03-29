@@ -44,7 +44,7 @@ if __name__ == "__main__":
     tracer = config.initialize_tracer()
 
     with tracer.start_span('TestSpan') as span:
-        span.log_kv({'event': 'test message'})
+        span.log_kv({'event': 'test message', 'life': 42})
 
         with tracer.start_span('ChildSpan', child_of=span) as child_span:
             span.log_kv({'event': 'down below'})
