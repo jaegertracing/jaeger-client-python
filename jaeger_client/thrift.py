@@ -51,6 +51,8 @@ def id_to_int(big_id):
 
 def _to_string(s):
     try:
+        if isinstance(s, str):
+            return s
         if isinstance(s, six.text_type):  # This is unicode() in Python 2 and str in Python 3.
             return s.encode('utf-8')
         else:
