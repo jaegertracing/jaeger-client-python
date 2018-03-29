@@ -44,11 +44,9 @@ if __name__ == "__main__":
     tracer = config.initialize_tracer()
 
     with tracer.start_span('TestSpan') as span:
-        # span.log_event('test message', payload={'life': 42})
         span.log_kv({'event': 'test message'})
 
         with tracer.start_span('ChildSpan', child_of=span) as child_span:
-            # span.log_event('down below')
             span.log_kv({'event': 'down below'})
 
     time.sleep(2)   # yield to IOLoop to flush the spans - https://github.com/jaegertracing/jaeger-client-python/issues/50
