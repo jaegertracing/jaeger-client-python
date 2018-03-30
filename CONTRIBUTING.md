@@ -20,6 +20,10 @@ To install all dependencies, run:
  2. `source env/bin/activate`
  3. `make bootstrap`
  4. `make test`
+ 
+### Thrift
+
+Thrift files are generated via `make thrift`. The IDL files are pulled from `jaeger-idl` repo which is defined as a submodule.
 
 ### pycurl
 
