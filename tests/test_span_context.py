@@ -24,7 +24,7 @@ def test_parent_id_to_none():
 def test_with_baggage_items():
     baggage1 = {'x': 'y'}
     ctx1 = SpanContext(trace_id=1, span_id=2, parent_id=3, flags=1,
-                       baggage=baggage1)
+                       baggage=baggage1, sampling_finalized=True)
     ctx2 = ctx1.with_baggage_item('a', 'b')
     assert ctx1.trace_id == ctx2.trace_id
     assert ctx1.span_id == ctx2.span_id
@@ -33,7 +33,7 @@ def test_with_baggage_items():
     assert ctx1.baggage != ctx2.baggage
     baggage1['a'] = 'b'
     assert ctx1.baggage == ctx2.baggage
-
+    assert ctx1.sampling_finalized == ctx2.sampling_finalized
 
 def test_is_debug_id_container_only():
     ctx = SpanContext.with_debug_id('value1')
@@ -41,3 +41,9 @@ def test_is_debug_id_container_only():
     assert ctx.debug_id == 'value1'
     ctx = SpanContext(trace_id=1, span_id=2, parent_id=3, flags=1)
     assert not ctx.is_debug_id_container_only
+
+def test_finalize_sampling():
+    ctx1 = SpanContext(trace_id=1, span_id=2, parent_id=0, flags=1)
+    assert not ctx1.sampling_finalized
+    ctx1.finalize_sampling()
+    assert ctx1.sampling_finalized

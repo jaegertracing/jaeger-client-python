@@ -54,7 +54,26 @@ class Span(opentracing.Span):
         """
         with self.update_lock:
             self.operation_name = operation_name
+            # We re-sample the span if it has not been finalized.
+            if self.context.sampling_finalized:
+                return self
+            sampler = self._tracer.sampler
+            sampled, sampler_tags \
+                = sampler.is_sampled(self.trace_id, operation_name)
+            if sampled:
+                self.context.flags |= SAMPLED_FLAG
+                for k, v in six.iteritems(sampler_tags):
+                    self._set_tag_with_lock(k, v)
+            self.context.finalize_sampling()
         return self
+
+    def _is_writeable(self):
+        """
+        Checks whether or not a span can be written to.
+
+        :return: The decision about whether this span can be written to.
+        """
+        return not self.context.sampling_finalized or self.is_sampled()
 
     def finish(self, finish_time=None):
         """Indicate that the work represented by this span has been completed
@@ -66,6 +85,7 @@ class Span(opentracing.Span):
         :param finish_time: an explicit Span finish timestamp as a unix
             timestamp per time.time()
         """
+        self.context.finalize_sampling()
         if not self.is_sampled():
             return
 
@@ -78,22 +98,31 @@ class Span(opentracing.Span):
         :param value:
         """
         with self.update_lock:
-            if key == ext_tags.SAMPLING_PRIORITY:
-                if value > 0:
-                    self.context.flags |= SAMPLED_FLAG | DEBUG_FLAG
-                else:
-                    self.context.flags &= ~SAMPLED_FLAG
-            elif self.is_sampled():
-                tag = thrift.make_string_tag(
-                    key=key,
-                    value=value,
-                    max_length=self.tracer.max_tag_value_length,
-                )
-                self.tags.append(tag)
+            self._set_tag_with_lock(key, value)
         return self
 
+    def _set_tag_with_lock(self, key, value):
+        """
+        Helper function that sets tags on the span. Assumes the caller has acquired the lock
+        :param key:
+        :param value:
+        """
+        if key == ext_tags.SAMPLING_PRIORITY:
+            if value > 0:
+                self.context.flags |= SAMPLED_FLAG | DEBUG_FLAG
+            else:
+                self.context.flags &= ~SAMPLED_FLAG
+            self.context.finalize_sampling()
+        elif self._is_writeable():
+            tag = thrift.make_string_tag(
+                key=key,
+                value=value,
+                max_length=self.tracer.max_tag_value_length,
+            )
+            self.tags.append(tag)
+
     def log_kv(self, key_values, timestamp=None):
-        if self.is_sampled():
+        if self._is_writeable():
             timestamp = timestamp if timestamp else time.time()
             # TODO handle exception logging, 'python.exception.type' etc.
             log = thrift.make_log(
@@ -110,7 +139,7 @@ class Span(opentracing.Span):
         new_context = self.context.with_baggage_item(key=key, value=value)
         with self.update_lock:
             self._context = new_context
-        if self.is_sampled():
+        if self._is_writeable():
             logs = {
                 'event': 'baggage',
                 'key': key,

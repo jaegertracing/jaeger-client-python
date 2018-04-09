@@ -278,7 +278,6 @@ def test_adaptive_sampler_default_values():
     assert '%s' % adaptive_sampler.samplers['op'] == 'GuaranteedThroughputProbabilisticSampler(op, 0.001000, 0.001667)'
 
 
-
 def test_sampler_equality():
     const1 = ConstSampler(True)
     const2 = ConstSampler(True)

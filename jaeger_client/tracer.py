@@ -139,6 +139,7 @@ class Tracer(opentracing.Tracer):
             parent_id = None
             flags = 0
             baggage = None
+            sampling_finalized = False
             if parent is None:
                 sampled, sampler_tags = \
                     self.sampler.is_sampled(trace_id, operation_name)
@@ -162,10 +163,12 @@ class Tracer(opentracing.Tracer):
                 parent_id = parent.span_id
             flags = parent.flags
             baggage = dict(parent.baggage)
+            parent.finalize_sampling()
+            sampling_finalized = True
 
         span_ctx = SpanContext(trace_id=trace_id, span_id=span_id,
                                parent_id=parent_id, flags=flags,
-                               baggage=baggage)
+                               baggage=baggage, sampling_finalized=sampling_finalized)
         span = Span(context=span_ctx, tracer=self,
                     operation_name=operation_name,
                     tags=tags, start_time=start_time)
@@ -184,13 +187,17 @@ class Tracer(opentracing.Tracer):
         if not isinstance(span_context, SpanContext):
             raise ValueError(
                 'Expecting Jaeger SpanContext, not %s', type(span_context))
+        span_context.finalize_sampling()
         codec.inject(span_context=span_context, carrier=carrier)
 
     def extract(self, format, carrier):
         codec = self.codecs.get(format, None)
         if codec is None:
             raise UnsupportedFormatException(format)
-        return codec.extract(carrier)
+        span_context = codec.extract(carrier)
+        if isinstance(span_context, SpanContext):
+            span_context.finalize_sampling()
+        return span_context
 
     def close(self):
         """

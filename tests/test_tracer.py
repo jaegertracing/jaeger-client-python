@@ -258,3 +258,24 @@ def test_tracer_override_codecs():
                 "Extra codec not found"
         assert tracer.codecs[Format.BINARY] == "overridden_binary_codec",\
                 "Binary format codec not overridden"
+
+
+def test_sampling_finalized_on_inheriting_sampling_decision(tracer):
+    span = tracer.start_span(operation_name='x')
+    assert not span.context.sampling_finalized
+
+    child_span = tracer.start_span(operation_name='child', child_of=span.context)
+    assert span.context.sampling_finalized
+    assert child_span.context.sampling_finalized
+
+
+def test_sampling_finalized_on_injecting_and_extracting_context_into_and_from_headers(tracer):
+    span = tracer.start_span(operation_name='x')
+    assert not span.context.sampling_finalized
+
+    carrier = {}
+    tracer.inject(span_context=span.context, format=Format.HTTP_HEADERS, carrier=carrier)
+    assert span.context.sampling_finalized
+
+    ctx = tracer.extract(Format.TEXT_MAP, carrier)
+    assert ctx.sampling_finalized
