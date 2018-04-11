@@ -80,6 +80,7 @@ def init_jaeger_tracer(service_name='your-app-name'):
 ```
 
 Note that the call `initialize_tracer()` also sets the `opentracing.tracer` global variable.
+If you need to create additional tracers (e.g., to create spans on the client side for remote services that are not instrumented), use the `new_tracer()` method.
 
 #### Prometheus metrics
 
