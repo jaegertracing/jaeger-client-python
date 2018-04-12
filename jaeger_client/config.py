@@ -296,6 +296,16 @@ class Config(object):
                 return
             Config._initialized = True
 
+        tracer = self.new_tracer(io_loop)
+
+        self._initialize_global_tracer(tracer=tracer)
+        return tracer
+
+    def new_tracer(self, io_loop=None):
+        """
+        Create a new Jaeger Tracer based on the passed `jaeger_client.Config`.
+        Does not set `opentracing.tracer` global variable.
+        """
         channel = self._create_local_agent_channel(io_loop=io_loop)
         sampler = self.sampler
         if sampler is None:
@@ -321,13 +331,10 @@ class Config(object):
         if self.logging:
             reporter = CompositeReporter(reporter, LoggingReporter(logger))
 
-        tracer = self.create_tracer(
+        return self.create_tracer(
             reporter=reporter,
             sampler=sampler,
         )
-
-        self._initialize_global_tracer(tracer=tracer)
-        return tracer
 
     def create_tracer(self, reporter, sampler):
         return Tracer(
