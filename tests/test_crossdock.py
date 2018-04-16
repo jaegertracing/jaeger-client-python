@@ -14,12 +14,14 @@
 
 from __future__ import absolute_import
 
+import six
 import mock
 import json
 import pytest
 import opentracing
 from mock import MagicMock
-from crossdock.server import server
+if six.PY2:
+    from crossdock.server import server
 from tornado.httpclient import HTTPRequest
 from jaeger_client import Tracer, ConstSampler
 from jaeger_client.reporter import InMemoryReporter
@@ -60,6 +62,7 @@ for s2 in ["HTTP", "TCHANNEL"]:
 # noinspection PyShadowingNames
 @pytest.mark.parametrize('s2_transport,s3_transport,sampled', PERMUTATIONS)
 @pytest.mark.gen_test
+@pytest.mark.skipif(six.PY3, reason="crossdock tests need tchannel that only works with Python 2.7")
 def test_trace_propagation(
         s2_transport, s3_transport, sampled, tracer,
         base_url, http_port, http_client):
@@ -122,6 +125,7 @@ def test_trace_propagation(
 
 # noinspection PyShadowingNames
 @pytest.mark.gen_test
+@pytest.mark.skipif(six.PY3, reason="crossdock tests need tchannel that only works with Python 2.7")
 def test_endtoend_handler(tracer):
     payload = dict()
     payload["operation"] = "Zoidberg"
