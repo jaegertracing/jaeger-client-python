@@ -14,25 +14,36 @@
 
 import logging
 
-import tornado.web
-import opentracing
-import tornado.ioloop
-import tornado.httpclient
-from tornado.web import asynchronous
-from jaeger_client import Tracer, ConstSampler
-from jaeger_client.reporter import NullReporter
 import crossdock.server.constants as constants
 import crossdock.server.serializer as serializer
-from crossdock.server.endtoend import EndToEndHandler
-from opentracing_instrumentation import http_client, http_server, get_current_span, request_context
-from opentracing_instrumentation.client_hooks import tornado_http
+import opentracing
 import opentracing.ext.tags as ext_tags
-from crossdock.thrift_gen.tracetest.ttypes import ObservedSpan, TraceResponse, Transport, \
-    JoinTraceRequest
-
+import tornado.httpclient
+import tornado.ioloop
+import tornado.web
+from crossdock.server.endtoend import EndToEndHandler
+from crossdock.server.thriftrw_serializer import (
+    join_trace_request_to_thriftrw,
+    trace_response_to_thriftrw
+)
+from crossdock.thrift_gen.tracetest.ttypes import (
+    JoinTraceRequest,
+    ObservedSpan,
+    TraceResponse,
+    Transport
+)
+from opentracing_instrumentation import (
+    get_current_span,
+    http_client,
+    http_server,
+    request_context
+)
+from opentracing_instrumentation.client_hooks import tornado_http
 from tchannel import TChannel, thrift
-from crossdock.server.thriftrw_serializer import trace_response_to_thriftrw, \
-    join_trace_request_to_thriftrw
+from tornado.web import asynchronous
+
+from jaeger_client import ConstSampler, Tracer
+from jaeger_client.reporter import NullReporter
 
 DefaultClientPortHTTP = 8080
 DefaultServerPortHTTP = 8081

@@ -16,9 +16,10 @@ from __future__ import absolute_import
 
 import unittest
 
+from opentracing.harness.api_check import APICompatibilityCheckMixin
+
 from jaeger_client import ConstSampler, Tracer
 from jaeger_client.reporter import NullReporter
-from opentracing.harness.api_check import APICompatibilityCheckMixin
 
 
 class APITest(unittest.TestCase, APICompatibilityCheckMixin):

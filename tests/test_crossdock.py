@@ -14,18 +14,21 @@
 
 from __future__ import absolute_import
 
-import six
-import mock
 import json
-import pytest
+
+import mock
 import opentracing
+import pytest
+import six
+from crossdock.server.endtoend import EndToEndHandler
 from mock import MagicMock
+from tornado.httpclient import HTTPRequest
+
+from jaeger_client import ConstSampler, Tracer
+from jaeger_client.reporter import InMemoryReporter
+
 if six.PY2:
     from crossdock.server import server
-from tornado.httpclient import HTTPRequest
-from jaeger_client import Tracer, ConstSampler
-from jaeger_client.reporter import InMemoryReporter
-from crossdock.server.endtoend import EndToEndHandler
 
 tchannel_port = "9999"
 

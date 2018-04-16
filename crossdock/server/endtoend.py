@@ -12,22 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tornado.web
 import json
 import os
 
-from jaeger_client.local_agent_net import LocalAgentSender
+import tornado.web
+
 from jaeger_client.config import (
-    Config,
-    DEFAULT_SAMPLING_PORT,
     DEFAULT_REPORTING_PORT,
+    DEFAULT_SAMPLING_PORT,
+    Config
 )
-from jaeger_client.constants import (
-    SAMPLER_TYPE_CONST,
-    SAMPLER_TYPE_REMOTE,
-)
-from jaeger_client.sampler import RemoteControlledSampler, ConstSampler
+from jaeger_client.constants import SAMPLER_TYPE_CONST, SAMPLER_TYPE_REMOTE
+from jaeger_client.local_agent_net import LocalAgentSender
 from jaeger_client.reporter import Reporter
+from jaeger_client.sampler import ConstSampler, RemoteControlledSampler
 from jaeger_client.tracer import Tracer
 
 config = {

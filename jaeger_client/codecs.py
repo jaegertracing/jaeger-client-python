@@ -14,20 +14,19 @@
 
 from __future__ import absolute_import
 
-from opentracing import (
-    InvalidCarrierException,
-    SpanContextCorruptedException,
-)
+import six
+from opentracing import InvalidCarrierException, SpanContextCorruptedException
+
+from six.moves import urllib_parse
+
 from .constants import (
     BAGGAGE_HEADER_PREFIX,
+    DEBUG_FLAG,
     DEBUG_ID_HEADER_KEY,
-    TRACE_ID_HEADER,
+    SAMPLED_FLAG,
+    TRACE_ID_HEADER
 )
 from .span_context import SpanContext
-from .constants import SAMPLED_FLAG, DEBUG_FLAG
-
-import six
-from six.moves import urllib_parse
 
 
 class Codec(object):

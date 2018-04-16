@@ -13,12 +13,20 @@
 # limitations under the License.
 
 from __future__ import absolute_import
+
 import os
 import unittest
+
 import opentracing.tracer
-from jaeger_client import Config, ConstSampler, ProbabilisticSampler, RateLimitingSampler
+
+from jaeger_client import (
+    Config,
+    ConstSampler,
+    ProbabilisticSampler,
+    RateLimitingSampler,
+    constants
+)
 from jaeger_client.reporter import NullReporter
-from jaeger_client import constants
 
 
 class ConfigTests(unittest.TestCase):

@@ -1,4 +1,3 @@
-from __future__ import print_function
 # Copyright (c) 2016 Uber Technologies, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,25 +12,26 @@ from __future__ import print_function
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from six.moves import range
+from __future__ import print_function
 
+import collections
 import logging
 import time
-import collections
+from concurrent.futures import Future
 
 import mock
 import pytest
 import tornado.gen
-import jaeger_client.reporter
-
-from concurrent.futures import Future
-from jaeger_client import Span, SpanContext
-from jaeger_client.metrics import LegacyMetricsFactory, Metrics
-from jaeger_client.utils import ErrorReporter
 from tornado.ioloop import IOLoop
 from tornado.testing import AsyncTestCase, gen_test
-from jaeger_client.reporter import Reporter
+
+import jaeger_client.reporter
+from jaeger_client import Span, SpanContext
 from jaeger_client.ioloop_util import future_result
+from jaeger_client.metrics import LegacyMetricsFactory, Metrics
+from jaeger_client.reporter import Reporter
+from jaeger_client.utils import ErrorReporter
+from six.moves import range
 
 
 def test_null_reporter():

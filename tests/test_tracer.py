@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import mock
 import random
-import six
 
+import mock
 import pytest
+import six
 import tornado.httputil
-
 from opentracing import Format, child_of
 from opentracing.ext import tags as ext_tags
-from jaeger_client import ConstSampler, Tracer
+
 from jaeger_client import constants as c
+from jaeger_client import ConstSampler, Tracer
 
 
 def find_tag(span, key):

@@ -31,8 +31,8 @@ bootstrap:
 test: clean
 	$(pytest) $(test_args) --benchmark-skip
 
-.PHONY: test_ci
-test_ci: clean test lint
+.PHONY: test-ci
+test-ci: clean test lint
 
 .PHONY: test-perf
 test-perf: clean
@@ -60,6 +60,11 @@ clean:
 lint:
 	$(flake8) $(projects) tests
 	./scripts/check-license.sh
+	isort $(sources) -c -vb
+
+.PHONY: fmt
+fmt:
+	isort $(sources)
 
 .PHONY: shell
 shell:

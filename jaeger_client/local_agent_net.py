@@ -14,13 +14,15 @@
 
 from __future__ import absolute_import
 
-from threadloop import ThreadLoop
+from concurrent.futures import Future
+
 import tornado
 import tornado.httpclient
-from tornado.httputil import url_concat
-from .TUDPTransport import TUDPTransport
-from concurrent.futures import Future
+from threadloop import ThreadLoop
 from thrift.transport.TTransport import TBufferedTransport
+from tornado.httputil import url_concat
+
+from .TUDPTransport import TUDPTransport
 
 
 class LocalAgentHTTP(object):

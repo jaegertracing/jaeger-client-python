@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from six.moves import range
-
 import fcntl
 import socket
 import struct
 import time
+
+from six.moves import range
 
 
 class ErrorReporter(object):

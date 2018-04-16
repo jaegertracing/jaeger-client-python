@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from jaeger_client.metrics import MetricsFactory
 from collections import defaultdict
+
 from prometheus_client import Counter, Gauge
+
+from jaeger_client.metrics import MetricsFactory
 
 
 class PrometheusMetricsFactory(MetricsFactory):

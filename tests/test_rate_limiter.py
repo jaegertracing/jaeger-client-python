@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from six.moves import range
 import time
+
 import mock
 
 from jaeger_client.rate_limiter import RateLimiter
+from six.moves import range
+
 
 def test_rate_limiting_sampler():
     rate_limiter = RateLimiter(2, 2)

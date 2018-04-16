@@ -14,14 +14,15 @@
 
 from __future__ import absolute_import
 
-import six
 import threading
 import time
 
 import opentracing
+import six
 from opentracing.ext import tags as ext_tags
+
 from . import codecs, thrift
-from .constants import SAMPLED_FLAG, DEBUG_FLAG
+from .constants import DEBUG_FLAG, SAMPLED_FLAG
 
 
 class Span(opentracing.Span):

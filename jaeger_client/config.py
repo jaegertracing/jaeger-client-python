@@ -20,33 +20,30 @@ import threading
 
 import opentracing
 from opentracing.propagation import Format
+
 from . import Tracer
-from .local_agent_net import LocalAgentSender
-from .reporter import (
-    Reporter,
-    CompositeReporter,
-    LoggingReporter,
+from .codecs import B3Codec
+from .constants import (
+    BAGGAGE_HEADER_PREFIX,
+    DEBUG_ID_HEADER_KEY,
+    DEFAULT_FLUSH_INTERVAL,
+    DEFAULT_SAMPLING_INTERVAL,
+    MAX_TAG_VALUE_LENGTH,
+    SAMPLER_TYPE_CONST,
+    SAMPLER_TYPE_PROBABILISTIC,
+    SAMPLER_TYPE_RATE_LIMITING,
+    TRACE_ID_HEADER
 )
+from .local_agent_net import LocalAgentSender
+from .metrics import LegacyMetricsFactory, Metrics, MetricsFactory
+from .reporter import CompositeReporter, LoggingReporter, Reporter
 from .sampler import (
     ConstSampler,
     ProbabilisticSampler,
     RateLimitingSampler,
-    RemoteControlledSampler,
+    RemoteControlledSampler
 )
-from .constants import (
-    DEFAULT_SAMPLING_INTERVAL,
-    DEFAULT_FLUSH_INTERVAL,
-    SAMPLER_TYPE_CONST,
-    SAMPLER_TYPE_PROBABILISTIC,
-    SAMPLER_TYPE_RATE_LIMITING,
-    TRACE_ID_HEADER,
-    BAGGAGE_HEADER_PREFIX,
-    DEBUG_ID_HEADER_KEY,
-    MAX_TAG_VALUE_LENGTH,
-)
-from .metrics import LegacyMetricsFactory, MetricsFactory, Metrics
-from .utils import get_boolean, ErrorReporter
-from .codecs import B3Codec
+from .utils import ErrorReporter, get_boolean
 
 DEFAULT_REPORTING_HOST = 'localhost'
 DEFAULT_REPORTING_PORT = 6831

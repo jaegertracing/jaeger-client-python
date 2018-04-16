@@ -29,7 +29,7 @@ install:
   - if [ "$CROSSDOCK" == "1" ]; then bash ./scripts/install-crossdock-deps.sh ; fi
 
 script:
-  - if [ "$CROSSDOCK" != "1" ]; then make test_ci ; fi
+  - if [ "$CROSSDOCK" != "1" ]; then make test-ci ; fi
   - if [ "$CROSSDOCK" == "1" ]; then bash ./scripts/build-crossdock.sh ; else echo 'skipping crossdock'; fi
 
 after_success:

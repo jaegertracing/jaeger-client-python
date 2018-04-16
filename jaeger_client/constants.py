@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import, unicode_literals, print_function
-
-from . import __version__
+from __future__ import absolute_import, print_function, unicode_literals
 
 import six
+
+from . import __version__
 
 # Max number of bits to use when generating random ID
 MAX_ID_BITS = 64

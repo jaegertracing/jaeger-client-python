@@ -15,21 +15,22 @@
 from __future__ import absolute_import
 
 import logging
+import socket
 import threading
+from concurrent.futures import Future
 
 import tornado.gen
 import tornado.ioloop
 import tornado.queues
-import socket
-from concurrent.futures import Future
+from thrift.protocol import TCompactProtocol
+
+from jaeger_client.thrift_gen.agent import Agent
+
+from . import ioloop_util, thrift
 from .constants import DEFAULT_FLUSH_INTERVAL
-from . import thrift
-from . import ioloop_util
-from .metrics import Metrics, LegacyMetricsFactory
+from .metrics import LegacyMetricsFactory, Metrics
 from .utils import ErrorReporter
 
-from thrift.protocol import TCompactProtocol
-from jaeger_client.thrift_gen.agent import Agent
 
 default_logger = logging.getLogger('jaeger_tracing')
 

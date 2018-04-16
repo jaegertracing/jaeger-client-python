@@ -12,30 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
+from __future__ import absolute_import, division
 
 import json
 import logging
 import random
-import six
-
 from threading import Lock
+
+import six
 from tornado.ioloop import PeriodicCallback
+
+from jaeger_client.thrift_gen.sampling import SamplingManager
+
 from .constants import (
-    MAX_ID_BITS,
     DEFAULT_SAMPLING_INTERVAL,
+    MAX_ID_BITS,
     SAMPLER_TYPE_CONST,
-    SAMPLER_TYPE_PROBABILISTIC,
-    SAMPLER_TYPE_RATE_LIMITING,
     SAMPLER_TYPE_LOWER_BOUND,
+    SAMPLER_TYPE_PROBABILISTIC,
+    SAMPLER_TYPE_RATE_LIMITING
 )
-from .metrics import Metrics, LegacyMetricsFactory
-from .utils import ErrorReporter
+from .metrics import LegacyMetricsFactory, Metrics
 from .rate_limiter import RateLimiter
-from jaeger_client.thrift_gen.sampling import (
-    SamplingManager
-)
+from .utils import ErrorReporter
+
 
 default_logger = logging.getLogger('jaeger_tracing')
 

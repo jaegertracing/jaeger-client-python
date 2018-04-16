@@ -14,8 +14,9 @@
 
 import mock
 import pytest
-from jaeger_client import ConstSampler, Tracer
 from tornado.httpclient import AsyncHTTPClient
+
+from jaeger_client import ConstSampler, Tracer
 
 
 @pytest.fixture(scope='function')

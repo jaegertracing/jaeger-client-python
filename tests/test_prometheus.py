@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from jaeger_client.metrics.prometheus \
-    import PrometheusMetricsFactory
 from prometheus_client import REGISTRY
+
+from jaeger_client.metrics.prometheus import PrometheusMetricsFactory
 
 
 def test_prometheus_metrics_counter():

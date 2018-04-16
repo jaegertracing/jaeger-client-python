@@ -16,10 +16,11 @@ from __future__ import absolute_import
 
 import collections
 import json
-import mock
 
+import mock
 from opentracing.ext import tags as ext_tags
-from jaeger_client import Span, SpanContext, ConstSampler
+
+from jaeger_client import ConstSampler, Span, SpanContext
 
 
 def test_baggage():

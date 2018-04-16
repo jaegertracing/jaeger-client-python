@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from six.moves import range
 import time
+
 from opentracing import Tracer as NoopTracer
-from jaeger_client.tracer import Tracer
+
 from jaeger_client.reporter import NullReporter
 from jaeger_client.sampler import ConstSampler
+from jaeger_client.tracer import Tracer
+from six.moves import range
 
 
 def _generate_spans(tracer, iterations=1000, sleep=None):

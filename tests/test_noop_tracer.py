@@ -15,7 +15,7 @@
 from __future__ import absolute_import
 
 import opentracing
-from opentracing import Tracer, Format
+from opentracing import Format, Tracer
 
 
 def test_new_trace():

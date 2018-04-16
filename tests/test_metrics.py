@@ -16,8 +16,7 @@ from __future__ import absolute_import
 
 import mock
 
-from jaeger_client.metrics import MetricsFactory, Metrics,\
-    LegacyMetricsFactory
+from jaeger_client.metrics import LegacyMetricsFactory, Metrics, MetricsFactory
 
 
 def test_metrics_factory_noop():

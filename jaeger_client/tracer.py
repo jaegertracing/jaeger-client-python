@@ -14,23 +14,23 @@
 
 from __future__ import absolute_import
 
-import socket
-
 import logging
 import os
 import random
+import socket
 import time
-import six
+
 import opentracing
+import six
 from opentracing import Format, UnsupportedFormatException
 from opentracing.ext import tags as ext_tags
 
 from . import constants
-from .codecs import TextCodec, ZipkinCodec, ZipkinSpanFormat, BinaryCodec
-from .span import Span, SAMPLED_FLAG, DEBUG_FLAG
+from .codecs import BinaryCodec, TextCodec, ZipkinCodec, ZipkinSpanFormat
+from .metrics import LegacyMetricsFactory, Metrics
+from .span import DEBUG_FLAG, SAMPLED_FLAG, Span
 from .span_context import SpanContext
 from .thrift import ipv4_to_int
-from .metrics import Metrics, LegacyMetricsFactory
 from .utils import local_ip
 
 logger = logging.getLogger('jaeger_tracing')

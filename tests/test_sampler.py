@@ -1,4 +1,3 @@
-from __future__ import division
 # Copyright (c) 2016 Uber Technologies, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,24 +12,27 @@ from __future__ import division
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from six.moves import range
-import time
+from __future__ import division
+
 import math
+import time
+
 import mock
 import pytest
 
 from jaeger_client.sampler import (
-    Sampler,
+    DEFAULT_SAMPLING_PROBABILITY,
+    AdaptiveSampler,
     ConstSampler,
+    GuaranteedThroughputProbabilisticSampler,
     ProbabilisticSampler,
     RateLimitingSampler,
     RemoteControlledSampler,
-    GuaranteedThroughputProbabilisticSampler,
-    AdaptiveSampler,
-    DEFAULT_SAMPLING_PROBABILITY,
-    get_sampling_probability,
+    Sampler,
     get_rate_limit,
+    get_sampling_probability
 )
+from six.moves import range
 
 MAX_INT = 1 << 63
 
