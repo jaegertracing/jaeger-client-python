@@ -118,6 +118,7 @@ class TestCodecs(unittest.TestCase):
                 'fry': u'Leela',
                 b'key1': bytes(chr(75)) if six.PY2 else bytes([75]),
                 u'key2': 'cafe',
+                u'key3': u'\U0001F47E',
             }
             carrier = {}
             codec.inject(ctx, carrier)
@@ -131,6 +132,7 @@ class TestCodecs(unittest.TestCase):
                     'trace-attr-fry': 'Leela',
                     'trace-attr-key1': 'K',
                     'trace-attr-key2': 'cafe',
+                    'trace-attr-key3': '%F0%9F%91%BE',
                 }, 'with url_encoding = %s' % url_encoding
                 for key, val in six.iteritems(carrier):
                     assert isinstance(key, str)
@@ -142,6 +144,7 @@ class TestCodecs(unittest.TestCase):
                     'trace-attr-fry': 'Leela',
                     'trace-attr-key1': 'K',
                     u'trace-attr-key2': 'cafe',
+                    'trace-attr-key3': u'\U0001F47E',
                 }, 'with url_encoding = %s' % url_encoding
 
     def test_context_from_bad_readable_headers(self):
@@ -416,6 +419,7 @@ def test_baggage_as_unicode_strings_with_httplib(httpserver):
         (u'key2', b'value'),
         ('key3', u'value'),
         (b'key4', bytes(chr(255)) if six.PY2 else bytes([255])),
+        (u'key5', u'\U0001F47E')
     ]
     for b in baggage:
         span = tracer.start_span('test')
