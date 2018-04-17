@@ -15,8 +15,8 @@
 from __future__ import absolute_import
 
 import sys
-from concurrent.futures import Future
 from tornado import gen
+from tornado.concurrent import Future
 
 
 def submit(fn, io_loop, *args, **kwargs):
@@ -26,7 +26,7 @@ def submit(fn, io_loop, *args, **kwargs):
     :param io_loop: Tornado IOLoop where to schedule the coroutine
     :param args: Args to pass to coroutine
     :param kwargs: Kwargs to pass to coroutine
-    :returns concurrent.futures.Future: future result of coroutine
+    :returns tornado.concurrent.Future: future result of coroutine
     """
     future = Future()
 

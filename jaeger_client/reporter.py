@@ -21,7 +21,7 @@ import tornado.gen
 import tornado.ioloop
 import tornado.queues
 import socket
-from concurrent.futures import Future
+from tornado.concurrent import Future
 from .constants import DEFAULT_FLUSH_INTERVAL
 from . import thrift
 from . import ioloop_util
