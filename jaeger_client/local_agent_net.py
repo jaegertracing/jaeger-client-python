@@ -17,9 +17,9 @@ from __future__ import absolute_import
 from threadloop import ThreadLoop
 import tornado
 import tornado.httpclient
+from tornado.concurrent import Future
 from tornado.httputil import url_concat
 from .TUDPTransport import TUDPTransport
-from concurrent.futures import Future
 from thrift.transport.TTransport import TBufferedTransport
 
 

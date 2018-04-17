@@ -18,28 +18,28 @@ assert version is not None, \
 setup(
     name='jaeger-client',
     version=version,
-    url='https://github.com/uber/jaeger-client-python',
+    url='https://github.com/jaegertracing/jaeger-client-python',
     description='Jaeger Python OpenTracing Tracer implementation',
     author='Yuri Shkuro',
     author_email='ys@uber.com',
     packages=find_packages(exclude=['crossdock', 'tests', 'example', 'tests.*']),
     include_package_data=True,
-    license="MIT",
+    license='Apache License 2.0',
     zip_safe=False,
     keywords='jaeger, tracing, opentracing',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
-        'License :: OSI Approved :: MIT License',
+        'License :: OSI Approved :: Apache Software License',
         'Natural Language :: English',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.6',
     ],
     install_requires=[
-        'futures;python_version<"3"',
         'threadloop>=1,<2',
         'thrift',
         'tornado>=4.3,<5',
-        'opentracing>=1.2.2,<1.4',
+        'opentracing>=1.2.2,<2',
     ],
     # Uncomment below if need to test with unreleased version of opentracing
     # dependency_links=[
