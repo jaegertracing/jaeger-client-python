@@ -39,7 +39,7 @@ setup(
         'threadloop>=1,<2',
         'thrift',
         'tornado>=4.3,<5',
-        'opentracing>=1.2.2,<1.4',
+        'opentracing>=1.2.2,<2',
     ],
     # Uncomment below if need to test with unreleased version of opentracing
     # dependency_links=[
