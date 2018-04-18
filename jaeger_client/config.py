@@ -119,7 +119,8 @@ class Config(object):
                         'sampling_refresh_interval',
                         'trace_id_header',
                         'baggage_header_prefix',
-                        'service_name']
+                        'service_name',
+                        'debug_id_header']
         config_keys = config.keys()
         unexpected_config_keys = [k for k in config_keys if k not in allowed_keys]
         if unexpected_config_keys:
