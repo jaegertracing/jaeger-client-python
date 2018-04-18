@@ -74,3 +74,9 @@ SAMPLED_FLAG = 0x01
 
 # Constant for debug flag
 DEBUG_FLAG = 0x02
+
+# For Marking a span as error  span.set_tag(ERROR_SPAN_TAG_KEY, ERROR_SPAN_TAG_VALUE)
+ERROR_SPAN_TAG_KEY = 'error'
+
+# For Marking  a span as error
+ERROR_SPAN_TAG_VALUE = 'true'
