@@ -182,3 +182,17 @@ class Span(opentracing.Span):
         else:
             self.log(event=message)
         return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Ends context manager and calls finish() on the span.
+
+        If exception has occurred during execution, it is automatically added
+        as a tag to the span.
+        """
+        if exc_type:
+            self.set_tag('error', 'true')
+            self.log_kv({
+                'python.exception.type': exc_type,
+                'python.exception.val': exc_val,
+                })
+        self.finish()

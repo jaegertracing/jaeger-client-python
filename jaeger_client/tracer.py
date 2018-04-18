@@ -79,7 +79,7 @@ class Tracer(opentracing.Tracer):
         if extra_codecs:
             self.codecs.update(extra_codecs)
         self.tags = {
-            constants.JAEGER_VERSION_TAG_KEY: constants.JAEGER_CLIENT_VERSION,
+            # constants.JAEGER_VERSION_TAG_KEY: constants.JAEGER_CLIENT_VERSION,
         }
         if tags:
             self.tags.update(tags)

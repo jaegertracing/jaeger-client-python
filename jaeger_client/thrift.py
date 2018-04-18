@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import absolute_import
+
 import six
 import socket
 import struct
 
-import jaeger_client.thrift_gen.jaeger.ttypes as ttypes
-import jaeger_client.thrift_gen.sampling.SamplingManager as sampling_manager
+from .thrift_gen.jaeger import ttypes as ttypes
+from .thrift_gen.sampling import SamplingManager as sampling_manager
 
 _max_signed_port = (1 << 15) - 1
 _max_unsigned_port = (1 << 16)
@@ -51,7 +53,8 @@ def id_to_int(big_id):
 
 def _to_string(s):
     try:
-        if isinstance(s, six.text_type):  # This is unicode() in Python 2 and str in Python 3.
+        # Thrift in PY2 likes strings as bytes
+        if six.PY2 and isinstance(s, six.text_type):
             return s.encode('utf-8')
         else:
             return str(s)
@@ -140,7 +143,7 @@ def parse_sampling_strategy(response):
             return None, 'probabilisticSampling field is None'
         sampling_rate = response.probabilisticSampling.samplingRate
         if 0 <= sampling_rate <= 1.0:
-            from jaeger_client.sampler import ProbabilisticSampler
+            from .sampler import ProbabilisticSampler
             return ProbabilisticSampler(rate=sampling_rate), None
         return None, (
             'Probabilistic sampling rate not in [0, 1] range: %s' %
@@ -151,7 +154,7 @@ def parse_sampling_strategy(response):
             return None, 'rateLimitingSampling field is None'
         mtps = response.rateLimitingSampling.maxTracesPerSecond
         if 0 <= mtps < 500:
-            from jaeger_client.sampler import RateLimitingSampler
+            from .sampler import RateLimitingSampler
             return RateLimitingSampler(max_traces_per_second=mtps), None
         return None, (
             'Rate limiting parameter not in [0, 500] range: %s' % mtps

@@ -33,7 +33,7 @@ from .constants import (
 from .metrics import Metrics, LegacyMetricsFactory
 from .utils import ErrorReporter
 from .rate_limiter import RateLimiter
-from jaeger_client.thrift_gen.sampling import (
+from .thrift_gen.sampling import (
     SamplingManager
 )
 

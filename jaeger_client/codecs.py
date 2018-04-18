@@ -74,7 +74,14 @@ class TextCodec(Codec):
                     if six.PY2 and isinstance(key, six.text_type):
                         encoded_key = key.encode('utf-8')
                 else:
-                    encoded_value = value
+                    if six.PY3 and isinstance(value, six.binary_type):
+                        encoded_value = str(value, 'utf-8')
+                    else:
+                        encoded_value = value
+                if six.PY3 and isinstance(key, six.binary_type):
+                    encoded_key = str(key, 'utf-8')
+                # Leave the below print(), you will thank me next time you debug unicode strings
+                # print('adding baggage', key, '=>', value, 'as', encoded_key, '=>', encoded_value)
                 header_key = '%s%s' % (self.baggage_prefix, encoded_key)
                 carrier[header_key] = encoded_value
 

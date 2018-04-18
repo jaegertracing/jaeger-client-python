@@ -29,7 +29,7 @@ from .metrics import Metrics, LegacyMetricsFactory
 from .utils import ErrorReporter
 
 from thrift.protocol import TCompactProtocol
-from jaeger_client.thrift_gen.agent import Agent
+from .thrift_gen.agent import Agent
 
 default_logger = logging.getLogger('jaeger_tracing')
 
