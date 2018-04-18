@@ -21,7 +21,12 @@ import time
 import opentracing
 from opentracing.ext import tags as ext_tags
 from . import codecs, thrift
-from .constants import SAMPLED_FLAG, DEBUG_FLAG
+from .constants import (
+    SAMPLED_FLAG,
+    DEBUG_FLAG,
+    ERROR_SPAN_TAG_KEY,
+    ERROR_SPAN_TAG_VALUE,
+)
 
 
 class Span(opentracing.Span):
@@ -190,7 +195,7 @@ class Span(opentracing.Span):
         as a tag to the span.
         """
         if exc_type:
-            self.set_tag('error', 'true')
+            self.set_tag(ERROR_SPAN_TAG_KEY, ERROR_SPAN_TAG_VALUE)
             self.log_kv({
                 'python.exception.type': exc_type,
                 'python.exception.val': exc_val,
