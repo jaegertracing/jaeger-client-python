@@ -24,7 +24,7 @@ import pytest
 import tornado.gen
 import jaeger_client.reporter
 
-from concurrent.futures import Future
+from tornado.concurrent import Future
 from jaeger_client import Span, SpanContext
 from jaeger_client.metrics import LegacyMetricsFactory, Metrics
 from jaeger_client.utils import ErrorReporter
@@ -80,7 +80,6 @@ def test_composite_reporter():
             as null_mock:
         with mock.patch('jaeger_client.reporter.LoggingReporter.close') \
                 as log_mock:
-            from concurrent.futures import Future
 
             f1 = Future()
             f2 = Future()

@@ -35,9 +35,6 @@ from opentracing.propagation import (
 )
 
 
-byte255 = bytes(chr(255)) if six.PY2 else bytes([255])
-
-
 class TestCodecs(unittest.TestCase):
 
 
@@ -117,12 +114,11 @@ class TestCodecs(unittest.TestCase):
             assert carrier == {'trace-id': '100:7f:0:1'}
 
             ctx._baggage = {
-                'fry': u'Leela',
                 'bender': 'Countess de la Roca',
-                b'key1': byte255,
-                u'key2-caf\xe9': 'caf\xc3\xa9',
-                u'key3': u'caf\xe9',
-                'key4-caf\xc3\xa9': 'value',
+                'fry': u'Leela',
+                b'key1': bytes(chr(75)) if six.PY2 else bytes([75]),
+                u'key2': 'cafe',
+                u'key3': u'\U0001F47E',
             }
             carrier = {}
             codec.inject(ctx, carrier)
@@ -134,10 +130,9 @@ class TestCodecs(unittest.TestCase):
                     'trace-id': '100:7f:0:1',
                     'trace-attr-bender': 'Countess%20de%20la%20Roca',
                     'trace-attr-fry': 'Leela',
-                    'trace-attr-key1': '%FF',
-                    'trace-attr-key2-caf\xc3\xa9': 'caf%C3%A9',
-                    'trace-attr-key3': 'caf%C3%A9',
-                    'trace-attr-key4-caf\xc3\xa9': 'value',
+                    'trace-attr-key1': 'K',
+                    'trace-attr-key2': 'cafe',
+                    'trace-attr-key3': '%F0%9F%91%BE',
                 }, 'with url_encoding = %s' % url_encoding
                 for key, val in six.iteritems(carrier):
                     assert isinstance(key, str)
@@ -147,10 +142,9 @@ class TestCodecs(unittest.TestCase):
                     'trace-id': '100:7f:0:1',
                     'trace-attr-bender': 'Countess de la Roca',
                     'trace-attr-fry': 'Leela',
-                    'trace-attr-key1': '\xff',
-                    u'trace-attr-key2-caf\xe9': 'caf\xc3\xa9',
-                    u'trace-attr-key3': u'caf\xe9',
-                    'trace-attr-key4-caf\xc3\xa9': 'value',
+                    'trace-attr-key1': 'K',
+                    u'trace-attr-key2': 'cafe',
+                    'trace-attr-key3': u'\U0001F47E',
                 }, 'with url_encoding = %s' % url_encoding
 
     def test_context_from_bad_readable_headers(self):
@@ -401,14 +395,14 @@ def test_debug_id():
     assert tags[0].vStr == 'Coraline'
 
 
-def test_non_ascii_baggage_with_httplib(httpserver):
-    # TODO this test requires `futurize`. Unfortunately, that also changes
-    # how the test works under Py2.
-    # Some observation:
-    # - In Py2, the httplib does not like unicode strings, maybe we need to convert everything to bytes.
-    # - Not sure yet what's the story with httplib in Py3, it seems not to like raw bytes.
-    if six.PY3:
-        raise ValueError('this test does not work with Py3')
+def test_baggage_as_unicode_strings_with_httplib(httpserver):
+    if six.PY2:
+        import urllib2
+        urllib_under_test = urllib2
+    else:
+        import urllib.request
+        urllib_under_test = urllib.request
+
     # httpserver is provided by pytest-localserver
     httpserver.serve_content(content='Hello', code=200, headers=None)
 
@@ -421,11 +415,11 @@ def test_non_ascii_baggage_with_httplib(httpserver):
     tracer.codecs[Format.TEXT_MAP] = TextCodec(url_encoding=True)
 
     baggage = [
-        (b'key', b'value'),
-        (u'key', b'value'),
-        (b'key', byte255),
-        (u'caf\xe9', 'caf\xc3\xa9'),
-        ('caf\xc3\xa9', 'value'),
+        (b'key1', b'value'),
+        (u'key2', b'value'),
+        ('key3', u'value'),
+        (b'key4', bytes(chr(255)) if six.PY2 else bytes([255])),
+        (u'key5', u'\U0001F47E')
     ]
     for b in baggage:
         span = tracer.start_span('test')
@@ -436,8 +430,7 @@ def test_non_ascii_baggage_with_httplib(httpserver):
             span_context=span.context, format=Format.TEXT_MAP, carrier=headers
         )
         # make sure httplib doesn't blow up
-        import urllib2
-        request = urllib2.Request(httpserver.url, None, headers)
-        response = urllib2.urlopen(request)
+        request = urllib_under_test.Request(httpserver.url, None, headers)
+        response = urllib_under_test.urlopen(request)
         assert response.read() == b'Hello'
         response.close()

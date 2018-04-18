@@ -15,6 +15,7 @@
 from __future__ import absolute_import
 import os
 import unittest
+import opentracing.tracer
 from jaeger_client import Config, ConstSampler, ProbabilisticSampler, RateLimitingSampler
 from jaeger_client.reporter import NullReporter
 from jaeger_client import constants
@@ -104,3 +105,9 @@ class ConfigTests(unittest.TestCase):
     def test_for_unexpected_config_entries(self):
         with self.assertRaises(Exception):
             _ = Config({"unexpected":"value"}, validate=True)
+
+    def test_initialize_tracer(self):
+        c = Config({}, service_name='x')
+        tracer = c.initialize_tracer()
+
+        assert opentracing.tracer == tracer
