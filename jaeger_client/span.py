@@ -198,6 +198,6 @@ class Span(opentracing.Span):
             self.set_tag(ERROR_SPAN_TAG_KEY, ERROR_SPAN_TAG_VALUE)
             self.log_kv({
                 'python.exception.type': exc_type,
-                'python.exception.val': exc_val,
-                })
+                'python.exception.val': exc_val
+            })
         self.finish()
