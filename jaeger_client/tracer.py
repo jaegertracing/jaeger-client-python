@@ -80,6 +80,7 @@ class Tracer(opentracing.Tracer):
             self.codecs.update(extra_codecs)
         self.tags = {
             constants.JAEGER_VERSION_TAG_KEY: constants.JAEGER_CLIENT_VERSION,
+            constants.JAEGER_IP_TAG_KEY: self.ip_address,
         }
         if tags:
             self.tags.update(tags)

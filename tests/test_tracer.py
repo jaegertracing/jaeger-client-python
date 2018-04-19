@@ -169,13 +169,15 @@ def test_serialization_error(tracer):
         )
 
 
-def test_tracer_tags_hostname():
+def test_tracer_tags():
     reporter = mock.MagicMock()
     sampler = ConstSampler(True)
 
     with mock.patch('socket.gethostname', return_value='dream-host.com'):
         t = Tracer(service_name='x', reporter=reporter, sampler=sampler)
-        assert t.tags.get(c.JAEGER_HOSTNAME_TAG_KEY) == 'dream-host.com'
+        assert t.tags.get('hostname') == 'dream-host.com'
+        assert 'ip' in t.tags
+        assert 'jaeger.version' in t.tags
 
 
 def test_tracer_tags_passed_to_reporter():
