@@ -47,6 +47,9 @@ JAEGER_VERSION_TAG_KEY = 'jaeger.version'
 # Tracer-scoped tag that contains the hostname
 JAEGER_HOSTNAME_TAG_KEY = 'jaeger.hostname'
 
+# Tracer-scoped tag that is used to report ip of the process.
+JAEGER_IP_TAG_KEY = 'ip'
+
 # the type of sampler that always makes the same decision.
 SAMPLER_TYPE_CONST = 'const'
 
