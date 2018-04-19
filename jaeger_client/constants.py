@@ -45,7 +45,7 @@ JAEGER_CLIENT_VERSION = 'Python-%s' % __version__
 JAEGER_VERSION_TAG_KEY = 'jaeger.version'
 
 # Tracer-scoped tag that contains the hostname
-JAEGER_HOSTNAME_TAG_KEY = 'jaeger.hostname'
+JAEGER_HOSTNAME_TAG_KEY = 'hostname'
 
 # Tracer-scoped tag that is used to report ip of the process.
 JAEGER_IP_TAG_KEY = 'ip'

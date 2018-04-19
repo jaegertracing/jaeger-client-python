@@ -175,9 +175,9 @@ def test_tracer_tags():
 
     with mock.patch('socket.gethostname', return_value='dream-host.com'):
         t = Tracer(service_name='x', reporter=reporter, sampler=sampler)
-        assert t.tags.get(c.JAEGER_HOSTNAME_TAG_KEY) == 'dream-host.com'
-        assert c.JAEGER_IP_TAG_KEY in t.tags
-        assert c.JAEGER_VERSION_TAG_KEY in t.tags
+        assert t.tags.get('hostname') == 'dream-host.com'
+        assert 'ip' in t.tags
+        assert 'jaeger.version' in t.tags
 
 
 def test_tracer_tags_passed_to_reporter():
