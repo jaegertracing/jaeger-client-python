@@ -3,11 +3,15 @@
 History
 -------
 
-3.9.0 (unreleased)
+3.9.0 (2018-04-20)
 ------------------
 
 - Add ability to validate configuration (#124) <Gregory Reshetniak>
 - Make Metrics consistent with Go client (#129) <Eundoo Song>
+- Add PrometheusMetricsFactory (#142) <Eundoo Song>
+- Facilitate creating multiple tracers (#150) <Nathan Ziebart>
+- Remove support for non-ascii baggage keys (#154)
+- Add IP tag to tracer tags (#160)
 
 
 3.8.0 (2018-03-06)
