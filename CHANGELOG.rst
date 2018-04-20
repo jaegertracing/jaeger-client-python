@@ -6,12 +6,16 @@ History
 3.9.0 (2018-04-20)
 ------------------
 
+Python 3.6 is now officially supported!
+
+- Remove support for non-ascii baggage keys; enable testing with Py 3.6  (#154) <Yuri Shkuro>
+- Add IP tag to tracer tags; rename `jaeger.hostname` tag to `hostname` (#160) <Won Jun Jang>
+- Remove `tchannel;<py3` restriction in tests/extras_require (#159) <Won Jun Jang>
+- Replace `concurrent.futures.Future` with `tornado.concurrent.Future` (#155) <Yuri Shkuro>
+- Better support for creating multiple tracers (#150) <nziebart>
+- Add PrometheusMetricsFactory (#142) <Eundoo Song>
 - Add ability to validate configuration (#124) <Gregory Reshetniak>
 - Make Metrics consistent with Go client (#129) <Eundoo Song>
-- Add PrometheusMetricsFactory (#142) <Eundoo Song>
-- Facilitate creating multiple tracers (#150) <Nathan Ziebart>
-- Remove support for non-ascii baggage keys (#154)
-- Add IP tag to tracer tags (#160)
 
 
 3.8.0 (2018-03-06)
