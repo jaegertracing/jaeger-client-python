@@ -260,3 +260,16 @@ def test_tracer_override_codecs():
                 "Extra codec not found"
         assert tracer.codecs[Format.BINARY] == "overridden_binary_codec",\
                 "Binary format codec not overridden"
+
+def test_tracer_hostname_tag():
+    reporter = mock.MagicMock()
+    sampler = ConstSampler(True)
+    tracer = Tracer(
+        service_name='x',
+        tags={c.JAEGER_HOSTNAME_TAG_KEY: 'jaeger-client-app.local'},
+        reporter=reporter,
+        sampler=sampler,
+    )
+
+    assert tracer.tags[c.JAEGER_HOSTNAME_TAG_KEY] == \
+            'jaeger-client-app.local'
