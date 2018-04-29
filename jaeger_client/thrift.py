@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import six
-import socket
-import struct
 
 import jaeger_client.thrift_gen.jaeger.ttypes as ttypes
 import jaeger_client.thrift_gen.sampling.SamplingManager as sampling_manager
@@ -26,17 +24,6 @@ _max_unsigned_id = (1 << 64)
 
 if six.PY3:
     long = int
-
-
-def ipv4_to_int(ipv4):
-    if ipv4 == 'localhost':
-        ipv4 = '127.0.0.1'
-    elif ipv4 == '::1':
-        ipv4 = '127.0.0.1'
-    try:
-        return struct.unpack('!i', socket.inet_aton(ipv4))[0]
-    except:
-        return 0
 
 
 def id_to_int(big_id):
