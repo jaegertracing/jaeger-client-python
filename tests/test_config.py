@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Copyright (c) 2016 Uber Technologies, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,8 +38,10 @@ class ConfigTests(unittest.TestCase):
 
     def test_tags(self):
         os.environ['JAEGER_TAGS'] = 'a=b,c=d'
-        c = Config({'tags': {'e': 'f'}}, service_name='x')
-        assert c.tags == {'a': 'b', 'c': 'd', 'e': 'f'}
+        c = Config({'tags': {'e': 'f', 'poo': '💩', '💤': 'sleepy'}}, service_name='x')
+        assert c.tags == {
+            'a': 'b', 'c': 'd', 'e': 'f', 'poo': '💩', '💤': 'sleepy',
+        }
         c.create_tracer(NullReporter(), ConstSampler(True))
 
     def test_no_sampler(self):
