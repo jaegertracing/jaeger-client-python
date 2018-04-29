@@ -29,7 +29,6 @@ from . import constants
 from .codecs import TextCodec, ZipkinCodec, ZipkinSpanFormat, BinaryCodec
 from .span import Span, SAMPLED_FLAG, DEBUG_FLAG
 from .span_context import SpanContext
-from .thrift import ipv4_to_int
 from .metrics import Metrics, LegacyMetricsFactory
 from .utils import local_ip
 
@@ -53,7 +52,6 @@ class Tracer(opentracing.Tracer):
         self.service_name = service_name
         self.reporter = reporter
         self.sampler = sampler
-        self.ip_address = ipv4_to_int(local_ip())
         self.metrics_factory = metrics_factory or LegacyMetricsFactory(metrics or Metrics())
         self.metrics = TracerMetrics(self.metrics_factory)
         self.random = random.Random(time.time() * (os.getpid() or 1))
@@ -80,16 +78,19 @@ class Tracer(opentracing.Tracer):
             self.codecs.update(extra_codecs)
         self.tags = {
             constants.JAEGER_VERSION_TAG_KEY: constants.JAEGER_CLIENT_VERSION,
-            constants.JAEGER_IP_TAG_KEY: self.ip_address,
         }
         if tags:
             self.tags.update(tags)
-        # noinspection PyBroadException
-        try:
-            hostname = socket.gethostname()
-            self.tags[constants.JAEGER_HOSTNAME_TAG_KEY] = hostname
-        except:
-            logger.exception('Unable to determine host name')
+
+        if self.tags.get(constants.JAEGER_IP_TAG_KEY) is None:
+            self.tags[constants.JAEGER_IP_TAG_KEY] = local_ip()
+
+        if self.tags.get(constants.JAEGER_HOSTNAME_TAG_KEY) is None:
+            try:
+                hostname = socket.gethostname()
+                self.tags[constants.JAEGER_HOSTNAME_TAG_KEY] = hostname
+            except socket.error:
+                logger.exception('Unable to determine host name')
 
         self.reporter.set_process(
             service_name=self.service_name,
