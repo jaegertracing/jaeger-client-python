@@ -29,7 +29,6 @@ from . import constants
 from .codecs import TextCodec, ZipkinCodec, ZipkinSpanFormat, BinaryCodec
 from .span import Span, SAMPLED_FLAG, DEBUG_FLAG
 from .span_context import SpanContext
-from .thrift import ipv4_to_int
 from .metrics import Metrics, LegacyMetricsFactory
 from .utils import local_ip
 
@@ -84,7 +83,7 @@ class Tracer(opentracing.Tracer):
             self.tags.update(tags)
 
         if self.tags.get(constants.JAEGER_IP_TAG_KEY) is None:
-            self.tags[constants.JAEGER_IP_TAG_KEY] = ipv4_to_int(local_ip())
+            self.tags[constants.JAEGER_IP_TAG_KEY] = local_ip()
 
         if self.tags.get(constants.JAEGER_HOSTNAME_TAG_KEY) is None:
             try:

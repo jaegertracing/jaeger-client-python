@@ -24,13 +24,6 @@ from thrift.protocol.TCompactProtocol import TCompactProtocol
 from thrift.transport.TTransport import TMemoryBuffer
 
 
-def test_ipv4_to_int():
-    base = thrift.ipv4_to_int('127.0.0.1')
-    assert thrift.ipv4_to_int('localhost') == base
-    assert thrift.ipv4_to_int('::1') == base
-    assert thrift.ipv4_to_int('a:b:1') == 0
-
-
 def test_submit_batch(tracer):
     span = tracer.start_span("test-span")
     span.set_tag('bender', 'is great')
