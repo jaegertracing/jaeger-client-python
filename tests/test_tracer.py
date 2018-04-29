@@ -262,6 +262,7 @@ def test_tracer_override_codecs():
         assert tracer.codecs[Format.BINARY] == "overridden_binary_codec",\
                 "Binary format codec not overridden"
 
+
 def test_tracer_hostname_tag():
     reporter = mock.MagicMock()
     sampler = ConstSampler(True)
@@ -274,3 +275,17 @@ def test_tracer_hostname_tag():
 
     assert tracer.tags[c.JAEGER_HOSTNAME_TAG_KEY] == \
             'jaeger-client-app.local'
+
+
+def test_tracer_ip_tag():
+    reporter = mock.MagicMock()
+    sampler = ConstSampler(True)
+    tracer = Tracer(
+        service_name='x',
+        tags={c.JAEGER_IP_TAG_KEY: '192.0.2.3'},
+        reporter=reporter,
+        sampler=sampler,
+    )
+
+    assert tracer.tags[c.JAEGER_IP_TAG_KEY] == \
+            '192.0.2.3'
