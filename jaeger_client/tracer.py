@@ -84,13 +84,12 @@ class Tracer(opentracing.Tracer):
         }
         if tags:
             self.tags.update(tags)
-        # noinspection PyBroadException
 
         if self.tags.get(constants.JAEGER_HOSTNAME_TAG_KEY) is None:
             try:
                 hostname = socket.gethostname()
                 self.tags[constants.JAEGER_HOSTNAME_TAG_KEY] = hostname
-            except:
+            except socket.error:
                 logger.exception('Unable to determine host name')
 
         self.reporter.set_process(

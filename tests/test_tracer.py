@@ -15,6 +15,7 @@
 import mock
 import random
 import six
+import socket
 
 import pytest
 import tornado.httputil
@@ -200,7 +201,7 @@ def test_tracer_tags_no_hostname():
     from jaeger_client.tracer import logger
     with mock.patch.object(logger, 'exception') as mock_log:
         with mock.patch('socket.gethostname',
-                        side_effect=['host', ValueError()]):
+                        side_effect=['host', socket.timeout()]):
             Tracer(service_name='x', reporter=reporter, sampler=sampler)
         assert mock_log.call_count == 1
 
