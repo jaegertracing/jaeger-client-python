@@ -355,7 +355,7 @@ def test_sampling_request_callback():
 
     probabilistic_strategy = """
     {
-        "strategyType":0,
+        "strategyType":"PROBABILISTIC",
         "probabilisticSampling":
         {
             "samplingRate":0.002
@@ -374,7 +374,7 @@ def test_sampling_request_callback():
 
     adaptive_sampling_strategy = """
     {
-        "strategyType":0,
+        "strategyType":"PROBABILISTIC",
         "operationSampling":
         {
             "defaultSamplingProbability":0.001,
@@ -427,7 +427,7 @@ other_rate_limiting_sampler = RateLimitingSampler(20)
 
 @pytest.mark.parametrize("response,init_sampler,expected_sampler,err_count,err_msg,reference_equivalence", [
     (
-        {"strategyType":0,"probabilisticSampling":{"samplingRate":0.003}},
+        {"strategyType":"PROBABILISTIC","probabilisticSampling":{"samplingRate":0.003}},
         probabilistic_sampler,
         other_probabilistic_sampler,
         0,
@@ -435,7 +435,7 @@ other_rate_limiting_sampler = RateLimitingSampler(20)
         False,
     ),
     (
-        {"strategyType":0,"probabilisticSampling":{"samplingRate":400}},
+        {"strategyType":"PROBABILISTIC","probabilisticSampling":{"samplingRate":400}},
         probabilistic_sampler,
         probabilistic_sampler,
         1,
@@ -443,7 +443,7 @@ other_rate_limiting_sampler = RateLimitingSampler(20)
         True,
     ),
     (
-        {"strategyType":0,"probabilisticSampling":{"samplingRate":0.002}},
+        {"strategyType":"PROBABILISTIC","probabilisticSampling":{"samplingRate":0.002}},
         probabilistic_sampler,
         probabilistic_sampler,
         0,
@@ -451,7 +451,7 @@ other_rate_limiting_sampler = RateLimitingSampler(20)
         True,
     ),
     (
-        {"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":10}},
+        {"strategyType":"RATE_LIMITING","rateLimitingSampling":{"maxTracesPerSecond":10}},
         probabilistic_sampler,
         rate_limiting_sampler,
         0,
@@ -459,7 +459,7 @@ other_rate_limiting_sampler = RateLimitingSampler(20)
         False,
     ),
     (
-        {"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":10}},
+        {"strategyType":"RATE_LIMITING","rateLimitingSampling":{"maxTracesPerSecond":10}},
         rate_limiting_sampler,
         rate_limiting_sampler,
         0,
@@ -467,7 +467,7 @@ other_rate_limiting_sampler = RateLimitingSampler(20)
         True,
     ),
     (
-        {"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":-10}},
+        {"strategyType":"RATE_LIMITING","rateLimitingSampling":{"maxTracesPerSecond":-10}},
         rate_limiting_sampler,
         rate_limiting_sampler,
         1,
@@ -475,7 +475,7 @@ other_rate_limiting_sampler = RateLimitingSampler(20)
         True,
     ),
     (
-        {"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":20}},
+        {"strategyType":"RATE_LIMITING","rateLimitingSampling":{"maxTracesPerSecond":20}},
         rate_limiting_sampler,
         other_rate_limiting_sampler,
         0,
@@ -491,7 +491,7 @@ other_rate_limiting_sampler = RateLimitingSampler(20)
         True,
     ),
     (
-        {"strategyType":2},
+        {"strategyType":"INVALID_TYPE"},
         rate_limiting_sampler,
         rate_limiting_sampler,
         1,
@@ -533,7 +533,7 @@ def test_update_sampler_adaptive_sampler():
     )
 
     response = {
-        "strategyType":1,
+        "strategyType":"RATE_LIMITING",
         "operationSampling":
         {
             "defaultSamplingProbability":0.001,
@@ -554,7 +554,7 @@ def test_update_sampler_adaptive_sampler():
     assert '%s' % remote_sampler.sampler == 'AdaptiveSampler(0.001000, 2.000000, 10)'
 
     new_response = {
-        "strategyType":1,
+        "strategyType":"RATE_LIMITING",
         "operationSampling":
         {
             "defaultSamplingProbability":0.51,
@@ -574,11 +574,11 @@ def test_update_sampler_adaptive_sampler():
     remote_sampler._update_sampler(new_response)
     assert '%s' % remote_sampler.sampler == 'AdaptiveSampler(0.510000, 3.000000, 10)'
 
-    remote_sampler._update_sampler({"strategyType":0,"probabilisticSampling":{"samplingRate":0.004}})
+    remote_sampler._update_sampler({"strategyType":"PROBABILISTIC","probabilisticSampling":{"samplingRate":0.004}})
     assert '%s' % remote_sampler.sampler == 'ProbabilisticSampler(0.004)', \
         'should not fail going from adaptive sampler to probabilistic sampler'
 
-    remote_sampler._update_sampler({"strategyType":1,"operationSampling":{"defaultSamplingProbability":0.4}})
+    remote_sampler._update_sampler({"strategyType":"RATE_LIMITING","operationSampling":{"defaultSamplingProbability":0.4}})
     assert '%s' % remote_sampler.sampler == 'AdaptiveSampler(0.400000, 0.001667, 10)'
 
     remote_sampler.close()
