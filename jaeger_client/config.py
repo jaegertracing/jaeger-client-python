@@ -340,6 +340,7 @@ class Config(object):
         Create a new Jaeger Tracer based on the passed `jaeger_client.Config`.
         Does not set `opentracing.tracer` global variable.
         """
+
         channel = self._create_local_agent_channel(io_loop=io_loop)
         sampler = self.sampler
         if not sampler:
@@ -360,7 +361,8 @@ class Config(object):
             flush_interval=self.reporter_flush_interval,
             logger=logger,
             metrics_factory=self._metrics_factory,
-            error_reporter=self.error_reporter)
+            error_reporter=self.error_reporter
+        )
 
         if self.logging:
             reporter = CompositeReporter(reporter, LoggingReporter(logger))

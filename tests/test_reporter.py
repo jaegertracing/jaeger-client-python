@@ -291,3 +291,38 @@ class ReporterTest(AsyncTestCase):
         yield reporter.close()
         assert reporter.queue.qsize() == 0, 'all spans drained'
         assert count[0] == 4, 'last span submitted in one extrac batch'
+
+
+class TestReporterUnit:
+    def test_reporter_calls_sender_correctly(self):
+        reporter = Reporter(
+            channel=None,
+            sender=mock.MagicMock(),
+            io_loop=IOLoop.current(),
+            batch_size=10,
+            flush_interval=None,
+            metrics_factory=FakeMetricsFactory(),
+            error_reporter=HardErrorReporter(),
+            queue_capacity=100
+        )
+        test_data = {'foo': 'bar'}
+
+        reporter._send(test_data)
+        reporter._sender.send.assert_called_once_with(test_data)
+
+    @pytest.mark.parametrize(
+        'channel, sender, expected',
+        [
+            (None, None, None),
+            (None, type('X', (object,), {'io_loop': 'foo'}), 'foo'),
+            (type('X', (object,), {'io_loop': 'bar'}), None, 'bar'),
+            (
+                type('X', (object,), {'io_loop': 'bar'}),
+                type('X', (object,), {'io_loop': 'foo'}),
+                'bar'
+            ),
+        ]
+    )
+    def test_reporter_fetch_io_loop_works_as_expected(self, channel, sender, expected):
+        result = Reporter.fetch_io_loop(channel, sender)
+        assert expected == result
