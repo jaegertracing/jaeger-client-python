@@ -69,6 +69,8 @@ class LocalAgentSender(TBufferedTransport):
         # IOLoop
         self._thread_loop = None
         self.io_loop = io_loop or self._create_new_thread_loop()
+        self.reporting_port = reporting_port
+        self.host = host
 
         # HTTP sampling
         self.local_agent_http = LocalAgentHTTP(host, sampling_port)
