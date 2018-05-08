@@ -33,9 +33,6 @@ from .constants import (
 from .metrics import Metrics, LegacyMetricsFactory
 from .utils import ErrorReporter
 from .rate_limiter import RateLimiter
-from jaeger_client.thrift_gen.sampling import (
-    SamplingManager
-)
 
 default_logger = logging.getLogger('jaeger_tracing')
 
@@ -55,6 +52,8 @@ OPERATION_SAMPLING_STR = 'operationSampling'
 MAX_TRACES_PER_SECOND_STR = 'maxTracesPerSecond'
 RATE_LIMITING_SAMPLING_STR = 'rateLimitingSampling'
 STRATEGY_TYPE_STR = 'strategyType'
+PROBABILISTIC_SAMPLING_STRATEGY = 'PROBABILISTIC'
+RATE_LIMITING_SAMPLING_STRATEGY = 'RATE_LIMITING'
 
 
 class Sampler(object):
@@ -449,10 +448,10 @@ class RemoteControlledSampler(Sampler):
 
     def _update_rate_limiting_or_probabilistic_sampler(self, response):
         s_type = response.get(STRATEGY_TYPE_STR)
-        if s_type == SamplingManager.SamplingStrategyType.PROBABILISTIC:
+        if s_type == PROBABILISTIC_SAMPLING_STRATEGY:
             sampling_rate = get_sampling_probability(response)
             new_sampler = ProbabilisticSampler(rate=sampling_rate)
-        elif s_type == SamplingManager.SamplingStrategyType.RATE_LIMITING:
+        elif s_type == RATE_LIMITING_SAMPLING_STRATEGY:
             mtps = get_rate_limit(response)
             if 0 <= mtps < 500:
                 new_sampler = RateLimitingSampler(max_traces_per_second=mtps)
