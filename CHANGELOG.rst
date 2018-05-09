@@ -3,10 +3,11 @@
 History
 -------
 
-3.9.1 (unreleased)
+3.10.0 (2018-05-09)
 ------------------
 
-- Nothing changed yet.
+- Allow specifying hostname and ip via tags (#167) <Jeff Schroeder>
+- Use String strategyType instead of int (#172)
 
 
 3.9.0 (2018-04-20)
