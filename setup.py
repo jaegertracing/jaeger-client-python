@@ -47,6 +47,9 @@ setup(
     # ],
     test_suite='tests',
     extras_require={
+        ':python_version<"3"': [
+            'futures',
+        ],
         'tests': [
             'mock==1.0.1',
             'pycurl>=7.43,<8',

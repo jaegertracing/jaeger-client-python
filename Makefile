@@ -25,14 +25,23 @@ bootstrap:
 	pip install -r requirements.txt
 	pip install -r requirements-dev.txt
 	pip install -r requirements-tests.txt
+	pip install virtualenv
 	python setup.py develop
+
 
 .PHONY: test
 test: clean
 	$(pytest) $(test_args) --benchmark-skip
 
 .PHONY: test_ci
-test_ci: clean test lint
+test_ci: clean test-import test lint
+
+.PHONY: test-import
+test-import:
+	virtualenv import-test
+	import-test/bin/pip install -e .
+	import-test/bin/python -c "import jaeger_client"
+	rm -rf import-test
 
 .PHONY: test-perf
 test-perf: clean
