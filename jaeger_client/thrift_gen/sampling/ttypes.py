@@ -5,6 +5,7 @@
 #
 #  options string: py:new_style,tornado
 #
+import six
 from six.moves import xrange
 
 from thrift.Thrift import TType, TMessageType, TException, TApplicationException
@@ -90,7 +91,7 @@ class ProbabilisticSamplingStrategy(object):
 
   def __repr__(self):
     L = ['%s=%r' % (key, value)
-      for key, value in self.__dict__.iteritems()]
+      for key, value in six.iteritems(self.__dict__)]
     return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
 
   def __eq__(self, other):
@@ -157,7 +158,7 @@ class RateLimitingSamplingStrategy(object):
 
   def __repr__(self):
     L = ['%s=%r' % (key, value)
-      for key, value in self.__dict__.iteritems()]
+      for key, value in six.iteritems(self.__dict__)]
     return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
 
   def __eq__(self, other):
@@ -240,7 +241,7 @@ class OperationSamplingStrategy(object):
 
   def __repr__(self):
     L = ['%s=%r' % (key, value)
-      for key, value in self.__dict__.iteritems()]
+      for key, value in six.iteritems(self.__dict__)]
     return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
 
   def __eq__(self, other):
@@ -359,7 +360,7 @@ class PerOperationSamplingStrategies(object):
 
   def __repr__(self):
     L = ['%s=%r' % (key, value)
-      for key, value in self.__dict__.iteritems()]
+      for key, value in six.iteritems(self.__dict__)]
     return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
 
   def __eq__(self, other):
@@ -468,7 +469,7 @@ class SamplingStrategyResponse(object):
 
   def __repr__(self):
     L = ['%s=%r' % (key, value)
-      for key, value in self.__dict__.iteritems()]
+      for key, value in six.iteritems(self.__dict__)]
     return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
 
   def __eq__(self, other):
