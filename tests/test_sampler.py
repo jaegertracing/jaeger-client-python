@@ -400,6 +400,21 @@ def test_sampling_request_callback():
     sampler._sampling_request_callback(return_value)
     assert prev_sampler is sampler.sampler, "strategy hasn't changed so sampler should not change"
 
+    probabilistic_strategy_bytes = probabilistic_strategy.encode('utf-8')
+
+    return_value.result = lambda *args: \
+        type('obj', (object,), {'body': probabilistic_strategy_bytes})()
+    sampler._sampling_request_callback(return_value)
+    assert '%s' % sampler.sampler == 'ProbabilisticSampler(0.002)', 'sampler should have changed to probabilistic'
+
+    adaptive_sampling_strategy_bytearray = bytearray(adaptive_sampling_strategy.encode('utf-8'))
+
+    return_value.result = lambda *args: \
+        type('obj', (object,), {'body': adaptive_sampling_strategy_bytearray})()
+    sampler._sampling_request_callback(return_value)
+    assert '%s' % sampler.sampler == 'AdaptiveSampler(0.001000, 2.000000, 10)', 'sampler should have changed to adaptive'
+    prev_sampler = sampler.sampler
+
     return_value.exception = lambda *args: True
     sampler._sampling_request_callback(return_value)
     assert error_reporter.error.call_count == 1
@@ -410,6 +425,18 @@ def test_sampling_request_callback():
 
     sampler._sampling_request_callback(return_value)
     assert error_reporter.error.call_count == 2
+    assert prev_sampler is sampler.sampler, 'error updating sampler should not update the sampler'
+
+    return_value.result = lambda *args: \
+        type('obj', (object,), {'body': None})()
+    sampler._sampling_request_callback(return_value)
+    assert error_reporter.error.call_count == 3
+    assert prev_sampler is sampler.sampler, 'error updating sampler should not update the sampler'
+
+    return_value.result = lambda *args: \
+        type('obj', (object,), {'body': {'decode': None}})()
+    sampler._sampling_request_callback(return_value)
+    assert error_reporter.error.call_count == 4
     assert prev_sampler is sampler.sampler, 'error updating sampler should not update the sampler'
 
     return_value.result = lambda *args: \
