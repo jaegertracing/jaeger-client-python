@@ -28,6 +28,8 @@ from . import ioloop_util
 from .metrics import Metrics, LegacyMetricsFactory
 from .utils import ErrorReporter
 
+from thrift.protocol import TCompactProtocol
+from jaeger_client.thrift_gen.agent import Agent
 
 default_logger = logging.getLogger('jaeger_tracing')
 
@@ -73,13 +75,12 @@ class LoggingReporter(NullReporter):
 
 class Reporter(NullReporter):
     """Receives completed spans from Tracer and submits them out of process."""
-    def __init__(self, sender, queue_capacity=100, batch_size=10,
+    def __init__(self, channel, queue_capacity=100, batch_size=10,
                  flush_interval=DEFAULT_FLUSH_INTERVAL, io_loop=None,
                  error_reporter=None, metrics=None, metrics_factory=None,
                  **kwargs):
         """
-        :param sender: senders.Sender subclass implementing send method,
-            for sending batch of spans to jaeger.
+        :param channel: a communication channel to jaeger-agent
         :param queue_capacity: how many spans we can hold in memory before
             starting to drop spans
         :param batch_size: how many spans we can submit at once to Collector
@@ -96,18 +97,19 @@ class Reporter(NullReporter):
         """
         from threading import Lock
 
-        self.sender = sender
+        self._channel = channel
         self.queue_capacity = queue_capacity
         self.batch_size = batch_size
         self.metrics_factory = metrics_factory or LegacyMetricsFactory(metrics or Metrics())
         self.metrics = ReporterMetrics(self.metrics_factory)
         self.error_reporter = error_reporter or ErrorReporter(Metrics())
         self.logger = kwargs.get('logger', default_logger)
+        self.agent = Agent.Client(self._channel, self)
 
         if queue_capacity < batch_size:
             raise ValueError('Queue capacity cannot be less than batch size')
 
-        self.io_loop = io_loop or self.sender.io_loop
+        self.io_loop = io_loop or channel.io_loop
         if self.io_loop is None:
             self.logger.error('Jaeger Reporter has no IOLoop')
         else:
@@ -175,6 +177,15 @@ class Reporter(NullReporter):
             self.metrics.reporter_queue_length(self.queue.qsize())
         self.logger.info('Span publisher exited')
 
+    # method for protocol factory
+    def getProtocol(self, transport):
+        """
+        Implements Thrift ProtocolFactory interface
+        :param: transport:
+        :return: Thrift compact protocol
+        """
+        return TCompactProtocol.TCompactProtocol(transport)
+
     @tornado.gen.coroutine
     def _submit(self, spans):
         if not spans:
@@ -202,7 +213,7 @@ class Reporter(NullReporter):
         Send batch of spans out via thrift transport. Any exceptions thrown
         will be caught above in the exception handler of _submit().
         """
-        return self.sender.send(batch)
+        return self.agent.emitBatch(batch)
 
     def close(self):
         """
