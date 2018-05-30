@@ -149,7 +149,7 @@ class ReporterTest(AsyncTestCase):
 
     @staticmethod
     def _new_reporter(batch_size, flush=None, queue_cap=100):
-        reporter = Reporter(channel=mock.MagicMock(),
+        reporter = Reporter(sender=mock.MagicMock(),
                             io_loop=IOLoop.current(),
                             batch_size=batch_size,
                             flush_interval=flush,
@@ -291,3 +291,17 @@ class ReporterTest(AsyncTestCase):
         yield reporter.close()
         assert reporter.queue.qsize() == 0, 'all spans drained'
         assert count[0] == 4, 'last span submitted in one extrac batch'
+
+    @gen_test
+    def test_reporter_calls_sender_correctly(self):
+        reporter = Reporter(sender=mock.MagicMock(),
+                            io_loop=IOLoop.current(),
+                            batch_size=10,
+                            flush_interval=None,
+                            metrics_factory=FakeMetricsFactory(),
+                            error_reporter=HardErrorReporter(),
+                            queue_capacity=100)
+        test_data = {'foo': 'bar'}
+
+        reporter._send(test_data)
+        reporter.sender.send.assert_called_once_with(test_data)
