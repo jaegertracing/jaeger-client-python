@@ -33,7 +33,6 @@ from .sampler import (
     RateLimitingSampler,
     RemoteControlledSampler,
 )
-from .senders import UDPSender
 from .constants import (
     DEFAULT_SAMPLING_INTERVAL,
     DEFAULT_FLUSH_INTERVAL,
@@ -307,7 +306,6 @@ class Config(object):
         Create a new Jaeger Tracer based on the passed `jaeger_client.Config`.
         Does not set `opentracing.tracer` global variable.
         """
-
         channel = self._create_local_agent_channel(io_loop=io_loop)
         sampler = self.sampler
         if sampler is None:
@@ -321,14 +319,8 @@ class Config(object):
                 max_operations=self.max_operations)
         logger.info('Using sampler %s', sampler)
 
-        sender = UDPSender(
-            host=self.local_agent_reporting_host,
-            port=self.local_agent_reporting_port,
-            io_loop=io_loop
-        )
-
         reporter = Reporter(
-            sender=sender,
+            channel=channel,
             queue_capacity=self.reporter_queue_size,
             batch_size=self.reporter_batch_size,
             flush_interval=self.reporter_flush_interval,
