@@ -254,6 +254,7 @@ def header_to_hex(header):
 class B3Codec(Codec):
     """
     Support B3 header properties
+    https://github.com/openzipkin/b3-propagation
 
     """
     def __init__(self):
@@ -277,7 +278,9 @@ class B3Codec(Codec):
             raise InvalidCarrierException('carrier not a dictionary')
         trace_id = header_to_hex(carrier.get(self.trace_header.lower()))
         span_id = header_to_hex(carrier.get(self.span_header.lower()))
-        parent_id = header_to_hex(carrier.get(self.parent_span_header.lower()))
+        parent_id = carrier.get(self.parent_span_header.lower(), None)
+        if parent_id:
+            parent_id = header_to_hex(parent_id)
         flags = 0x00
         sampled = carrier.get(self.sampled_header.lower())
         if sampled == '1':
