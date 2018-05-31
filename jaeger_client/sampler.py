@@ -413,6 +413,12 @@ class RemoteControlledSampler(Sampler):
             return
 
         response = future.result()
+
+        # In Python 3.5 response.body is of type bytes and json.loads() does only support str
+        # See: https://github.com/jaegertracing/jaeger-client-python/issues/180
+        if hasattr(response.body, 'decode') and callable(response.body.decode):
+            response.body = response.body.decode('utf-8')
+
         try:
             sampling_strategies_response = json.loads(response.body)
             self.metrics.sampler_retrieved(1)
