@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
+from __future__ import absolute_import, division
 
 import json
 import logging
@@ -319,10 +318,10 @@ class RemoteControlledSampler(Sampler):
         :param service_name: name of this application
         :param kwargs: optional parameters
             - init_sampler: initial value of the sampler,
-                else ProbabilisticSampler(0.01)
+                else ProbabilisticSampler(0.001)
             - sampling_refresh_interval: interval in seconds for polling
               for new strategy
-            - logger:
+            - logger: Logger instance
             - metrics: metrics facade, used to emit metrics on errors.
                 This parameter has been deprecated, please use
                 metrics_factory instead.
@@ -420,16 +419,18 @@ class RemoteControlledSampler(Sampler):
         # In Python 3.5 response.body is of type bytes and json.loads() does only support str
         # See: https://github.com/jaegertracing/jaeger-client-python/issues/180
         if hasattr(response.body, 'decode') and callable(response.body.decode):
-            response.body = response.body.decode('utf-8')
+            response_body = response.body.decode('utf-8')
+        else:
+            response_body = response.body
 
         try:
-            sampling_strategies_response = json.loads(response.body)
+            sampling_strategies_response = json.loads(response_body)
             self.metrics.sampler_retrieved(1)
         except Exception as e:
             self.metrics.sampler_query_failure(1)
             self.error_reporter.error(
                 'Fail to parse sampling strategy '
-                'from jaeger-agent: %s [%s]', e, response.body)
+                'from jaeger-agent: %s [%s]', e, response_body)
             return
 
         self._update_sampler(sampling_strategies_response)
@@ -476,8 +477,7 @@ class RemoteControlledSampler(Sampler):
 
     def _poll_sampling_manager(self):
         self.logger.debug('Requesting tracing sampler refresh')
-        fut = self._channel.request_sampling_strategy(
-            self.service_name, timeout=15)
+        fut = self._channel.request_sampling_strategy(self.service_name)
         fut.add_done_callback(self._sampling_request_callback)
 
     def close(self):

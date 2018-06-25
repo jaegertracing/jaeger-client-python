@@ -28,13 +28,30 @@ test_strategy = """
     }
 """
 
+test_credits = """
+    {
+        \"balances\": [
+            {
+                \"operation\": \"test-operation\",
+                \"balance\": 2.0
+            }
+        ]
+    }
+"""
+
+test_client_id = 12345678
 
 class AgentHandler(tornado.web.RequestHandler):
     def get(self):
         self.write(test_strategy)
 
+class CreditHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.write(test_credits)
+
 application = tornado.web.Application([
     (r"/sampling", AgentHandler),
+    (r"/credits", CreditHandler),
 ])
 
 @pytest.fixture
@@ -52,3 +69,19 @@ def test_request_sampling_strategy(http_client, base_url):
     )
     response = yield sender.request_sampling_strategy(service_name='svc', timeout=15)
     assert response.body == test_strategy.encode('utf-8')
+
+@pytest.mark.gen_test
+def test_request_throttling_credits(http_client, base_url):
+    o = urlparse(base_url)
+    sender = LocalAgentSender(
+        host='localhost',
+        sampling_port=o.port,
+        reporting_port=DEFAULT_REPORTING_PORT,
+        throttling_port=o.port,
+    )
+    response = yield sender.request_throttling_credits(
+                                service_name='svc',
+                                client_id=test_client_id,
+                                operations=['test-operation'],
+                                timeout=15)
+    assert response.body == test_credits.encode('utf-8')

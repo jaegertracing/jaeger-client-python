@@ -335,7 +335,6 @@ def test_remotely_controlled_sampler():
     sampler._create_periodic_callback = mock.MagicMock()
     # noinspection PyProtectedMember
     sampler._delayed_polling()
-    sampler.close()
 
     sampler = RemoteControlledSampler(
         channel=mock.MagicMock(),
@@ -350,7 +349,6 @@ def test_remotely_controlled_sampler():
     assert not sampler.running
     sampler._delayed_polling()
     assert not sampler.running
-
 
 # noinspection PyProtectedMember
 def test_sampling_request_callback():

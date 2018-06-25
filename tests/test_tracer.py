@@ -289,3 +289,14 @@ def test_tracer_ip_tag():
 
     assert tracer.tags[c.JAEGER_IP_TAG_KEY] == \
             '192.0.2.3'
+
+def test_tracer_throttler():
+    tracer = Tracer(
+        service_name='x',
+        reporter=mock.MagicMock(),
+        sampler=mock.MagicMock(),
+        throttler=mock.MagicMock())
+    tracer.throttler.is_allowed.return_value = True
+    assert tracer.is_debug_allowed()
+    tracer.throttler.is_allowed.return_value = False
+    assert not tracer.is_debug_allowed()

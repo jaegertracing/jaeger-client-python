@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Uber Technologies, Inc.
+# Copyright (c) 2016-2018 Uber Technologies, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import six
 # Max number of bits to use when generating random ID
 MAX_ID_BITS = 64
 
-# How often remotely controller sampler polls for sampling strategy
+# How often remotely controlled sampler polls for sampling strategy
 DEFAULT_SAMPLING_INTERVAL = 60
 
 # How often remote reporter does a preemptive flush of its buffers
@@ -69,6 +69,9 @@ SAMPLER_TYPE_RATE_LIMITING = 'ratelimiting'
 # noinspection SpellCheckingInspection
 SAMPLER_TYPE_LOWER_BOUND = 'lowerbound'
 
+# Tag key for unique client identifier. Used in throttler implementation.
+CLIENT_UUID_TAG_KEY = 'client-uuid'
+
 # max length for tag values. Longer values will be truncated.
 MAX_TAG_VALUE_LENGTH = 1024
 
@@ -77,3 +80,6 @@ SAMPLED_FLAG = 0x01
 
 # Constant for debug flag
 DEBUG_FLAG = 0x02
+
+# How often throttler polls for credits
+DEFAULT_THROTTLER_REFRESH_INTERVAL = 5

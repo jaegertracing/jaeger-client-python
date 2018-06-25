@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Uber Technologies, Inc.
+# Copyright (c) 2016-2018 Uber Technologies, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import socket
 import logging
 import os
 import random
+import sys
 import time
 import six
 import opentracing
@@ -48,6 +49,7 @@ class Tracer(opentracing.Tracer):
         one_span_per_rpc=False, extra_codecs=None,
         tags=None,
         max_tag_value_length=constants.MAX_TAG_VALUE_LENGTH,
+        throttler=None,
     ):
         self.service_name = service_name
         self.reporter = reporter
@@ -91,6 +93,12 @@ class Tracer(opentracing.Tracer):
                 self.tags[constants.JAEGER_HOSTNAME_TAG_KEY] = hostname
             except socket.error:
                 logger.exception('Unable to determine host name')
+
+        self.throttler = throttler
+        if self.throttler:
+            client_id = random.randint(0, sys.maxsize)
+            self.throttler._set_client_id(client_id)
+            self.tags[constants.CLIENT_UUID_TAG_KEY] = client_id
 
         self.reporter.set_process(
             service_name=self.service_name,
@@ -229,6 +237,11 @@ class Tracer(opentracing.Tracer):
 
     def random_id(self):
         return self.random.getrandbits(constants.MAX_ID_BITS)
+
+    def is_debug_allowed(self, *args, **kwargs):
+        if not self.throttler:
+            return True
+        return self.throttler.is_allowed(*args, **kwargs)
 
 
 class TracerMetrics(object):

@@ -92,9 +92,13 @@ def test_sampling_priority(tracer):
     span.set_tag(ext_tags.SAMPLING_PRIORITY, 1)
     assert span.is_sampled()
     assert span.is_debug()
+    span.set_tag(ext_tags.SAMPLING_PRIORITY, 1)
+    assert span.is_sampled()
+    assert span.is_debug()
     span.set_tag(ext_tags.SAMPLING_PRIORITY, 0)
     assert span.is_sampled() is False
-
+    span.set_tag(ext_tags.SAMPLING_PRIORITY, 'test')
+    assert span.is_sampled() is False
 
 def test_span_logging(tracer):
     tpl = collections.namedtuple(
