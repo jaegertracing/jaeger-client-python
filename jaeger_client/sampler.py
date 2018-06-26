@@ -265,7 +265,7 @@ class AdaptiveSampler(Sampler):
 
     def is_sampled(self, trace_id, operation=''):
         sampler = self.samplers.get(operation)
-        if sampler is None:
+        if not sampler:
             if len(self.samplers) >= self.max_operations:
                 return self.default_sampler.is_sampled(trace_id, operation)
             sampler = GuaranteedThroughputProbabilisticSampler(
@@ -284,7 +284,7 @@ class AdaptiveSampler(Sampler):
             lower_bound = strategies.get(DEFAULT_LOWER_BOUND_STR, DEFAULT_LOWER_BOUND)
             sampling_rate = get_sampling_probability(strategy)
             sampler = self.samplers.get(operation)
-            if sampler is None:
+            if not sampler:
                 sampler = GuaranteedThroughputProbabilisticSampler(
                     operation,
                     lower_bound,
@@ -348,7 +348,7 @@ class RemoteControlledSampler(Sampler):
         self.max_operations = kwargs.get('max_operations') or \
             DEFAULT_MAX_OPERATIONS
 
-        if self.sampler is None:
+        if not self.sampler:
             self.sampler = ProbabilisticSampler(DEFAULT_SAMPLING_PROBABILITY)
         else:
             self.sampler.is_sampled(0)  # assert we got valid sampler API

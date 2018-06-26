@@ -460,7 +460,7 @@ other_probabilistic_sampler = ProbabilisticSampler(0.003)
 rate_limiting_sampler = RateLimitingSampler(10)
 other_rate_limiting_sampler = RateLimitingSampler(20)
 
-@pytest.mark.parametrize("response,init_sampler,expected_sampler,err_count,err_msg,reference_equivalence", [
+@pytest.mark.parametrize("response,init_sampler,expected_sampler,err_count,err_msg,reference_equivalence,max_operations", [
     (
         {"strategyType":"PROBABILISTIC","probabilisticSampling":{"samplingRate":0.003}},
         probabilistic_sampler,
@@ -468,6 +468,7 @@ other_rate_limiting_sampler = RateLimitingSampler(20)
         0,
         'sampler should update to new probabilistic sampler',
         False,
+        10,
     ),
     (
         {"strategyType":"PROBABILISTIC","probabilisticSampling":{"samplingRate":400}},
@@ -476,6 +477,7 @@ other_rate_limiting_sampler = RateLimitingSampler(20)
         1,
         'sampler should remain the same if strategy is invalid',
         True,
+        10,
     ),
     (
         {"strategyType":"PROBABILISTIC","probabilisticSampling":{"samplingRate":0.002}},
@@ -484,6 +486,7 @@ other_rate_limiting_sampler = RateLimitingSampler(20)
         0,
         'sampler should remain the same with the same strategy',
         True,
+        10,
     ),
     (
         {"strategyType":"RATE_LIMITING","rateLimitingSampling":{"maxTracesPerSecond":10}},
@@ -492,6 +495,7 @@ other_rate_limiting_sampler = RateLimitingSampler(20)
         0,
         'sampler should update to new rate limiting sampler',
         False,
+        10,
     ),
     (
         {"strategyType":"RATE_LIMITING","rateLimitingSampling":{"maxTracesPerSecond":10}},
@@ -500,6 +504,7 @@ other_rate_limiting_sampler = RateLimitingSampler(20)
         0,
         'sampler should remain the same with the same strategy',
         True,
+        10,
     ),
     (
         {"strategyType":"RATE_LIMITING","rateLimitingSampling":{"maxTracesPerSecond":-10}},
@@ -508,6 +513,7 @@ other_rate_limiting_sampler = RateLimitingSampler(20)
         1,
         'sampler should remain the same if strategy is invalid',
         True,
+        10,
     ),
     (
         {"strategyType":"RATE_LIMITING","rateLimitingSampling":{"maxTracesPerSecond":20}},
@@ -516,6 +522,7 @@ other_rate_limiting_sampler = RateLimitingSampler(20)
         0,
         'sampler should update to new rate limiting sampler',
         False,
+        10,
     ),
     (
         {},
@@ -524,6 +531,7 @@ other_rate_limiting_sampler = RateLimitingSampler(20)
         1,
         'sampler should remain the same if strategy is empty',
         True,
+        10,
     ),
     (
         {"strategyType":"INVALID_TYPE"},
@@ -532,16 +540,26 @@ other_rate_limiting_sampler = RateLimitingSampler(20)
         1,
         'sampler should remain the same if strategy is invalid',
         True,
+        10,
+    ),
+    (
+        {"strategyType":"INVALID_TYPE"},
+        rate_limiting_sampler,
+        rate_limiting_sampler,
+        1,
+        'sampler should remain the same if strategy is invalid',
+        True,
+        None,
     ),
 ])
-def test_update_sampler(response, init_sampler, expected_sampler, err_count, err_msg, reference_equivalence):
+def test_update_sampler(response, init_sampler, expected_sampler, err_count, err_msg, reference_equivalence, max_operations):
     error_reporter = mock.MagicMock()
     error_reporter.error = mock.MagicMock()
     remote_sampler = RemoteControlledSampler(
         channel=mock.MagicMock(),
         service_name='x',
         error_reporter=error_reporter,
-        max_operations=10,
+        max_operations=max_operations,
         init_sampler=init_sampler,
     )
 

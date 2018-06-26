@@ -98,7 +98,7 @@ class Config(object):
             # if metrics are explicitly disabled, use a dummy
             self._metrics_factory = MetricsFactory()
         self._service_name = config.get('service_name', service_name)
-        if self._service_name is None:
+        if not self._service_name:
             raise ValueError('service_name required in the config or param')
 
         self._error_reporter = ErrorReporter(
@@ -308,7 +308,7 @@ class Config(object):
         """
         channel = self._create_local_agent_channel(io_loop=io_loop)
         sampler = self.sampler
-        if sampler is None:
+        if not sampler:
             sampler = RemoteControlledSampler(
                 channel=channel,
                 service_name=self.service_name,
