@@ -1,5 +1,5 @@
 from __future__ import division
-# Copyright (c) 2016 Uber Technologies, Inc.
+# Copyright (c) 2016-2018 Uber Technologies, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ from jaeger_client.sampler import (
     RemoteControlledSampler,
     GuaranteedThroughputProbabilisticSampler,
     AdaptiveSampler,
+    DEFAULT_MAX_OPERATIONS,
     DEFAULT_SAMPLING_PROBABILITY,
     get_sampling_probability,
     get_rate_limit,
@@ -335,6 +336,13 @@ def test_remotely_controlled_sampler():
     # noinspection PyProtectedMember
     sampler._delayed_polling()
     sampler.close()
+
+    sampler = RemoteControlledSampler(
+        channel=mock.MagicMock(),
+        service_name='x',
+        max_operations=None,
+    )
+    assert sampler.max_operations == DEFAULT_MAX_OPERATIONS
 
 
 # noinspection PyProtectedMember

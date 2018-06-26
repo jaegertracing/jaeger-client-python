@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Uber Technologies, Inc.
+# Copyright (c) 2016-2018 Uber Technologies, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -264,7 +264,7 @@ class AdaptiveSampler(Sampler):
         self.max_operations = max_operations
 
     def is_sampled(self, trace_id, operation=''):
-        sampler = self.samplers.get(operation, None)
+        sampler = self.samplers.get(operation)
         if sampler is None:
             if len(self.samplers) >= self.max_operations:
                 return self.default_sampler.is_sampled(trace_id, operation)
@@ -283,7 +283,7 @@ class AdaptiveSampler(Sampler):
             operation = strategy.get(OPERATION_STR)
             lower_bound = strategies.get(DEFAULT_LOWER_BOUND_STR, DEFAULT_LOWER_BOUND)
             sampling_rate = get_sampling_probability(strategy)
-            sampler = self.samplers.get(operation, None)
+            sampler = self.samplers.get(operation)
             if sampler is None:
                 sampler = GuaranteedThroughputProbabilisticSampler(
                     operation,
@@ -339,13 +339,14 @@ class RemoteControlledSampler(Sampler):
         self.logger = kwargs.get('logger', default_logger)
         self.sampler = kwargs.get('init_sampler')
         self.sampling_refresh_interval = \
-            kwargs.get('sampling_refresh_interval', DEFAULT_SAMPLING_INTERVAL)
-        self.metrics_factory = kwargs.get('metrics_factory', None) \
-            or LegacyMetricsFactory(kwargs.get('metrics', None) or Metrics())
+            kwargs.get('sampling_refresh_interval') or DEFAULT_SAMPLING_INTERVAL
+        self.metrics_factory = kwargs.get('metrics_factory') \
+            or LegacyMetricsFactory(kwargs.get('metrics') or Metrics())
         self.metrics = SamplerMetrics(self.metrics_factory)
         self.error_reporter = kwargs.get('error_reporter') or \
             ErrorReporter(Metrics())
-        self.max_operations = kwargs.get('max_operations', DEFAULT_MAX_OPERATIONS)
+        self.max_operations = kwargs.get('max_operations') or \
+            DEFAULT_MAX_OPERATIONS
 
         if self.sampler is None:
             self.sampler = ProbabilisticSampler(DEFAULT_SAMPLING_PROBABILITY)
