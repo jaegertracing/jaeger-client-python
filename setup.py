@@ -53,7 +53,7 @@ setup(
         'tests': [
             'mock==1.0.1',
             'pycurl>=7.43,<8',
-            'pytest>=2.7,<3',
+            'pytest>=3.6.0',
             'pytest-cov',
             'coverage<4.4',  # can remove after https://bitbucket.org/ned/coveragepy/issues/581/44b1-44-breaking-in-ci
             'pytest-timeout',
