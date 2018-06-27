@@ -483,7 +483,7 @@ class RemoteControlledSampler(Sampler):
     def close(self):
         with self.lock:
             self.running = False
-            if self.periodic is not None:
+            if self.periodic:
                 self.periodic.stop()
 
 
