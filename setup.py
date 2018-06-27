@@ -62,7 +62,7 @@ setup(
             'pytest-localserver',
             'flake8<3',  # see https://github.com/zheller/flake8-quotes/issues/29
             'flake8-quotes',
-            'coveralls',
+            'codecov',
             'tchannel>=0.27', # This is only used in python 2
             'opentracing_instrumentation>=2,<3',
             'prometheus_client',
