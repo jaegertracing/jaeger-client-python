@@ -53,7 +53,7 @@ setup(
         'tests': [
             'mock==1.0.1',
             'pycurl>=7.43,<8',
-            'pytest>=2.7,<3',
+            'pytest>=3.6.0',
             'pytest-cov',
             'coverage<4.4',  # can remove after https://bitbucket.org/ned/coveragepy/issues/581/44b1-44-breaking-in-ci
             'pytest-timeout',
@@ -62,7 +62,7 @@ setup(
             'pytest-localserver',
             'flake8<3',  # see https://github.com/zheller/flake8-quotes/issues/29
             'flake8-quotes',
-            'coveralls',
+            'codecov',
             'tchannel>=0.27', # This is only used in python 2
             'opentracing_instrumentation>=2,<3',
             'prometheus_client',

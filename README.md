@@ -162,8 +162,8 @@ Please make sure your framework does the same.
 
 [ci-img]: https://travis-ci.org/jaegertracing/jaeger-client-python.svg?branch=master
 [ci]: https://travis-ci.org/jaegertracing/jaeger-client-python
-[cov-img]: https://coveralls.io/repos/jaegertracing/jaeger-client-python/badge.svg?branch=master
-[cov]: https://coveralls.io/github/jaegertracing/jaeger-client-python?branch=master
+[cov-img]: https://codecov.io/gh/jaegertracing/jaeger-client-python/branch/master/graph/badge.svg
+[cov]: https://codecov.io/gh/jaegertracing/jaeger-client-python
 [pypi-img]: https://badge.fury.io/py/jaeger-client.svg
 [pypi]: https://badge.fury.io/py/jaeger-client
 [fossa-img]: https://app.fossa.io/api/projects/git%2Bgithub.com%2Fjaegertracing%2Fjaeger-client-python.svg?type=shield
