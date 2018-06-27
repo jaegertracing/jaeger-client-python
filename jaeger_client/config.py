@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Uber Technologies, Inc.
+# Copyright (c) 2016-2018 Uber Technologies, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -98,7 +98,7 @@ class Config(object):
             # if metrics are explicitly disabled, use a dummy
             self._metrics_factory = MetricsFactory()
         self._service_name = config.get('service_name', service_name)
-        if self._service_name is None:
+        if not self._service_name:
             raise ValueError('service_name required in the config or param')
 
         self._error_reporter = ErrorReporter(
@@ -272,7 +272,7 @@ class Config(object):
 
     @property
     def propagation(self):
-        propagation = self.config.get('propagation', None)
+        propagation = self.config.get('propagation')
         if propagation == 'b3':
             # replace the codec with a B3 enabled instance
             return {Format.HTTP_HEADERS: B3Codec()}
@@ -308,7 +308,7 @@ class Config(object):
         """
         channel = self._create_local_agent_channel(io_loop=io_loop)
         sampler = self.sampler
-        if sampler is None:
+        if not sampler:
             sampler = RemoteControlledSampler(
                 channel=channel,
                 service_name=self.service_name,

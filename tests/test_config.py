@@ -17,6 +17,7 @@ import os
 import unittest
 import opentracing.tracer
 from jaeger_client import Config, ConstSampler, ProbabilisticSampler, RateLimitingSampler
+from jaeger_client.metrics import MetricsFactory
 from jaeger_client.reporter import NullReporter
 from jaeger_client import constants
 
@@ -105,6 +106,14 @@ class ConfigTests(unittest.TestCase):
     def test_for_unexpected_config_entries(self):
         with self.assertRaises(Exception):
             _ = Config({"unexpected":"value"}, validate=True)
+
+    def test_missing_service_name(self):
+        with self.assertRaises(ValueError):
+            _ = Config({})
+
+    def test_disable_metrics(self):
+        config = Config({ 'metrics': False }, service_name='x')
+        assert isinstance(config._metrics_factory, MetricsFactory)
 
     def test_initialize_tracer(self):
         c = Config({}, service_name='x')
