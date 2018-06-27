@@ -378,24 +378,26 @@ class RemoteControlledSampler(Sampler):
         before the first poll.
         """
         with self.lock:
-            if self.running:
-                r = random.Random()
-                delay = r.random() * self.sampling_refresh_interval
-                self.io_loop.call_later(delay=delay,
-                                        callback=self._delayed_polling)
-                self.logger.info(
-                    'Delaying sampling strategy polling by %d sec', delay)
+            if not self.running:
+                return
+            r = random.Random()
+            delay = r.random() * self.sampling_refresh_interval
+            self.io_loop.call_later(delay=delay,
+                                    callback=self._delayed_polling)
+            self.logger.info(
+                'Delaying sampling strategy polling by %d sec', delay)
 
     def _delayed_polling(self):
         periodic = self._create_periodic_callback()
         self._poll_sampling_manager()  # Initialize sampler now
         with self.lock:
-            if self.running:
-                self.periodic = periodic
-                periodic.start()  # start the periodic cycle
-                self.logger.info(
-                    'Tracing sampler started with sampling refresh '
-                    'interval %d sec', self.sampling_refresh_interval)
+            if not self.running:
+                return
+            self.periodic = periodic
+            periodic.start()  # start the periodic cycle
+            self.logger.info(
+                'Tracing sampler started with sampling refresh '
+                'interval %d sec', self.sampling_refresh_interval)
 
     def _create_periodic_callback(self):
         return PeriodicCallback(

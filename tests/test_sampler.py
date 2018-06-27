@@ -344,6 +344,13 @@ def test_remotely_controlled_sampler():
     )
     assert sampler.max_operations == DEFAULT_MAX_OPERATIONS
 
+    sampler.close()
+    assert not sampler.running
+    sampler._init_polling()
+    assert not sampler.running
+    sampler._delayed_polling()
+    assert not sampler.running
+
 
 # noinspection PyProtectedMember
 def test_sampling_request_callback():
