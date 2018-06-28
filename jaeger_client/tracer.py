@@ -157,7 +157,7 @@ class Tracer(opentracing.Tracer):
                     tags = tags or {}
                     for k, v in six.iteritems(sampler_tags):
                         tags[k] = v
-            else:  # have debug id
+            elif self.is_debug_allowed(operation_name):  # have debug id
                 flags = SAMPLED_FLAG | DEBUG_FLAG
                 tags = tags or {}
                 tags[self.debug_id_header] = parent.debug_id
