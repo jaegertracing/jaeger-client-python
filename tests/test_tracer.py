@@ -22,7 +22,7 @@ import tornado.httputil
 
 from opentracing import Format, child_of
 from opentracing.ext import tags as ext_tags
-from jaeger_client import ConstSampler, Tracer
+from jaeger_client import ConstSampler, SpanContext, Tracer
 from jaeger_client import constants as c
 
 
@@ -289,3 +289,17 @@ def test_tracer_ip_tag():
 
     assert tracer.tags[c.JAEGER_IP_TAG_KEY] == \
             '192.0.2.3'
+
+def test_tracer_throttler():
+    tracer = Tracer(
+        service_name='x',
+        reporter=mock.MagicMock(),
+        sampler=mock.MagicMock(),
+        throttler=mock.MagicMock())
+    tracer.throttler.is_allowed.return_value = True
+    assert tracer.is_debug_allowed()
+    tracer.throttler.is_allowed.return_value = False
+    assert not tracer.is_debug_allowed()
+    debug_span_context = SpanContext.with_debug_id('debug-id')
+    span = tracer.start_span('test-operation', child_of=debug_span_context)
+    assert not span.is_debug()

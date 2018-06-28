@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Uber Technologies, Inc.
+# Copyright (c) 2016-2018 Uber Technologies, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -78,12 +78,9 @@ class Span(opentracing.Span):
         :param value:
         """
         with self.update_lock:
-            if key == ext_tags.SAMPLING_PRIORITY:
-                if value > 0:
-                    self.context.flags |= SAMPLED_FLAG | DEBUG_FLAG
-                else:
-                    self.context.flags &= ~SAMPLED_FLAG
-            elif self.is_sampled():
+            if key == ext_tags.SAMPLING_PRIORITY and not self._set_sampling_priority(value):
+                return self
+            if self.is_sampled():
                 tag = thrift.make_string_tag(
                     key=key,
                     value=value,
@@ -91,6 +88,27 @@ class Span(opentracing.Span):
                 )
                 self.tags.append(tag)
         return self
+
+    def _set_sampling_priority(self, value):
+        """
+        N.B. Caller must be holding update_lock.
+        """
+
+        # Ignore debug spans trying to re-enable debug.
+        if self.is_debug() and value:
+            return False
+
+        try:
+            value_num = int(value)
+        except ValueError:
+            return False
+        if value_num == 0:
+            self.context.flags &= ~(SAMPLED_FLAG | DEBUG_FLAG)
+            return False
+        if self.tracer.is_debug_allowed(self.operation_name):
+            self.context.flags |= SAMPLED_FLAG | DEBUG_FLAG
+            return True
+        return False
 
     def log_kv(self, key_values, timestamp=None):
         if self.is_sampled():

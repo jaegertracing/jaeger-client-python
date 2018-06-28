@@ -351,7 +351,6 @@ def test_remotely_controlled_sampler():
     sampler._delayed_polling()
     assert not sampler.running
 
-
 # noinspection PyProtectedMember
 def test_sampling_request_callback():
     channel = mock.MagicMock()
