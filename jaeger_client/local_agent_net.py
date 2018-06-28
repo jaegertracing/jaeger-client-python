@@ -53,16 +53,12 @@ class LocalAgentHTTP(object):
         ] + [('operations', op) for op in operations])
 
 
-class LocalAgentSender(TBufferedTransport):
+class LocalAgentReader(object):
     """
-    LocalAgentSender implements everything necessary to communicate with
-    local jaeger-agent. This class is designed to work in tornado and
-    non-tornado environments. If in torndado, pass in the ioloop, if not
-    then LocalAgentSender will create one for itself.
-
-    NOTE: LocalAgentSender derives from TBufferedTransport. This will buffer
-    up all written data until flush() is called. Flush gets called at the
-    end of the batch span submission call.
+    LocalAgentReader implements what is necessary to obtain sampling strategies
+    and throttling credits from the local jaeger-agent.  This class is designed
+    to work in tornado and non-tornado environments. If in torndado, pass in the
+    ioloop, if not then LocalAgentSender will create one for itself.
     """
 
     def __init__(self, host, sampling_port, reporting_port, io_loop=None, throttling_port=None):
@@ -77,11 +73,6 @@ class LocalAgentSender(TBufferedTransport):
         if throttling_port:
             self.throttling_http = LocalAgentHTTP(host, throttling_port)
 
-        # UDP reporting - this will only get written to after our flush() call.
-        # We are buffering things up because we are a TBufferedTransport.
-        udp = TUDPTransport(host, reporting_port)
-        TBufferedTransport.__init__(self, udp)
-
     def _create_new_thread_loop(self):
         """
         Create a daemonized thread that will run Tornado IOLoop.
@@ -92,10 +83,6 @@ class LocalAgentSender(TBufferedTransport):
             self._thread_loop.start()
         return self._thread_loop._io_loop
 
-    def readFrame(self):
-        """Empty read frame that is never ready"""
-        return Future()
-
     # Pass-through for HTTP sampling strategies request.
     def request_sampling_strategy(self, *args, **kwargs):
         return self.local_agent_http.request_sampling_strategy(*args, **kwargs)
@@ -103,3 +90,26 @@ class LocalAgentSender(TBufferedTransport):
     # Pass-through for HTTP throttling credit request.
     def request_throttling_credits(self, *args, **kwargs):
         return self.throttling_http.request_throttling_credits(*args, **kwargs)
+
+
+class LocalAgentSender(LocalAgentReader, TBufferedTransport):
+    """
+    LocalAgentSender implements everything necessary to report spans to
+    the local jaeger-agent.
+
+    NOTE: LocalAgentSender derives from TBufferedTransport. This will buffer
+    up all written data until flush() is called. Flush gets called at the
+    end of the batch span submission call.
+    """
+
+    def __init__(self, host, sampling_port, reporting_port, io_loop=None, throttling_port=None):
+        LocalAgentReader.__init__(self, host, sampling_port, reporting_port,
+                                  io_loop, throttling_port)
+        # UDP reporting - this will only get written to after our flush() call.
+        # We are buffering things up because we are a TBufferedTransport.
+        udp = TUDPTransport(host, reporting_port)
+        TBufferedTransport.__init__(self, udp)
+
+    def readFrame(self):
+        """Empty read frame that is never ready"""
+        return Future()

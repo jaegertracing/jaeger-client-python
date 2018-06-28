@@ -30,7 +30,7 @@ from jaeger_client.metrics import LegacyMetricsFactory, Metrics
 from jaeger_client.utils import ErrorReporter
 from tornado.ioloop import IOLoop
 from tornado.testing import AsyncTestCase, gen_test
-from jaeger_client.reporter import Reporter
+from jaeger_client.reporter import ThriftReporter
 from jaeger_client.ioloop_util import future_result
 
 
@@ -132,7 +132,7 @@ class FakeMetricsFactory(LegacyMetricsFactory):
         self.counters[key] = value + self.counters.get(key, 0)
 
 
-class ReporterTest(AsyncTestCase):
+class ThriftReporterTest(AsyncTestCase):
     @pytest.yield_fixture
     def thread_loop(self):
         yield
@@ -149,13 +149,13 @@ class ReporterTest(AsyncTestCase):
 
     @staticmethod
     def _new_reporter(batch_size, flush=None, queue_cap=100):
-        reporter = Reporter(channel=mock.MagicMock(),
-                            io_loop=IOLoop.current(),
-                            batch_size=batch_size,
-                            flush_interval=flush,
-                            metrics_factory=FakeMetricsFactory(),
-                            error_reporter=HardErrorReporter(),
-                            queue_capacity=queue_cap)
+        reporter = ThriftReporter(channel=mock.MagicMock(),
+                                  io_loop=IOLoop.current(),
+                                  batch_size=batch_size,
+                                  flush_interval=flush,
+                                  metrics_factory=FakeMetricsFactory(),
+                                  error_reporter=HardErrorReporter(),
+                                  queue_capacity=queue_cap)
         reporter.set_process('service', {}, max_length=0)
         sender = FakeSender()
         reporter._send = sender

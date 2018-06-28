@@ -14,10 +14,12 @@
 
 from __future__ import absolute_import
 
+import json
 import logging
 import threading
 
 import tornado.gen
+import tornado.httpclient
 import tornado.ioloop
 import tornado.queues
 import socket
@@ -25,6 +27,7 @@ from tornado.concurrent import Future
 from .constants import DEFAULT_FLUSH_INTERVAL
 from . import thrift
 from . import ioloop_util
+from . import zipkin_v2
 from .metrics import Metrics, LegacyMetricsFactory
 from .utils import ErrorReporter
 
@@ -73,8 +76,12 @@ class LoggingReporter(NullReporter):
         self.logger.info('Reporting span %s', span)
 
 
-class Reporter(NullReporter):
-    """Receives completed spans from Tracer and submits them out of process."""
+class QueueReporter(NullReporter):
+    """
+    Base Reporter class for handling, batching, and queuing Tracer-provided spans
+    for transmission to a backend service.  Should not be used directly and instead
+    should be subclassed with appropriate create_agent(), _send(), and make_batch() methods.
+    """
     def __init__(self, channel, queue_capacity=100, batch_size=10,
                  flush_interval=DEFAULT_FLUSH_INTERVAL, io_loop=None,
                  error_reporter=None, metrics=None, metrics_factory=None,
@@ -97,14 +104,13 @@ class Reporter(NullReporter):
         """
         from threading import Lock
 
-        self._channel = channel
         self.queue_capacity = queue_capacity
         self.batch_size = batch_size
         self.metrics_factory = metrics_factory or LegacyMetricsFactory(metrics or Metrics())
         self.metrics = ReporterMetrics(self.metrics_factory)
         self.error_reporter = error_reporter or ErrorReporter(Metrics())
         self.logger = kwargs.get('logger', default_logger)
-        self.agent = Agent.Client(self._channel, self)
+        self.agent = self.create_agent(channel)
 
         if queue_capacity < batch_size:
             raise ValueError('Queue capacity cannot be less than batch size')
@@ -122,6 +128,9 @@ class Reporter(NullReporter):
 
         self._process_lock = Lock()
         self._process = None
+
+    def create_agent(self, channel):
+        raise NotImplementedError()
 
     def set_process(self, service_name, tags, max_length):
         with self._process_lock:
@@ -177,14 +186,8 @@ class Reporter(NullReporter):
             self.metrics.reporter_queue_length(self.queue.qsize())
         self.logger.info('Span publisher exited')
 
-    # method for protocol factory
-    def getProtocol(self, transport):
-        """
-        Implements Thrift ProtocolFactory interface
-        :param: transport:
-        :return: Thrift compact protocol
-        """
-        return TCompactProtocol.TCompactProtocol(transport)
+    def make_batch(self, spans, process):
+        raise NotImplementedError()
 
     @tornado.gen.coroutine
     def _submit(self, spans):
@@ -195,7 +198,7 @@ class Reporter(NullReporter):
             if not process:
                 return
         try:
-            batch = thrift.make_jaeger_batch(spans=spans, process=process)
+            batch = self.make_batch(spans, process)
             yield self._send(batch)
             self.metrics.reporter_success(len(spans))
         except socket.error as e:
@@ -209,11 +212,7 @@ class Reporter(NullReporter):
 
     @tornado.gen.coroutine
     def _send(self, batch):
-        """
-        Send batch of spans out via thrift transport. Any exceptions thrown
-        will be caught above in the exception handler of _submit().
-        """
-        return self.agent.emitBatch(batch)
+        raise NotImplementedError()
 
     def close(self):
         """
@@ -275,3 +274,80 @@ class CompositeReporter(NullReporter):
             f.add_done_callback(on_close)
 
         return future
+
+
+class ThriftReporter(QueueReporter):
+    """
+    Receives completed spans from Tracer and submits them out of process to local
+    jaeger-agent.
+    """
+
+    def __init__(self, channel, queue_capacity=100, batch_size=10,
+                 flush_interval=DEFAULT_FLUSH_INTERVAL, io_loop=None,
+                 error_reporter=None, metrics=None, metrics_factory=None,
+                 **kwargs):
+        QueueReporter.__init__(self, channel, queue_capacity, batch_size, flush_interval,
+                               io_loop, error_reporter, metrics, metrics_factory, **kwargs)
+
+    def create_agent(self, channel):
+        return Agent.Client(channel, self)
+
+    def make_batch(self, spans, process):
+        return thrift.make_jaeger_batch(spans=spans, process=process)
+
+    # method for protocol factory
+    def getProtocol(self, transport):
+        """
+        Implements Thrift ProtocolFactory interface
+        :param: transport:
+        :return: Thrift compact protocol
+        """
+        return TCompactProtocol.TCompactProtocol(transport)
+
+    @tornado.gen.coroutine
+    def _send(self, batch):
+        """
+        Send batch of spans out via thrift transport. Any exceptions thrown
+        will be caught above in the exception handler of _submit().
+        """
+        return self.agent.emitBatch(batch)
+
+
+Reporter = ThriftReporter  # backward compatibility
+
+
+class ZipkinV2Reporter(QueueReporter):
+    """Receives completed spans from Tracer and submits to Zipkin's /api/v2/spans endpoint"""
+
+    def __init__(self, channel, spans_url, queue_capacity=100, batch_size=10,
+                 flush_interval=DEFAULT_FLUSH_INTERVAL, io_loop=None, error_reporter=None,
+                 metrics=None, metrics_factory=None, **kwargs):
+        self.spans_url = spans_url
+        self.headers = kwargs.get('headers', {})
+        QueueReporter.__init__(self, channel, queue_capacity, batch_size, flush_interval,
+                               io_loop, error_reporter, metrics, metrics_factory, **kwargs)
+
+    def create_agent(self, channel):
+        return None
+
+    def make_batch(self, spans, process):
+        return zipkin_v2.make_zipkin_v2_batch(spans=spans, process=process)
+
+    @tornado.gen.coroutine
+    def _send(self, batch):
+        """
+        Send batch of spans out via AsyncHTTPClient. Any exceptions thrown
+        will be caught above in the exception handler of _submit().
+        """
+        client = tornado.httpclient.AsyncHTTPClient()
+        headers = {'content-type': 'application/json'}
+        if self.headers:
+            headers.update(self.headers)
+
+        request = tornado.httpclient.HTTPRequest(
+            method='POST',
+            url=self.spans_url,
+            headers=headers,
+            body=json.dumps(batch)
+        )
+        client.fetch(request)
