@@ -3,10 +3,13 @@
 History
 -------
 
-3.10.1 (unreleased)
+3.11.0 (2018-06-28)
 -------------------
 
-- Nothing changed yet.
+- Fix parsing remote sampling strategy on Python 3.5 (#180) <Niels Pardon>
+- Fix handling of missing ParentSpanId for B3 codec (#182) <Gabriel Gravel>
+- Implement throttler (#188) <Isaac Hier>
+- Improve handling of config values and default arguments (#192) <Isaac Hier>
 
 
 3.10.0 (2018-05-09)
