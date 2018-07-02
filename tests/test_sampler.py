@@ -217,14 +217,14 @@ def test_adaptive_sampler():
     assert sampled
     assert tags == get_tags('probabilistic', 0.5)
 
+    # This operation is seen for the first time by the sampler
+    sampled, tags = sampler.is_sampled(MAX_INT-10, "new_op")
+    assert sampled
+    assert tags == get_tags('probabilistic', 0.51)
+
     ts = time.time()
     with mock.patch('jaeger_client.rate_limiter.RateLimiter.timestamp') \
             as mock_time:
-
-        # This operation is seen for the first time by the sampler
-        sampled, tags = sampler.is_sampled(MAX_INT-10, "new_op")
-        assert sampled
-        assert tags == get_tags('probabilistic', 0.51)
 
         # Move time forward by a second to guarantee the rate limiter has enough credits
         mock_time.side_effect = lambda: ts + 1
