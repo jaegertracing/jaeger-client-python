@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import random
 import time
 
 
@@ -39,21 +40,31 @@ class RateLimiter(object):
     def __init__(self, credits_per_second, max_balance):
         self.credits_per_second = credits_per_second
         self.max_balance = max_balance
-        self.balance = self.max_balance
+        self.balance = self.max_balance * random.random()
         self.last_tick = self.timestamp()
 
     @staticmethod
     def timestamp():
         return time.time()
 
+    def update(self, credits_per_second, max_balance):
+        self._update_balance()
+        self.credits_per_second = credits_per_second
+        # The new balance should be proportional to the old balance.
+        self.balance = max_balance * self.balance / self.max_balance
+        self.max_balance = max_balance
+
     def check_credit(self, item_cost):
+        self._update_balance()
+        if self.balance >= item_cost:
+            self.balance -= item_cost
+            return True
+        return False
+
+    def _update_balance(self):
         current_time = self.timestamp()
         elapsed_time = current_time - self.last_tick
         self.last_tick = current_time
         self.balance += elapsed_time * self.credits_per_second
         if self.balance > self.max_balance:
             self.balance = self.max_balance
-        if self.balance >= item_cost:
-            self.balance -= item_cost
-            return True
-        return False

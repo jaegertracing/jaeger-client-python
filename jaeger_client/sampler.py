@@ -143,19 +143,26 @@ class RateLimitingSampler(Sampler):
     """
 
     def __init__(self, max_traces_per_second=10):
-        super(RateLimitingSampler, self).__init__(
-            tags={
-                SAMPLER_TYPE_TAG_KEY: SAMPLER_TYPE_RATE_LIMITING,
-                SAMPLER_PARAM_TAG_KEY: max_traces_per_second,
-            }
-        )
+        super(RateLimitingSampler, self).__init__()
+        self.rate_limiter = None
+        self._init(max_traces_per_second)
+
+    def _init(self, max_traces_per_second):
         assert max_traces_per_second >= 0, \
             'max_traces_per_second must not be negative'
+        self._tags = {
+            SAMPLER_TYPE_TAG_KEY: SAMPLER_TYPE_RATE_LIMITING,
+            SAMPLER_PARAM_TAG_KEY: max_traces_per_second,
+        }
         self.traces_per_second = max_traces_per_second
-        self.rate_limiter = RateLimiter(
-            credits_per_second=self.traces_per_second,
-            max_balance=self.traces_per_second if self.traces_per_second > 1.0 else 1.0
-        )
+        max_balance = self.traces_per_second if self.traces_per_second > 1.0 else 1.0
+        if not self.rate_limiter:
+            self.rate_limiter = RateLimiter(
+                credits_per_second=self.traces_per_second,
+                max_balance=max_balance
+            )
+        else:
+            self.rate_limiter.update(max_traces_per_second, max_balance)
 
     def is_sampled(self, trace_id, operation=''):
         return self.rate_limiter.check_credit(1.0), self._tags
@@ -172,6 +179,12 @@ class RateLimitingSampler(Sampler):
         d1['balance'] = d2['balance']
         d1['last_tick'] = d2['last_tick']
         return d1 == d2
+
+    def update(self, max_traces_per_second):
+        if self.traces_per_second == max_traces_per_second:
+            return False
+        self._init(max_traces_per_second)
+        return True
 
     def __str__(self):
         return 'RateLimitingSampler(%s)' % self.traces_per_second
@@ -225,7 +238,7 @@ class GuaranteedThroughputProbabilisticSampler(Sampler):
                 SAMPLER_PARAM_TAG_KEY: rate,
             }
         if self.lower_bound != lower_bound:
-            self.lower_bound_sampler = RateLimitingSampler(lower_bound)
+            self.lower_bound_sampler.update(lower_bound)
             self.lower_bound = lower_bound
 
     def __str__(self):
@@ -458,16 +471,20 @@ class RemoteControlledSampler(Sampler):
 
     def _update_rate_limiting_or_probabilistic_sampler(self, response):
         s_type = response.get(STRATEGY_TYPE_STR)
+        new_sampler = self.sampler
         if s_type == PROBABILISTIC_SAMPLING_STRATEGY:
             sampling_rate = get_sampling_probability(response)
             new_sampler = ProbabilisticSampler(rate=sampling_rate)
         elif s_type == RATE_LIMITING_SAMPLING_STRATEGY:
             mtps = get_rate_limit(response)
-            if 0 <= mtps < 500:
-                new_sampler = RateLimitingSampler(max_traces_per_second=mtps)
-            else:
+            if mtps < 0 or mtps >= 500:
                 raise ValueError(
                     'Rate limiting parameter not in [0, 500] range: %s' % mtps)
+            if isinstance(self.sampler, RateLimitingSampler):
+                if self.sampler.update(max_traces_per_second=mtps):
+                    self.metrics.sampler_updated(1)
+            else:
+                new_sampler = RateLimitingSampler(max_traces_per_second=mtps)
         else:
             raise ValueError('Unsupported sampling strategy type: %s' % s_type)
 
