@@ -350,4 +350,4 @@ class ZipkinV2Reporter(QueueReporter):
             headers=headers,
             body=json.dumps(batch)
         )
-        client.fetch(request)
+        return client.fetch(request)

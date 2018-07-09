@@ -18,6 +18,7 @@ from six.moves import range
 import logging
 import time
 import collections
+import json
 
 import mock
 import pytest
@@ -30,8 +31,9 @@ from jaeger_client.metrics import LegacyMetricsFactory, Metrics
 from jaeger_client.utils import ErrorReporter
 from tornado.ioloop import IOLoop
 from tornado.testing import AsyncTestCase, gen_test
-from jaeger_client.reporter import ThriftReporter
+from jaeger_client.reporter import QueueReporter, ThriftReporter, ZipkinV2Reporter
 from jaeger_client.ioloop_util import future_result
+import jaeger_client.thrift_gen.jaeger.ttypes as ttypes
 
 
 def test_null_reporter():
@@ -56,6 +58,22 @@ def test_logging_reporter():
     reporter.report_span({})
     log_mock.info.assert_called_with('Reporting span %s', {})
     reporter.close().result()
+
+
+def test_queue_reporter():
+    with pytest.raises(NotImplementedError):
+        QueueReporter(mock.MagicMock())
+
+    with mock.patch.object(QueueReporter, 'create_agent') as create_agent:
+        channel = mock.MagicMock()
+        reporter = QueueReporter(channel)
+        create_agent.assert_called_with(channel)
+
+        with pytest.raises(NotImplementedError):
+            reporter._send('batch').result()
+
+        with pytest.raises(NotImplementedError):
+            reporter.make_batch('spans', 'process')
 
 
 def test_composite_reporter():
@@ -132,7 +150,7 @@ class FakeMetricsFactory(LegacyMetricsFactory):
         self.counters[key] = value + self.counters.get(key, 0)
 
 
-class ThriftReporterTest(AsyncTestCase):
+class QueueReporterTest(object):
     @pytest.yield_fixture
     def thread_loop(self):
         yield
@@ -147,20 +165,6 @@ class ThriftReporterTest(AsyncTestCase):
         span.end_time = span.start_time + 0.001  # 1ms
         return span
 
-    @staticmethod
-    def _new_reporter(batch_size, flush=None, queue_cap=100):
-        reporter = ThriftReporter(channel=mock.MagicMock(),
-                                  io_loop=IOLoop.current(),
-                                  batch_size=batch_size,
-                                  flush_interval=flush,
-                                  metrics_factory=FakeMetricsFactory(),
-                                  error_reporter=HardErrorReporter(),
-                                  queue_capacity=queue_cap)
-        reporter.set_process('service', {}, max_length=0)
-        sender = FakeSender()
-        reporter._send = sender
-        return reporter, sender
-
     @tornado.gen.coroutine
     def _wait_for(self, fn):
         """Wait until fn() returns truth, but not longer than 1 second."""
@@ -170,6 +174,22 @@ class ThriftReporterTest(AsyncTestCase):
                 return
             yield tornado.gen.sleep(0.001)
         print('waited for condition %f seconds' % (time.time() - start))
+
+    @gen_test
+    def test_submit_requires_spans_and_process(self):
+        reporter, sender  = self._new_reporter(batch_size=1)
+        assert reporter._submit(None).result() is None
+        assert len(sender.futures) == 0
+
+        span = self._new_span('1')
+        process = reporter._process
+        reporter._process = None
+        assert reporter._submit([span]).result() is None
+        assert len(sender.futures) == 0
+
+        reporter._process = process
+        assert reporter._submit([span])
+        assert len(sender.futures) == 1
 
     @gen_test
     def test_submit_batch_size_1(self):
@@ -234,31 +254,6 @@ class ThriftReporterTest(AsyncTestCase):
         yield reporter.close()
 
     @gen_test
-    def test_submit_batch_size_2(self):
-        reporter, sender = self._new_reporter(batch_size=2, flush=0.01)
-        reporter.report_span(self._new_span('1'))
-        yield tornado.gen.sleep(0.001)
-        assert 0 == len(sender.futures)
-
-        reporter.report_span(self._new_span('2'))
-        yield self._wait_for(lambda: len(sender.futures) > 0)
-        assert 1 == len(sender.futures)
-        assert 2 == len(sender.requests[0].spans)
-        sender.futures[0].set_result(1)
-
-        # 3rd span will not be submitted right away, but after `flush` interval
-        reporter.report_span(self._new_span('3'))
-        yield tornado.gen.sleep(0.001)
-        assert 1 == len(sender.futures)
-        yield tornado.gen.sleep(0.001)
-        assert 1 == len(sender.futures)
-        yield tornado.gen.sleep(0.01)
-        assert 2 == len(sender.futures)
-        sender.futures[1].set_result(1)
-
-        yield reporter.close()
-
-    @gen_test
     def test_close_drains_queue(self):
         reporter, sender = self._new_reporter(batch_size=1, flush=0.050)
         reporter.report_span(self._new_span('0'))
@@ -291,3 +286,133 @@ class ThriftReporterTest(AsyncTestCase):
         yield reporter.close()
         assert reporter.queue.qsize() == 0, 'all spans drained'
         assert count[0] == 4, 'last span submitted in one extrac batch'
+
+    @gen_test
+    def test_invalid_capacity_size(self):
+        with pytest.raises(ValueError):
+            self._new_reporter(batch_size=2, queue_cap=1)
+
+
+class ThriftReporterTest(QueueReporterTest, AsyncTestCase):
+
+    @staticmethod
+    def _new_reporter(batch_size, flush=None, queue_cap=100):
+        reporter = ThriftReporter(channel=mock.MagicMock(),
+                                  io_loop=IOLoop.current(),
+                                  batch_size=batch_size,
+                                  flush_interval=flush,
+                                  metrics_factory=FakeMetricsFactory(),
+                                  error_reporter=HardErrorReporter(),
+                                  queue_capacity=queue_cap)
+        reporter.set_process('service', {}, max_length=0)
+        sender = FakeSender()
+        reporter._send = sender
+        return reporter, sender
+
+    @gen_test
+    def test_submit_batch_size_2(self):
+        reporter, sender = self._new_reporter(batch_size=2, flush=0.01)
+        reporter.report_span(self._new_span('1'))
+        yield tornado.gen.sleep(0.001)
+        assert 0 == len(sender.futures)
+
+        reporter.report_span(self._new_span('2'))
+        yield self._wait_for(lambda: len(sender.futures) > 0)
+        assert 1 == len(sender.futures)
+        assert 2 == len(sender.requests[0].spans)
+        sender.futures[0].set_result(1)
+
+        # 3rd span will not be submitted right away, but after `flush` interval
+        reporter.report_span(self._new_span('3'))
+        yield tornado.gen.sleep(0.001)
+        assert 1 == len(sender.futures)
+        yield tornado.gen.sleep(0.001)
+        assert 1 == len(sender.futures)
+        yield tornado.gen.sleep(0.01)
+        assert 2 == len(sender.futures)
+        sender.futures[1].set_result(1)
+
+        yield reporter.close()
+
+    @gen_test
+    def test_send_emits_batch(self):
+        reporter = ThriftReporter(channel=mock.MagicMock(),
+                                  io_loop=IOLoop.current(),
+                                  batch_size=1,
+                                  metrics_factory=FakeMetricsFactory(),
+                                  error_reporter=HardErrorReporter())
+        reporter.set_process('service', {}, max_length=0)
+        with mock.patch.object(reporter.agent, 'emitBatch') as emit:
+            span = self._new_span('1')
+            batch = reporter.make_batch([span], reporter._process)
+            reporter.report_span(span)
+            yield tornado.gen.sleep(0.001)
+            batch = emit.call_args[0][0]
+            assert isinstance(batch, ttypes.Batch)
+            assert len(batch.spans) == 1
+
+
+class ZipkinV2ReporterTest(QueueReporterTest, AsyncTestCase):
+
+    @staticmethod
+    def _new_reporter(batch_size, flush=None, queue_cap=100):
+        reporter = ZipkinV2Reporter(channel=mock.MagicMock(),
+                                    spans_url='api/v2/spans',
+                                    io_loop=IOLoop.current(),
+                                    batch_size=batch_size,
+                                    flush_interval=flush,
+                                    metrics_factory=FakeMetricsFactory(),
+                                    error_reporter=HardErrorReporter(),
+                                    queue_capacity=queue_cap)
+        reporter.set_process('service', {}, max_length=0)
+        sender = FakeSender()
+        reporter._send = sender
+        return reporter, sender
+
+    @gen_test
+    def test_submit_batch_size_2(self):
+        reporter, sender = self._new_reporter(batch_size=2, flush=0.01)
+        reporter.report_span(self._new_span('1'))
+        yield tornado.gen.sleep(0.001)
+        assert 0 == len(sender.futures)
+
+        reporter.report_span(self._new_span('2'))
+        yield self._wait_for(lambda: len(sender.futures) > 0)
+        assert 1 == len(sender.futures)
+        assert 2 == len(sender.requests[0])
+        sender.futures[0].set_result(1)
+
+        # 3rd span will not be submitted right away, but after `flush` interval
+        reporter.report_span(self._new_span('3'))
+        yield tornado.gen.sleep(0.001)
+        assert 1 == len(sender.futures)
+        yield tornado.gen.sleep(0.001)
+        assert 1 == len(sender.futures)
+        yield tornado.gen.sleep(0.01)
+        assert 2 == len(sender.futures)
+        sender.futures[1].set_result(1)
+
+        yield reporter.close()
+
+    @gen_test
+    def test_send_submits_request(self):
+        url = 'http://myzipkin/api/v2/spans'
+        headers = {'MyHeader': 'MyHeaderVal'}
+        reporter = ZipkinV2Reporter(channel=mock.MagicMock(),
+                                    spans_url=url,
+                                    headers=headers,
+                                    io_loop=IOLoop.current(),
+                                    batch_size=1,
+                                    metrics_factory=FakeMetricsFactory(),
+                                    error_reporter=HardErrorReporter())
+        reporter.set_process('service', {}, max_length=0)
+        with mock.patch('tornado.httpclient.AsyncHTTPClient.fetch') as sender:
+            span = self._new_span('1')
+            batch = reporter.make_batch([span], reporter._process)
+            reporter.report_span(span)
+            yield tornado.gen.sleep(0.001)
+            request = sender.call_args[0][0]
+            assert json.loads(request.body.decode('utf8')) == batch
+            assert request.url == url
+            headers.update({'content-type': 'application/json'})
+            assert request.headers == headers
