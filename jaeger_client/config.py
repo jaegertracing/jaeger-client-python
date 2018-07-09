@@ -21,12 +21,13 @@ import threading
 import opentracing
 from opentracing.propagation import Format
 from . import Tracer
-from .local_agent_net import LocalAgentSender
+from .local_agent_net import LocalAgentReader, LocalAgentSender
 from .throttler import RemoteThrottler
 from .reporter import (
-    Reporter,
+    ThriftReporter,
     CompositeReporter,
     LoggingReporter,
+    ZipkinV2Reporter,
 )
 from .sampler import (
     ConstSampler,
@@ -115,6 +116,7 @@ class Config(object):
                         'sampler',
                         'tags',
                         'enabled',
+                        'reporter_type',
                         'reporter_batch_size',
                         'propagation',
                         'max_tag_value_length',
@@ -123,7 +125,9 @@ class Config(object):
                         'trace_id_header',
                         'baggage_header_prefix',
                         'service_name',
-                        'throttler']
+                        'throttler',
+                        'headers',
+                        'zipkin_spans_url']
         config_keys = config.keys()
         unexpected_config_keys = [k for k in config_keys if k not in allowed_keys]
         if unexpected_config_keys:
@@ -145,6 +149,13 @@ class Config(object):
     @property
     def enabled(self):
         return get_boolean(self.config.get('enabled', True), True)
+
+    @property
+    def reporter_type(self):
+        rt = self.config.get('reporter_type', 'jaeger').lower()
+        if rt not in ('jaeger', 'zipkin_v2'):
+            raise ValueError('config reporter_type must be "jaeger" or "zipkin_v2"')
+        return rt
 
     @property
     def reporter_batch_size(self):
@@ -312,6 +323,14 @@ class Config(object):
         except:
             return DEFAULT_THROTTLER_REFRESH_INTERVAL
 
+    @property
+    def headers(self):
+        return self.config.get('headers', {})
+
+    @property
+    def zipkin_spans_url(self):
+        return self.config.get('zipkin_spans_url', 'http://localhost:9411/api/v2/spans')
+
     @staticmethod
     def initialized():
         with Config._initialized_lock:
@@ -353,14 +372,32 @@ class Config(object):
                 max_operations=self.max_operations)
         logger.info('Using sampler %s', sampler)
 
-        reporter = Reporter(
-            channel=channel,
-            queue_capacity=self.reporter_queue_size,
-            batch_size=self.reporter_batch_size,
-            flush_interval=self.reporter_flush_interval,
-            logger=logger,
-            metrics_factory=self._metrics_factory,
-            error_reporter=self.error_reporter)
+        if self.reporter_type == 'jaeger':
+            reporter = ThriftReporter(
+                channel=channel,
+                queue_capacity=self.reporter_queue_size,
+                batch_size=self.reporter_batch_size,
+                flush_interval=self.reporter_flush_interval,
+                logger=logger,
+                metrics_factory=self._metrics_factory,
+                error_reporter=self.error_reporter
+            )
+        elif self.reporter_type == 'zipkin_v2':
+            kwargs = {}
+            if self.headers:
+                kwargs['headers'] = self.headers
+
+            reporter = ZipkinV2Reporter(
+                channel=channel,
+                spans_url=self.zipkin_spans_url,
+                queue_capacity=self.reporter_queue_size,
+                batch_size=self.reporter_batch_size,
+                flush_interval=self.reporter_flush_interval,
+                logger=logger,
+                metrics_factory=self._metrics_factory,
+                error_reporter=self.error_reporter,
+                **kwargs
+            )
 
         if self.logging:
             reporter = CompositeReporter(reporter, LoggingReporter(logger))
@@ -405,11 +442,20 @@ class Config(object):
     def _create_local_agent_channel(self, io_loop):
         """
         Create an out-of-process channel communicating to local jaeger-agent.
-        Spans are submitted as SOCK_DGRAM Thrift, sampling strategy is polled
-        via JSON HTTP.
+        If using Jaeger backend, spans are submitted as SOCK_DGRAM Thrift, sampling
+        strategy is polled via JSON HTTP.
 
         :param self: instance of Config
         """
+        if self.reporter_type == 'zipkin_v2':
+            logger.info('Initializing Jaeger Tracer with Zipkin V2 reporter')
+            return LocalAgentReader(
+                host=self.local_agent_reporting_host,
+                sampling_port=self.local_agent_sampling_port,
+                reporting_port=self.local_agent_reporting_port,
+                throttling_port=self.throttler_port,
+                io_loop=io_loop
+            )
         logger.info('Initializing Jaeger Tracer with UDP reporter')
         return LocalAgentSender(
             host=self.local_agent_reporting_host,

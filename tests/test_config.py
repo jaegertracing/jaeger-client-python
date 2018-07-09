@@ -19,11 +19,15 @@ import opentracing.tracer
 from jaeger_client import Config, ConstSampler, ProbabilisticSampler, RateLimitingSampler
 from jaeger_client.config import DEFAULT_THROTTLER_PORT
 from jaeger_client.metrics import MetricsFactory
-from jaeger_client.reporter import NullReporter
+from jaeger_client.reporter import NullReporter, ZipkinV2Reporter
 from jaeger_client import constants
 
 
 class ConfigTests(unittest.TestCase):
+
+    def setUp(self):
+        if Config.initialized():
+            Config._initialized = False
 
     def test_enabled(self):
         c = Config({'enabled': True}, service_name='x')
@@ -142,5 +146,39 @@ class ConfigTests(unittest.TestCase):
     def test_initialize_tracer(self):
         c = Config({}, service_name='x')
         tracer = c.initialize_tracer()
-
         assert opentracing.tracer == tracer
+
+    def test_global_tracer_initializaion(self):
+        c = Config({}, service_name='x')
+        tracer = c.initialize_tracer()
+        assert tracer
+        attempt = c.initialize_tracer()
+        assert attempt is None
+
+    def test_reporter_type(self):
+        c = Config({'reporter_type': 'JaEGer'}, service_name='x')
+        assert c.reporter_type == 'jaeger'
+        c = Config({'reporter_type': 'ZiPKIn_V2'}, service_name='x')
+        assert c.reporter_type == 'zipkin_v2'
+        c = Config({'reporter_type': 'NotAReporterType'}, service_name='x')
+        with self.assertRaises(ValueError):
+            c.reporter_type
+
+    def test_headers(self):
+        c = Config({}, service_name='x')
+        assert c.headers == {}
+        cfg_dict = {'headers': {'HeaderOne': 'OneVal', 'HeaderTwo': 'TwoVal'}}
+        c = Config(cfg_dict, service_name='x')
+        assert c.headers == cfg_dict['headers']
+
+    def test_zipkin_spans_url(self):
+        c = Config({}, service_name='x')
+        assert c.zipkin_spans_url == 'http://localhost:9411/api/v2/spans'
+        c = Config({'zipkin_spans_url': 'someurl'}, service_name='x')
+        assert c.zipkin_spans_url == 'someurl'
+
+    def test_initialize_trace_with_zipkin_reporter(self):
+        c = Config({'reporter_type': 'zipkin_v2',
+                    'headers': {'Header': 'Value'}}, service_name='x')
+        tracer = c.initialize_tracer()
+        assert isinstance(tracer.reporter, ZipkinV2Reporter)
