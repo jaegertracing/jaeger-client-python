@@ -251,7 +251,7 @@ class Config(object):
         try:
             return int(os.getenv('JAEGER_AGENT_PORT'))
         except:
-            return DEFAULT_SAMPLING_PORT
+            return DEFAULT_REPORTING_PORT
 
     @property
     def local_agent_reporting_host(self):
