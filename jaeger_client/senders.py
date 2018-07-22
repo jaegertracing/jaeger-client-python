@@ -13,9 +13,14 @@
 # limitations under the License.
 from __future__ import absolute_import
 
+import sys
+import socket
 import logging
+import tornado.gen
+from six import reraise
 from threadloop import ThreadLoop
 
+from . import thrift
 from .local_agent_net import LocalAgentSender
 from thrift.protocol import TCompactProtocol
 
@@ -28,13 +33,48 @@ logger = logging.getLogger('jaeger_tracing')
 
 
 class Sender(object):
-    def __init__(self, host, port, io_loop=None):
-        self.host = host
-        self.port = port
+    def __init__(self, io_loop=None):
+        from threading import Lock
         self.io_loop = io_loop or self._create_new_thread_loop()
+        self._process_lock = Lock()
+        self._process = None
+        self.spans = []
 
+    def append(self, span):
+        """Queue a span for subsequent submission calls to flush()"""
+        self.spans.append(span)
+
+    @property
+    def span_count(self):
+        return len(self.spans)
+
+    @tornado.gen.coroutine
+    def flush(self):
+        """Examine span and process state before yielding to _flush() for batching and transport."""
+        if self.spans:
+            with self._process_lock:
+                process = self._process
+            if process:
+                try:
+                    yield self._flush(self.spans, self._process)
+                finally:
+                    self.spans = []
+
+    @tornado.gen.coroutine
+    def _flush(self, spans, process):
+        """Batch spans and invokes send(). Override with specific batching logic, if desired."""
+        batch = thrift.make_jaeger_batch(spans=spans, process=process)
+        yield self.send(batch)
+
+    @tornado.gen.coroutine
     def send(self, batch):
         raise NotImplementedError('This method should be implemented by subclasses')
+
+    def set_process(self, service_name, tags, max_length):
+        with self._process_lock:
+            self._process = thrift.make_process(
+                service_name=service_name, tags=tags, max_length=max_length,
+            )
 
     def _create_new_thread_loop(self):
         """
@@ -49,21 +89,26 @@ class Sender(object):
 
 class UDPSender(Sender):
     def __init__(self, host, port, io_loop=None):
-        super(UDPSender, self).__init__(
-            host=host,
-            port=port,
-            io_loop=io_loop
-        )
+        super(UDPSender, self).__init__(io_loop=io_loop)
+        self.host = host
+        self.port = port
         self.channel = self._create_local_agent_channel(self.io_loop)
         self.agent = Agent.Client(self.channel, self)
 
+    @tornado.gen.coroutine
     def send(self, batch):
-        """ Send batch of spans out via thrift transport.
-
-        Any exceptions thrown will be caught by the caller.
         """
-
-        return self.agent.emitBatch(batch)
+        Send batch of spans out via thrift transport.
+        """
+        try:
+            yield self.agent.emitBatch(batch)
+        except socket.error as e:
+            reraise(type(e),
+                    type(e)('Failed to submit traces to jaeger-agent socket: {}'.format(e)),
+                    sys.exc_info()[2])
+        except Exception as e:
+            reraise(type(e), type(e)('Failed to submit traces to jaeger-agent: {}'.format(e)),
+                    sys.exc_info()[2])
 
     def _create_local_agent_channel(self, io_loop):
         """
