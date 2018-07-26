@@ -24,13 +24,6 @@ for dname, dirs, files in os.walk("jaeger_client/thrift_gen/agent"):
             with open(fpath, "w") as f:
                 f.write(s)
 
-with open('jaeger_client/thrift_gen/jaeger/__init__.py', 'r') as f:
-    for line in f:
-        m = re.match(r'^__version__\s*=\s*(["\'])([^"\']+)\1', line)
-        if m:
-            version = m.group(2)
-            break
-
 assert version is not None, \
     'Could not determine version number from jaeger_client/__init__.py'
 
