@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Uber Technologies, Inc.
+# Copyright (c) 2016-2018 Uber Technologies, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import tornado.web
+import logging
 import json
 import os
 
@@ -28,6 +29,7 @@ from jaeger_client.constants import (
 )
 from jaeger_client.sampler import RemoteControlledSampler, ConstSampler
 from jaeger_client.reporter import Reporter
+from jaeger_client.throttler import RemoteThrottler
 from jaeger_client.tracer import Tracer
 
 config = {
@@ -65,9 +67,8 @@ class EndToEndHandler(object):
         init_sampler = cfg.sampler
         channel = self.local_agent_sender
 
-        reporter = Reporter(
-            channel=channel,
-            flush_interval=cfg.reporter_flush_interval)
+        reporter = Reporter(channel=channel,
+                            flush_interval=cfg.reporter_flush_interval)
 
         remote_sampler = RemoteControlledSampler(
             channel=channel,
@@ -75,15 +76,19 @@ class EndToEndHandler(object):
             sampling_refresh_interval=cfg.sampling_refresh_interval,
             init_sampler=init_sampler)
 
+        throttler = RemoteThrottler(channel, cfg.service_name)
+
         remote_tracer = Tracer(
             service_name=cfg.service_name,
             reporter=reporter,
-            sampler=remote_sampler)
+            sampler=remote_sampler,
+            throttler=throttler)
 
         const_tracer = Tracer(
             service_name=cfg.service_name,
             reporter=reporter,
-            sampler=ConstSampler(decision=True)
+            sampler=ConstSampler(decision=True),
+            throttler=throttler
         )
 
         self._tracers = {
@@ -101,10 +106,12 @@ class EndToEndHandler(object):
 
     @property
     def local_agent_sender(self):
+        host, port = _determine_host_port()
         return LocalAgentSender(
-            host=os.getenv('AGENT_HOST', 'jaeger-agent'),
+            host=host,
             sampling_port=DEFAULT_SAMPLING_PORT,
-            reporting_port=DEFAULT_REPORTING_PORT,
+            reporting_port=port,
+            throttling_port=DEFAULT_SAMPLING_PORT,
         )
 
     @tornado.gen.coroutine
@@ -118,3 +125,26 @@ class EndToEndHandler(object):
                 span.set_tag(k, v)
             span.finish()
         response_writer.finish()
+
+
+def _determine_host_port():
+    host_port = os.environ.get('AGENT_HOST_PORT', None)
+    if host_port:
+        host, port = _parse_host_port(host_port,
+                                      'jaeger-agent',
+                                      DEFAULT_REPORTING_PORT)
+    else:
+        host, port = 'jaeger-agent', DEFAULT_REPORTING_PORT
+    return host, port
+
+
+def _parse_host_port(host_port, default_host, default_port):
+    try:
+        host, port_str = host_port.split(':')
+        port = int(port_str)
+        return host, port
+    except ValueError:
+        logging.getLogger().error(
+            'Invalid host port (%s), using default host port (%s:%d)',
+            host_port, default_host, default_port)
+        return default_host, default_port

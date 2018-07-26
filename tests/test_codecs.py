@@ -337,6 +337,11 @@ class TestCodecs(unittest.TestCase):
         assert span_context.parent_id == int('0020000000000001', 16)
         assert span_context.flags == 0x02
 
+        # validate that missing parentspanid does not cause an error
+        carrier.pop('x-b3-parentspanid')
+        span_context = codec.extract(carrier)
+        assert span_context.parent_id is None
+
         carrier.update({'x-b3-sampled': '1'})
 
         span_context = codec.extract(carrier)

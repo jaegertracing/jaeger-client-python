@@ -15,13 +15,14 @@
 import mock
 import random
 import six
+import socket
 
 import pytest
 import tornado.httputil
 
 from opentracing import Format, child_of
 from opentracing.ext import tags as ext_tags
-from jaeger_client import ConstSampler, Tracer
+from jaeger_client import ConstSampler, SpanContext, Tracer
 from jaeger_client import constants as c
 
 
@@ -200,7 +201,7 @@ def test_tracer_tags_no_hostname():
     from jaeger_client.tracer import logger
     with mock.patch.object(logger, 'exception') as mock_log:
         with mock.patch('socket.gethostname',
-                        side_effect=['host', ValueError()]):
+                        side_effect=['host', socket.timeout()]):
             Tracer(service_name='x', reporter=reporter, sampler=sampler)
         assert mock_log.call_count == 1
 
@@ -260,3 +261,45 @@ def test_tracer_override_codecs():
                 "Extra codec not found"
         assert tracer.codecs[Format.BINARY] == "overridden_binary_codec",\
                 "Binary format codec not overridden"
+
+
+def test_tracer_hostname_tag():
+    reporter = mock.MagicMock()
+    sampler = ConstSampler(True)
+    tracer = Tracer(
+        service_name='x',
+        tags={c.JAEGER_HOSTNAME_TAG_KEY: 'jaeger-client-app.local'},
+        reporter=reporter,
+        sampler=sampler,
+    )
+
+    assert tracer.tags[c.JAEGER_HOSTNAME_TAG_KEY] == \
+            'jaeger-client-app.local'
+
+
+def test_tracer_ip_tag():
+    reporter = mock.MagicMock()
+    sampler = ConstSampler(True)
+    tracer = Tracer(
+        service_name='x',
+        tags={c.JAEGER_IP_TAG_KEY: '192.0.2.3'},
+        reporter=reporter,
+        sampler=sampler,
+    )
+
+    assert tracer.tags[c.JAEGER_IP_TAG_KEY] == \
+            '192.0.2.3'
+
+def test_tracer_throttler():
+    tracer = Tracer(
+        service_name='x',
+        reporter=mock.MagicMock(),
+        sampler=mock.MagicMock(),
+        throttler=mock.MagicMock())
+    tracer.throttler.is_allowed.return_value = True
+    assert tracer.is_debug_allowed()
+    tracer.throttler.is_allowed.return_value = False
+    assert not tracer.is_debug_allowed()
+    debug_span_context = SpanContext.with_debug_id('debug-id')
+    span = tracer.start_span('test-operation', child_of=debug_span_context)
+    assert not span.is_debug()

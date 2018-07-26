@@ -1,5 +1,5 @@
 from __future__ import division
-# Copyright (c) 2016 Uber Technologies, Inc.
+# Copyright (c) 2016-2018 Uber Technologies, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ from jaeger_client.sampler import (
     RemoteControlledSampler,
     GuaranteedThroughputProbabilisticSampler,
     AdaptiveSampler,
+    DEFAULT_MAX_OPERATIONS,
     DEFAULT_SAMPLING_PROBABILITY,
     get_sampling_probability,
     get_rate_limit,
@@ -336,6 +337,19 @@ def test_remotely_controlled_sampler():
     sampler._delayed_polling()
     sampler.close()
 
+    sampler = RemoteControlledSampler(
+        channel=mock.MagicMock(),
+        service_name='x',
+        max_operations=None,
+    )
+    assert sampler.max_operations == DEFAULT_MAX_OPERATIONS
+
+    sampler.close()
+    assert not sampler.running
+    sampler._init_polling()
+    assert not sampler.running
+    sampler._delayed_polling()
+    assert not sampler.running
 
 # noinspection PyProtectedMember
 def test_sampling_request_callback():
@@ -355,7 +369,7 @@ def test_sampling_request_callback():
 
     probabilistic_strategy = """
     {
-        "strategyType":0,
+        "strategyType":"PROBABILISTIC",
         "probabilisticSampling":
         {
             "samplingRate":0.002
@@ -374,7 +388,7 @@ def test_sampling_request_callback():
 
     adaptive_sampling_strategy = """
     {
-        "strategyType":0,
+        "strategyType":"PROBABILISTIC",
         "operationSampling":
         {
             "defaultSamplingProbability":0.001,
@@ -400,6 +414,21 @@ def test_sampling_request_callback():
     sampler._sampling_request_callback(return_value)
     assert prev_sampler is sampler.sampler, "strategy hasn't changed so sampler should not change"
 
+    probabilistic_strategy_bytes = probabilistic_strategy.encode('utf-8')
+
+    return_value.result = lambda *args: \
+        type('obj', (object,), {'body': probabilistic_strategy_bytes})()
+    sampler._sampling_request_callback(return_value)
+    assert '%s' % sampler.sampler == 'ProbabilisticSampler(0.002)', 'sampler should have changed to probabilistic'
+
+    adaptive_sampling_strategy_bytearray = bytearray(adaptive_sampling_strategy.encode('utf-8'))
+
+    return_value.result = lambda *args: \
+        type('obj', (object,), {'body': adaptive_sampling_strategy_bytearray})()
+    sampler._sampling_request_callback(return_value)
+    assert '%s' % sampler.sampler == 'AdaptiveSampler(0.001000, 2.000000, 10)', 'sampler should have changed to adaptive'
+    prev_sampler = sampler.sampler
+
     return_value.exception = lambda *args: True
     sampler._sampling_request_callback(return_value)
     assert error_reporter.error.call_count == 1
@@ -410,6 +439,18 @@ def test_sampling_request_callback():
 
     sampler._sampling_request_callback(return_value)
     assert error_reporter.error.call_count == 2
+    assert prev_sampler is sampler.sampler, 'error updating sampler should not update the sampler'
+
+    return_value.result = lambda *args: \
+        type('obj', (object,), {'body': None})()
+    sampler._sampling_request_callback(return_value)
+    assert error_reporter.error.call_count == 3
+    assert prev_sampler is sampler.sampler, 'error updating sampler should not update the sampler'
+
+    return_value.result = lambda *args: \
+        type('obj', (object,), {'body': {'decode': None}})()
+    sampler._sampling_request_callback(return_value)
+    assert error_reporter.error.call_count == 4
     assert prev_sampler is sampler.sampler, 'error updating sampler should not update the sampler'
 
     return_value.result = lambda *args: \
@@ -425,62 +466,69 @@ other_probabilistic_sampler = ProbabilisticSampler(0.003)
 rate_limiting_sampler = RateLimitingSampler(10)
 other_rate_limiting_sampler = RateLimitingSampler(20)
 
-@pytest.mark.parametrize("response,init_sampler,expected_sampler,err_count,err_msg,reference_equivalence", [
+@pytest.mark.parametrize("response,init_sampler,expected_sampler,err_count,err_msg,reference_equivalence,max_operations", [
     (
-        {"strategyType":0,"probabilisticSampling":{"samplingRate":0.003}},
+        {"strategyType":"PROBABILISTIC","probabilisticSampling":{"samplingRate":0.003}},
         probabilistic_sampler,
         other_probabilistic_sampler,
         0,
         'sampler should update to new probabilistic sampler',
         False,
+        10,
     ),
     (
-        {"strategyType":0,"probabilisticSampling":{"samplingRate":400}},
+        {"strategyType":"PROBABILISTIC","probabilisticSampling":{"samplingRate":400}},
         probabilistic_sampler,
         probabilistic_sampler,
         1,
         'sampler should remain the same if strategy is invalid',
         True,
+        10,
     ),
     (
-        {"strategyType":0,"probabilisticSampling":{"samplingRate":0.002}},
+        {"strategyType":"PROBABILISTIC","probabilisticSampling":{"samplingRate":0.002}},
         probabilistic_sampler,
         probabilistic_sampler,
         0,
         'sampler should remain the same with the same strategy',
         True,
+        10,
     ),
     (
-        {"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":10}},
+        {"strategyType":"RATE_LIMITING","rateLimitingSampling":{"maxTracesPerSecond":10}},
         probabilistic_sampler,
         rate_limiting_sampler,
         0,
         'sampler should update to new rate limiting sampler',
         False,
+        10,
     ),
     (
-        {"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":10}},
+        {"strategyType":"RATE_LIMITING","rateLimitingSampling":{"maxTracesPerSecond":10}},
         rate_limiting_sampler,
         rate_limiting_sampler,
         0,
         'sampler should remain the same with the same strategy',
         True,
+        10,
     ),
     (
-        {"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":-10}},
+        {"strategyType":"RATE_LIMITING","rateLimitingSampling":{"maxTracesPerSecond":-10}},
         rate_limiting_sampler,
         rate_limiting_sampler,
         1,
         'sampler should remain the same if strategy is invalid',
         True,
+        10,
     ),
     (
-        {"strategyType":1,"rateLimitingSampling":{"maxTracesPerSecond":20}},
+        {"strategyType":"RATE_LIMITING","rateLimitingSampling":{"maxTracesPerSecond":20}},
         rate_limiting_sampler,
         other_rate_limiting_sampler,
         0,
         'sampler should update to new rate limiting sampler',
         False,
+        10,
     ),
     (
         {},
@@ -489,24 +537,35 @@ other_rate_limiting_sampler = RateLimitingSampler(20)
         1,
         'sampler should remain the same if strategy is empty',
         True,
+        10,
     ),
     (
-        {"strategyType":2},
+        {"strategyType":"INVALID_TYPE"},
         rate_limiting_sampler,
         rate_limiting_sampler,
         1,
         'sampler should remain the same if strategy is invalid',
         True,
+        10,
+    ),
+    (
+        {"strategyType":"INVALID_TYPE"},
+        rate_limiting_sampler,
+        rate_limiting_sampler,
+        1,
+        'sampler should remain the same if strategy is invalid',
+        True,
+        None,
     ),
 ])
-def test_update_sampler(response, init_sampler, expected_sampler, err_count, err_msg, reference_equivalence):
+def test_update_sampler(response, init_sampler, expected_sampler, err_count, err_msg, reference_equivalence, max_operations):
     error_reporter = mock.MagicMock()
     error_reporter.error = mock.MagicMock()
     remote_sampler = RemoteControlledSampler(
         channel=mock.MagicMock(),
         service_name='x',
         error_reporter=error_reporter,
-        max_operations=10,
+        max_operations=max_operations,
         init_sampler=init_sampler,
     )
 
@@ -533,7 +592,7 @@ def test_update_sampler_adaptive_sampler():
     )
 
     response = {
-        "strategyType":1,
+        "strategyType":"RATE_LIMITING",
         "operationSampling":
         {
             "defaultSamplingProbability":0.001,
@@ -554,7 +613,7 @@ def test_update_sampler_adaptive_sampler():
     assert '%s' % remote_sampler.sampler == 'AdaptiveSampler(0.001000, 2.000000, 10)'
 
     new_response = {
-        "strategyType":1,
+        "strategyType":"RATE_LIMITING",
         "operationSampling":
         {
             "defaultSamplingProbability":0.51,
@@ -574,11 +633,11 @@ def test_update_sampler_adaptive_sampler():
     remote_sampler._update_sampler(new_response)
     assert '%s' % remote_sampler.sampler == 'AdaptiveSampler(0.510000, 3.000000, 10)'
 
-    remote_sampler._update_sampler({"strategyType":0,"probabilisticSampling":{"samplingRate":0.004}})
+    remote_sampler._update_sampler({"strategyType":"PROBABILISTIC","probabilisticSampling":{"samplingRate":0.004}})
     assert '%s' % remote_sampler.sampler == 'ProbabilisticSampler(0.004)', \
         'should not fail going from adaptive sampler to probabilistic sampler'
 
-    remote_sampler._update_sampler({"strategyType":1,"operationSampling":{"defaultSamplingProbability":0.4}})
+    remote_sampler._update_sampler({"strategyType":"RATE_LIMITING","operationSampling":{"defaultSamplingProbability":0.4}})
     assert '%s' % remote_sampler.sampler == 'AdaptiveSampler(0.400000, 0.001667, 10)'
 
     remote_sampler.close()

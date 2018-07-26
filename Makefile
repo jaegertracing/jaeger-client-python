@@ -25,14 +25,23 @@ bootstrap:
 	pip install -r requirements.txt
 	pip install -r requirements-dev.txt
 	pip install -r requirements-tests.txt
+	pip install virtualenv
 	python setup.py develop
+
 
 .PHONY: test
 test: clean
 	$(pytest) $(test_args) --benchmark-skip
 
 .PHONY: test_ci
-test_ci: clean test lint
+test_ci: clean test-import test lint
+
+.PHONY: test-import
+test-import:
+	virtualenv import-test
+	import-test/bin/pip install -e .
+	import-test/bin/python -c "import jaeger_client"
+	rm -rf import-test
 
 .PHONY: test-perf
 test-perf: clean
@@ -70,7 +79,7 @@ THRIFT_GEN_DIR=jaeger_client/thrift_gen
 THRIFT_VER=0.9.3
 THRIFT_IMG=thrift:$(THRIFT_VER)
 THRIFT_PY_ARGS=new_style,tornado
-THRIFT=docker run -v "${PWD}:/data" $(THRIFT_IMG) thrift
+THRIFT=docker run -v "${PWD}:/data" -u $(shell id -u) $(THRIFT_IMG) thrift
 
 idl-submodule:
 	git submodule init
@@ -96,4 +105,4 @@ thrift: idl-submodule thrift-image
 	done
 
 update-license:
-	python scripts/updateLicense.py $(sources)	
+	python scripts/updateLicense.py $(sources)

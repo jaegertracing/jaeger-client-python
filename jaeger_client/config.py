@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Uber Technologies, Inc.
+# Copyright (c) 2016-2018 Uber Technologies, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import opentracing
 from opentracing.propagation import Format
 from . import Tracer
 from .local_agent_net import LocalAgentSender
+from .throttler import RemoteThrottler
 from .reporter import (
     Reporter,
     CompositeReporter,
@@ -43,6 +44,7 @@ from .constants import (
     BAGGAGE_HEADER_PREFIX,
     DEBUG_ID_HEADER_KEY,
     MAX_TAG_VALUE_LENGTH,
+    DEFAULT_THROTTLER_REFRESH_INTERVAL,
 )
 from .metrics import LegacyMetricsFactory, MetricsFactory, Metrics
 from .utils import get_boolean, ErrorReporter
@@ -51,6 +53,7 @@ from .codecs import B3Codec
 DEFAULT_REPORTING_HOST = 'localhost'
 DEFAULT_REPORTING_PORT = 6831
 DEFAULT_SAMPLING_PORT = 5778
+DEFAULT_THROTTLER_PORT = DEFAULT_SAMPLING_PORT
 LOCAL_AGENT_DEFAULT_ENABLED = True
 
 logger = logging.getLogger('jaeger_tracing')
@@ -98,7 +101,7 @@ class Config(object):
             # if metrics are explicitly disabled, use a dummy
             self._metrics_factory = MetricsFactory()
         self._service_name = config.get('service_name', service_name)
-        if self._service_name is None:
+        if not self._service_name:
             raise ValueError('service_name required in the config or param')
 
         self._error_reporter = ErrorReporter(
@@ -119,7 +122,8 @@ class Config(object):
                         'sampling_refresh_interval',
                         'trace_id_header',
                         'baggage_header_prefix',
-                        'service_name']
+                        'service_name',
+                        'throttler']
         config_keys = config.keys()
         unexpected_config_keys = [k for k in config_keys if k not in allowed_keys]
         if unexpected_config_keys:
@@ -242,6 +246,11 @@ class Config(object):
         try:
             return int(self.local_agent_group()['reporting_port'])
         except:
+            pass
+
+        try:
+            return int(os.getenv('JAEGER_AGENT_PORT'))
+        except:
             return DEFAULT_REPORTING_PORT
 
     @property
@@ -272,11 +281,36 @@ class Config(object):
 
     @property
     def propagation(self):
-        propagation = self.config.get('propagation', None)
+        propagation = self.config.get('propagation')
         if propagation == 'b3':
             # replace the codec with a B3 enabled instance
             return {Format.HTTP_HEADERS: B3Codec()}
         return {}
+
+    def throttler_group(self):
+        return self.config.get('throttler', None)
+
+    @property
+    def throttler_port(self):
+        throttler_config = self.throttler_group()
+        if throttler_config is None:
+            return None
+        # noinspection PyBroadException
+        try:
+            return int(throttler_config['port'])
+        except:
+            return DEFAULT_THROTTLER_PORT
+
+    @property
+    def throttler_refresh_interval(self):
+        throttler_config = self.throttler_group()
+        if throttler_config is None:
+            return None
+        # noinspection PyBroadException
+        try:
+            return int(throttler_config['refresh_interval'])
+        except:
+            return DEFAULT_THROTTLER_REFRESH_INTERVAL
 
     @staticmethod
     def initialized():
@@ -308,7 +342,7 @@ class Config(object):
         """
         channel = self._create_local_agent_channel(io_loop=io_loop)
         sampler = self.sampler
-        if sampler is None:
+        if not sampler:
             sampler = RemoteControlledSampler(
                 channel=channel,
                 service_name=self.service_name,
@@ -331,12 +365,24 @@ class Config(object):
         if self.logging:
             reporter = CompositeReporter(reporter, LoggingReporter(logger))
 
+        if not self.throttler_group() is None:
+            throttler = RemoteThrottler(
+                channel,
+                self.service_name,
+                refresh_interval=self.throttler_refresh_interval,
+                logger=logger,
+                metrics_factory=self._metrics_factory,
+                error_reporter=self.error_reporter)
+        else:
+            throttler = None
+
         return self.create_tracer(
             reporter=reporter,
             sampler=sampler,
+            throttler=throttler,
         )
 
-    def create_tracer(self, reporter, sampler):
+    def create_tracer(self, reporter, sampler, throttler=None):
         return Tracer(
             service_name=self.service_name,
             reporter=reporter,
@@ -348,6 +394,7 @@ class Config(object):
             tags=self.tags,
             max_tag_value_length=self.max_tag_value_length,
             extra_codecs=self.propagation,
+            throttler=throttler,
         )
 
     def _initialize_global_tracer(self, tracer):
@@ -368,5 +415,6 @@ class Config(object):
             host=self.local_agent_reporting_host,
             sampling_port=self.local_agent_sampling_port,
             reporting_port=self.local_agent_reporting_port,
+            throttling_port=self.throttler_port,
             io_loop=io_loop
         )

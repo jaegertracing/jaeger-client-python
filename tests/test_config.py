@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Uber Technologies, Inc.
+# Copyright (c) 2016-2018 Uber Technologies, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@ import os
 import unittest
 import opentracing.tracer
 from jaeger_client import Config, ConstSampler, ProbabilisticSampler, RateLimitingSampler
+from jaeger_client.config import DEFAULT_THROTTLER_PORT
+from jaeger_client.metrics import MetricsFactory
 from jaeger_client.reporter import NullReporter
 from jaeger_client import constants
 
@@ -102,12 +104,47 @@ class ConfigTests(unittest.TestCase):
         c = Config({'propagation': 'b3'}, service_name='x')
         assert len(c.propagation) == 1
 
+    def test_throttler(self):
+        c = Config({
+            'throttler': {}
+        }, service_name='x')
+        assert not c.throttler_group()
+        assert c.throttler_port == DEFAULT_THROTTLER_PORT
+        assert c.throttler_refresh_interval == constants.DEFAULT_THROTTLER_REFRESH_INTERVAL
+
+        c = Config({
+            'throttler': {
+                'port': '1234',
+                'refresh_interval': '10'
+            }
+        }, service_name='x')
+        assert c.throttler_group()
+        assert c.throttler_port == 1234
+        assert c.throttler_refresh_interval == 10
+
+        c = Config({}, service_name='x')
+        assert c.throttler_group() is None
+        assert c.throttler_port is None
+        assert c.throttler_refresh_interval is None
+
     def test_for_unexpected_config_entries(self):
         with self.assertRaises(Exception):
             _ = Config({"unexpected":"value"}, validate=True)
+
+    def test_missing_service_name(self):
+        with self.assertRaises(ValueError):
+            _ = Config({})
+
+    def test_disable_metrics(self):
+        config = Config({ 'metrics': False }, service_name='x')
+        assert isinstance(config._metrics_factory, MetricsFactory)
 
     def test_initialize_tracer(self):
         c = Config({}, service_name='x')
         tracer = c.initialize_tracer()
 
         assert opentracing.tracer == tracer
+
+    def test_default_local_agent_reporting_port(self):
+        c = Config({}, service_name='x')
+        assert c.local_agent_reporting_port == 6831

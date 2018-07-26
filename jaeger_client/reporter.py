@@ -175,7 +175,7 @@ class Reporter(NullReporter):
                     self.queue.task_done()
                 spans = spans[:0]
             self.metrics.reporter_queue_length(self.queue.qsize())
-        self.logger.info('Span publisher exists')
+        self.logger.info('Span publisher exited')
 
     # method for protocol factory
     def getProtocol(self, transport):

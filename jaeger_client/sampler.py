@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Uber Technologies, Inc.
+# Copyright (c) 2016-2018 Uber Technologies, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
+from __future__ import absolute_import, division
 
 import json
 import logging
@@ -33,9 +32,6 @@ from .constants import (
 from .metrics import Metrics, LegacyMetricsFactory
 from .utils import ErrorReporter
 from .rate_limiter import RateLimiter
-from jaeger_client.thrift_gen.sampling import (
-    SamplingManager
-)
 
 default_logger = logging.getLogger('jaeger_tracing')
 
@@ -55,6 +51,8 @@ OPERATION_SAMPLING_STR = 'operationSampling'
 MAX_TRACES_PER_SECOND_STR = 'maxTracesPerSecond'
 RATE_LIMITING_SAMPLING_STR = 'rateLimitingSampling'
 STRATEGY_TYPE_STR = 'strategyType'
+PROBABILISTIC_SAMPLING_STRATEGY = 'PROBABILISTIC'
+RATE_LIMITING_SAMPLING_STRATEGY = 'RATE_LIMITING'
 
 
 class Sampler(object):
@@ -265,8 +263,8 @@ class AdaptiveSampler(Sampler):
         self.max_operations = max_operations
 
     def is_sampled(self, trace_id, operation=''):
-        sampler = self.samplers.get(operation, None)
-        if sampler is None:
+        sampler = self.samplers.get(operation)
+        if not sampler:
             if len(self.samplers) >= self.max_operations:
                 return self.default_sampler.is_sampled(trace_id, operation)
             sampler = GuaranteedThroughputProbabilisticSampler(
@@ -284,8 +282,8 @@ class AdaptiveSampler(Sampler):
             operation = strategy.get(OPERATION_STR)
             lower_bound = strategies.get(DEFAULT_LOWER_BOUND_STR, DEFAULT_LOWER_BOUND)
             sampling_rate = get_sampling_probability(strategy)
-            sampler = self.samplers.get(operation, None)
-            if sampler is None:
+            sampler = self.samplers.get(operation)
+            if not sampler:
                 sampler = GuaranteedThroughputProbabilisticSampler(
                     operation,
                     lower_bound,
@@ -320,10 +318,10 @@ class RemoteControlledSampler(Sampler):
         :param service_name: name of this application
         :param kwargs: optional parameters
             - init_sampler: initial value of the sampler,
-                else ProbabilisticSampler(0.01)
+                else ProbabilisticSampler(0.001)
             - sampling_refresh_interval: interval in seconds for polling
               for new strategy
-            - logger:
+            - logger: Logger instance
             - metrics: metrics facade, used to emit metrics on errors.
                 This parameter has been deprecated, please use
                 metrics_factory instead.
@@ -340,15 +338,16 @@ class RemoteControlledSampler(Sampler):
         self.logger = kwargs.get('logger', default_logger)
         self.sampler = kwargs.get('init_sampler')
         self.sampling_refresh_interval = \
-            kwargs.get('sampling_refresh_interval', DEFAULT_SAMPLING_INTERVAL)
-        self.metrics_factory = kwargs.get('metrics_factory', None) \
-            or LegacyMetricsFactory(kwargs.get('metrics', None) or Metrics())
+            kwargs.get('sampling_refresh_interval') or DEFAULT_SAMPLING_INTERVAL
+        self.metrics_factory = kwargs.get('metrics_factory') \
+            or LegacyMetricsFactory(kwargs.get('metrics') or Metrics())
         self.metrics = SamplerMetrics(self.metrics_factory)
         self.error_reporter = kwargs.get('error_reporter') or \
             ErrorReporter(Metrics())
-        self.max_operations = kwargs.get('max_operations', DEFAULT_MAX_OPERATIONS)
+        self.max_operations = kwargs.get('max_operations') or \
+            DEFAULT_MAX_OPERATIONS
 
-        if self.sampler is None:
+        if not self.sampler:
             self.sampler = ProbabilisticSampler(DEFAULT_SAMPLING_PROBABILITY)
         else:
             self.sampler.is_sampled(0)  # assert we got valid sampler API
@@ -378,24 +377,26 @@ class RemoteControlledSampler(Sampler):
         before the first poll.
         """
         with self.lock:
-            if self.running:
-                r = random.Random()
-                delay = r.random() * self.sampling_refresh_interval
-                self.io_loop.call_later(delay=delay,
-                                        callback=self._delayed_polling)
-                self.logger.info(
-                    'Delaying sampling strategy polling by %d sec', delay)
+            if not self.running:
+                return
+            r = random.Random()
+            delay = r.random() * self.sampling_refresh_interval
+            self.io_loop.call_later(delay=delay,
+                                    callback=self._delayed_polling)
+            self.logger.info(
+                'Delaying sampling strategy polling by %d sec', delay)
 
     def _delayed_polling(self):
         periodic = self._create_periodic_callback()
         self._poll_sampling_manager()  # Initialize sampler now
         with self.lock:
-            if self.running:
-                self.periodic = periodic
-                periodic.start()  # start the periodic cycle
-                self.logger.info(
-                    'Tracing sampler started with sampling refresh '
-                    'interval %d sec', self.sampling_refresh_interval)
+            if not self.running:
+                return
+            self.periodic = periodic
+            periodic.start()  # start the periodic cycle
+            self.logger.info(
+                'Tracing sampler started with sampling refresh '
+                'interval %d sec', self.sampling_refresh_interval)
 
     def _create_periodic_callback(self):
         return PeriodicCallback(
@@ -414,14 +415,22 @@ class RemoteControlledSampler(Sampler):
             return
 
         response = future.result()
+
+        # In Python 3.5 response.body is of type bytes and json.loads() does only support str
+        # See: https://github.com/jaegertracing/jaeger-client-python/issues/180
+        if hasattr(response.body, 'decode') and callable(response.body.decode):
+            response_body = response.body.decode('utf-8')
+        else:
+            response_body = response.body
+
         try:
-            sampling_strategies_response = json.loads(response.body)
+            sampling_strategies_response = json.loads(response_body)
             self.metrics.sampler_retrieved(1)
         except Exception as e:
             self.metrics.sampler_query_failure(1)
             self.error_reporter.error(
                 'Fail to parse sampling strategy '
-                'from jaeger-agent: %s [%s]', e, response.body)
+                'from jaeger-agent: %s [%s]', e, response_body)
             return
 
         self._update_sampler(sampling_strategies_response)
@@ -449,10 +458,10 @@ class RemoteControlledSampler(Sampler):
 
     def _update_rate_limiting_or_probabilistic_sampler(self, response):
         s_type = response.get(STRATEGY_TYPE_STR)
-        if s_type == SamplingManager.SamplingStrategyType.PROBABILISTIC:
+        if s_type == PROBABILISTIC_SAMPLING_STRATEGY:
             sampling_rate = get_sampling_probability(response)
             new_sampler = ProbabilisticSampler(rate=sampling_rate)
-        elif s_type == SamplingManager.SamplingStrategyType.RATE_LIMITING:
+        elif s_type == RATE_LIMITING_SAMPLING_STRATEGY:
             mtps = get_rate_limit(response)
             if 0 <= mtps < 500:
                 new_sampler = RateLimitingSampler(max_traces_per_second=mtps)
@@ -468,14 +477,13 @@ class RemoteControlledSampler(Sampler):
 
     def _poll_sampling_manager(self):
         self.logger.debug('Requesting tracing sampler refresh')
-        fut = self._channel.request_sampling_strategy(
-            self.service_name, timeout=15)
+        fut = self._channel.request_sampling_strategy(self.service_name)
         fut.add_done_callback(self._sampling_request_callback)
 
     def close(self):
         with self.lock:
             self.running = False
-            if self.periodic is not None:
+            if self.periodic:
                 self.periodic.stop()
 
 

@@ -10,6 +10,7 @@ matrix:
     env: COVER=1
   - python: '2.7'
     env: CROSSDOCK=1
+  - python: '3.5'
   - python: '3.6'
 
 services:
@@ -33,7 +34,7 @@ script:
   - if [ "$CROSSDOCK" == "1" ]; then bash ./scripts/build-crossdock.sh ; else echo 'skipping crossdock'; fi
 
 after_success:
-  - if [ "$COVER" = "1" ]; then coveralls -v ; fi
+  - if [ "$COVER" = "1" ]; then codecov -v ; fi
 
 after_failure:
   - timeout 5 if [ "$CROSSDOCK" = "1" ]; then make crossdock-logs ; fi
