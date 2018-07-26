@@ -1,11 +1,30 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import re
-
+import os
 from setuptools import setup, find_packages
 
 version = None
 with open('jaeger_client/__init__.py', 'r') as f:
+    for line in f:
+        m = re.match(r'^__version__\s*=\s*(["\'])([^"\']+)\1', line)
+        if m:
+            version = m.group(2)
+            break
+# This is because thrift for python doesn't have 'package_prefix'.
+# The thrift compiled libraries refer to each other relative to their subdir.
+for dname, dirs, files in os.walk("jaeger_client/thrift_gen/agent"):
+    for fname in files:
+        fpath = os.path.join(dname, fname)
+        with open(fpath) as f:
+            s = f.read()
+        if "jaeger_client.thrift_gen.jaeger" not in s:
+            s = s.replace("jaeger", 'jaeger_client.thrift_gen.jaeger')
+            s = s.replace('zipkincore', 'jaeger_client.thrift_gen.zipkincore')
+            with open(fpath, "w") as f:
+                f.write(s)
+
+with open('jaeger_client/thrift_gen/jaeger/__init__.py', 'r') as f:
     for line in f:
         m = re.match(r'^__version__\s*=\s*(["\'])([^"\']+)\1', line)
         if m:
@@ -60,7 +79,7 @@ setup(
             'flake8<3',  # see https://github.com/zheller/flake8-quotes/issues/29
             'flake8-quotes',
             'coveralls',
-            'tchannel>=0.27', # This is only used in python 2
+            'tchannel>=0.27',  # This is only used in python 2
             'opentracing_instrumentation>=2,<3',
             'prometheus_client',
         ]
