@@ -302,7 +302,7 @@ class TestCodecs(unittest.TestCase):
         with self.assertRaises(InvalidCarrierException):
             codec.inject(span_context=None, carrier=[])
 
-        ctx = SpanContext(trace_id=256, span_id=127, parent_id=None, flags=1)
+        ctx = SpanContext(trace_id=256, span_id=127, parent_id=None, flags=2)
         span = Span(context=ctx, operation_name='x', tracer=None, start_time=1)
         carrier = {}
         codec.inject(span_context=span, carrier=carrier)
@@ -320,7 +320,7 @@ class TestCodecs(unittest.TestCase):
         carrier = {}
         codec.inject(span_context=span, carrier=carrier)
         assert carrier == {'X-B3-SpanId': format(127, 'x').zfill(16), 'X-B3-ParentSpanId': format(32, 'x').zfill(16),
-                           'X-B3-TraceId': format(256, 'x').zfill(16), 'X-B3-Flags': '1'}
+                           'X-B3-TraceId': format(256, 'x').zfill(16), 'X-B3-Sampled': '1'}
 
     def test_b3_extract(self):
         codec = B3Codec()
@@ -328,8 +328,9 @@ class TestCodecs(unittest.TestCase):
         with self.assertRaises(InvalidCarrierException):
             codec.extract([])
 
-        carrier = {'x-b3-spanid': 'a2fb4a1d1a96d312', 'x-b3-parentspanid': '0020000000000001',
-                   'x-b3-traceid': '463ac35c9f6413ad48485a3953bb6124', 'x-b3-flags': '1'}
+        # Implicit case insensitivity testing
+        carrier = {'X-b3-SpanId': 'a2fb4a1d1a96d312', 'X-B3-ParentSpanId': '0020000000000001',
+                   'X-B3-traceId': '463ac35c9f6413ad48485a3953bb6124', 'X-B3-flags': '1'}
 
         span_context = codec.extract(carrier)
         assert span_context.span_id == int('a2fb4a1d1a96d312', 16)
@@ -338,22 +339,39 @@ class TestCodecs(unittest.TestCase):
         assert span_context.flags == 0x02
 
         # validate that missing parentspanid does not cause an error
-        carrier.pop('x-b3-parentspanid')
+        carrier.pop('X-B3-ParentSpanId')
         span_context = codec.extract(carrier)
         assert span_context.parent_id is None
 
-        carrier.update({'x-b3-sampled': '1'})
+        carrier.update({'X-b3-sampled': '1'})
 
         span_context = codec.extract(carrier)
         assert span_context.flags == 0x03
 
+        carrier.pop('X-B3-flags')
+        span_context = codec.extract(carrier)
+        assert span_context.flags == 0x01
+
         # validate invalid hex string
         with self.assertRaises(SpanContextCorruptedException):
-            codec.extract({'x-b3-traceid': 'a2fb4a1d1a96d312z'})
+            codec.extract({'x-B3-TraceId': 'a2fb4a1d1a96d312z'})
 
         # validate non-string header
         with self.assertRaises(SpanContextCorruptedException):
-            codec.extract({'x-b3-traceid': 123})
+            codec.extract({'x-B3-traceId': 123})
+
+    def test_zipkin_b3_codec_extract_injected(self):
+        codec = B3Codec()
+        ctx = SpanContext(trace_id=256, span_id=127, parent_id=None, flags=0)
+        span = Span(context=ctx, operation_name='x', tracer=None, start_time=1)
+        carrier = {}
+        codec.inject(span_context=span, carrier=carrier)
+
+        extracted = codec.extract(carrier)
+        assert extracted.trace_id == ctx.trace_id
+        assert extracted.span_id == ctx.span_id
+        assert extracted.parent_id == ctx.parent_id
+        assert extracted.flags == ctx.flags
 
     def test_binary_codec(self):
         codec = BinaryCodec()
