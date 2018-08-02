@@ -155,7 +155,7 @@ class RateLimitingSampler(Sampler):
             SAMPLER_PARAM_TAG_KEY: max_traces_per_second,
         }
         self.traces_per_second = max_traces_per_second
-        max_balance = self.traces_per_second if self.traces_per_second > 1.0 else 1.0
+        max_balance = max(self.traces_per_second, 1.0)
         if not self.rate_limiter:
             self.rate_limiter = RateLimiter(
                 credits_per_second=self.traces_per_second,
@@ -479,7 +479,7 @@ class RemoteControlledSampler(Sampler):
             mtps = get_rate_limit(response)
             if mtps < 0 or mtps >= 500:
                 raise ValueError(
-                    'Rate limiting parameter not in [0, 500] range: %s' % mtps)
+                    'Rate limiting parameter not in [0, 500) range: %s' % mtps)
             if isinstance(self.sampler, RateLimitingSampler):
                 if self.sampler.update(max_traces_per_second=mtps):
                     self.metrics.sampler_updated(1)
