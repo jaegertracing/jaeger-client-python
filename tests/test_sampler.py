@@ -85,6 +85,7 @@ def test_const_sampler():
 
 def test_rate_limiting_sampler():
     sampler = RateLimitingSampler(2)
+    sampler.rate_limiter.balance = 2.0
     # stop time by overwriting timestamp() function to always return
     # the same time
     ts = time.time()
@@ -129,6 +130,7 @@ def test_rate_limiting_sampler():
 
     # Test with rate limit of greater than 1 second
     sampler = RateLimitingSampler(0.1)
+    sampler.rate_limiter.balance = 1.0
     ts = time.time()
     sampler.rate_limiter.last_tick = ts
     with mock.patch('jaeger_client.rate_limiter.RateLimiter.timestamp') \
@@ -147,9 +149,32 @@ def test_rate_limiting_sampler():
     sampler.close()
     assert '%s' % sampler == 'RateLimitingSampler(0.1)'
 
+    # Test update
+    sampler = RateLimitingSampler(3.0)
+    sampler.rate_limiter.balance = 3.0
+    ts = time.time()
+    sampler.rate_limiter.last_tick = ts
+    with mock.patch('jaeger_client.rate_limiter.RateLimiter.timestamp') \
+            as mock_time:
+        mock_time.side_effect = lambda: ts  # always return same time
+        assert sampler.rate_limiter.timestamp() == ts
+        sampled, _ = sampler.is_sampled(0)
+        assert sampled
+        assert sampler.rate_limiter.balance == 2.0
+        assert '%s' % sampler == 'RateLimitingSampler(3.0)'
+
+        sampler.update(3.0)
+        assert '%s' % sampler == 'RateLimitingSampler(3.0)', 'should short cirtcuit if rate is the same'
+
+        sampler.update(2.0)
+        assert sampler.rate_limiter.balance == 4.0/3.0
+        assert '%s' % sampler == 'RateLimitingSampler(2.0)'
+    sampler.close()
+
 
 def test_guaranteed_throughput_probabilistic_sampler():
     sampler = GuaranteedThroughputProbabilisticSampler('op', 2, 0.5)
+    sampler.lower_bound_sampler.rate_limiter.balance = 2.0
     sampled, tags = sampler.is_sampled(MAX_INT-10)
     assert sampled
     assert tags == get_tags('probabilistic', 0.5)
@@ -161,6 +186,7 @@ def test_guaranteed_throughput_probabilistic_sampler():
     assert '%s' % sampler == 'GuaranteedThroughputProbabilisticSampler(op, 0.500000, 2.000000)'
 
     sampler.update(3, 0.51)
+    sampler.lower_bound_sampler.rate_limiter.balance = 3.0
     sampled, tags = sampler.is_sampled(MAX_INT-10)
     assert sampled
     assert tags == get_tags('probabilistic', 0.51)
@@ -195,9 +221,17 @@ def test_adaptive_sampler():
     sampled, tags = sampler.is_sampled(MAX_INT-10, "new_op")
     assert sampled
     assert tags == get_tags('probabilistic', 0.51)
-    sampled, tags = sampler.is_sampled(MAX_INT+(MAX_INT/4), "new_op")
-    assert sampled
-    assert tags == get_tags('lowerbound', 0.51)
+
+    ts = time.time()
+    with mock.patch('jaeger_client.rate_limiter.RateLimiter.timestamp') \
+            as mock_time:
+
+        # Move time forward by a second to guarantee the rate limiter has enough credits
+        mock_time.side_effect = lambda: ts + 1
+
+        sampled, tags = sampler.is_sampled(MAX_INT+(MAX_INT/4), "new_op")
+        assert sampled
+        assert tags == get_tags('lowerbound', 0.51)
 
     # This operation is seen for the first time by the sampler but surpasses
     # max_operations of 2. The default probabilistic sampler will be used

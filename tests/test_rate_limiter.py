@@ -20,6 +20,8 @@ from jaeger_client.rate_limiter import RateLimiter
 
 def test_rate_limiting_sampler():
     rate_limiter = RateLimiter(2, 2)
+    assert rate_limiter.balance <= 2.0
+    rate_limiter.balance = 2.0
     # stop time by overwriting timestamp() function to always return
     # the same time
     ts = time.time()
@@ -52,6 +54,8 @@ def test_rate_limiting_sampler():
 
     # Test with rate limit of greater than 1 second
     rate_limiter = RateLimiter(0.1, 1.0)
+    assert rate_limiter.balance <= 1.0
+    rate_limiter.balance = 1.0
     ts = time.time()
     rate_limiter.last_tick = ts
     with mock.patch('jaeger_client.rate_limiter.RateLimiter.timestamp') \
@@ -64,3 +68,17 @@ def test_rate_limiting_sampler():
         # move time 11s forward, enough credits to pay for one sample
         mock_time.side_effect = lambda: ts + 11
         assert rate_limiter.check_credit(1)
+
+    # Test update
+    rate_limiter = RateLimiter(3.0, 3.0)
+    assert rate_limiter.balance <= 3.0
+    rate_limiter.balance = 3.0
+    ts = time.time()
+    rate_limiter.last_tick = ts
+    with mock.patch('jaeger_client.rate_limiter.RateLimiter.timestamp') \
+            as mock_time:
+        mock_time.side_effect = lambda: ts  # always return same time
+        assert rate_limiter.timestamp() == ts
+        assert rate_limiter.check_credit(1)
+        rate_limiter.update(2.0, 2.0)
+        assert rate_limiter.balance == 4.0/3.0
