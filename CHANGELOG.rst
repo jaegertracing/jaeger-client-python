@@ -3,13 +3,16 @@
 History
 -------
 
-3.11.0 (2018-06-28)
+3.11.0 (2018-08-02)
 -------------------
 
 - Fix parsing remote sampling strategy on Python 3.5 (#180) <Niels Pardon>
 - Fix handling of missing ParentSpanId for B3 codec (#182) <Gabriel Gravel>
 - Implement throttler (#188) <Isaac Hier>
 - Improve handling of config values and default arguments (#192) <Isaac Hier>
+- Add ability to update rate limitier (#196) <Won Jun Jang>
+- Fix incorrect default agent reporting port (#200) <Ryan Fitzpatrick>
+- Correct sampled and debug B3 headers (#203) <Ryan Fitzpatrick>
 
 
 3.10.0 (2018-05-09)
