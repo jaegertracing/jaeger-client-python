@@ -34,3 +34,6 @@ class APITest(unittest.TestCase, APICompatibilityCheckMixin):
     def test_binary_propagation(self):
         # TODO binary codecs are not implemented at the moment
         pass
+
+    def is_parent(self, parent, span):
+        return span.parent_id == getattr(parent, "span_id", None)

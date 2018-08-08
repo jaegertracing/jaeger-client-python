@@ -25,6 +25,7 @@ import six
 import opentracing
 from opentracing import Format, UnsupportedFormatException
 from opentracing.ext import tags as ext_tags
+from opentracing.scope_managers import ThreadLocalScopeManager
 
 from . import constants
 from .codecs import TextCodec, ZipkinCodec, ZipkinSpanFormat, BinaryCodec
@@ -51,6 +52,7 @@ class Tracer(opentracing.Tracer):
         tags=None,
         max_tag_value_length=constants.MAX_TAG_VALUE_LENGTH,
         throttler=None,
+        scope_manager=ThreadLocalScopeManager,
     ):
         self.service_name = service_name
         self.reporter = reporter
@@ -87,6 +89,7 @@ class Tracer(opentracing.Tracer):
         if tags:
             self.tags.update(tags)
 
+
         if self.tags.get(constants.JAEGER_IP_TAG_KEY) is None:
             self.tags[constants.JAEGER_IP_TAG_KEY] = local_ip()
 
@@ -109,12 +112,15 @@ class Tracer(opentracing.Tracer):
             max_length=self.max_tag_value_length,
         )
 
+        super(Tracer, self).__init__(scope_manager=scope_manager())
+
     def start_span(self,
                    operation_name=None,
                    child_of=None,
                    references=None,
                    tags=None,
-                   start_time=None):
+                   start_time=None,
+                   ignore_active_span=False):
         """
         Start and return a new Span representing a unit of work.
 
@@ -129,10 +135,17 @@ class Tracer(opentracing.Tracer):
             to avoid extra data copying.
         :param start_time: an explicit Span start time as a unix timestamp per
             time.time()
+        :param ignore_active_span: an explicit flag that ignores the current
+            active :class:`Scope` and creates a root :class:`Span`
 
         :return: Returns an already-started Span instance.
         """
         parent = child_of
+
+        active_span = self.active_span
+        if parent is None and not ignore_active_span:
+            parent = active_span
+
         if references:
             if isinstance(references, list):
                 # TODO only the first reference is currently used
@@ -188,6 +201,46 @@ class Tracer(opentracing.Tracer):
         self._emit_span_metrics(span=span, join=rpc_server)
 
         return span
+
+    def start_active_span(self,
+                          operation_name=None,
+                          child_of=None,
+                          references=None,
+                          tags=None,
+                          start_time=None,
+                          ignore_active_span=False,
+                          finish_on_close=True):
+        """
+        Returns a newly started and activated :class:`Scope`
+
+        :param operation_name: name of the operation represented by the new
+            span from the perspective of the current service.
+        :param child_of: shortcut for 'child_of' reference
+        :param references: (optional) either a single Reference object or a
+            list of Reference objects that identify one or more parent
+            SpanContexts. (See the Reference documentation for detail)
+        :param tags: optional dictionary of Span Tags. The caller gives up
+            ownership of that dictionary, because the Tracer may use it as-is
+            to avoid extra data copying.
+        :param start_time: an explicit Span start time as a unix timestamp per
+            time.time()
+        :param ignore_active_span: an explicit flag that ignores the current
+            active :class:`Scope` and creates a root :class:`Span`
+        :param finish_on_close: whether :class:`Span` should automatically be
+            finished when :meth:`Scope.close()` is called.
+
+        :return: a :class:`Scope`, already registered via the :class:`ScopeManager`.
+        """
+        span = self.start_span(
+            operation_name,
+            child_of,
+            references,
+            tags,
+            start_time,
+            ignore_active_span,
+        )
+        return self.scope_manager.activate(span, finish_on_close)
+
 
     def inject(self, span_context, format, carrier):
         codec = self.codecs.get(format, None)
