@@ -142,9 +142,8 @@ class Tracer(opentracing.Tracer):
         """
         parent = child_of
 
-        active_span = self.active_span
-        if parent is None and not ignore_active_span:
-            parent = active_span
+        if self.active_span is not None and not ignore_active_span:
+            parent = self.active_span
 
         if references:
             if isinstance(references, list):
