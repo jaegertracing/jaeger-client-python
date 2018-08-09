@@ -52,7 +52,7 @@ class Tracer(opentracing.Tracer):
         tags=None,
         max_tag_value_length=constants.MAX_TAG_VALUE_LENGTH,
         throttler=None,
-        scope_manager=ThreadLocalScopeManager,
+        scope_manager=None,
     ):
         self.service_name = service_name
         self.reporter = reporter
@@ -112,7 +112,10 @@ class Tracer(opentracing.Tracer):
             max_length=self.max_tag_value_length,
         )
 
-        super(Tracer, self).__init__(scope_manager=scope_manager())
+        super(Tracer, self).__init__(
+            scope_manager=scope_manager() if scope_manager
+            else ThreadLocalScopeManager()
+        )
 
     def start_span(self,
                    operation_name=None,

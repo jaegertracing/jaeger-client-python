@@ -84,17 +84,20 @@ class Config(object):
     _initialized_lock = threading.Lock()
 
     def __init__(self, config, metrics=None, service_name=None, metrics_factory=None,
-                 validate=False):
+                 validate=False, scope_manager=None):
         """
         :param metrics: an instance of Metrics class, or None. This parameter
             has been deprecated, please use metrics_factory instead.
         :param service_name: default service name.
             Can be overwritten by config['service_name'].
         :param metrics_factory: an instance of MetricsFactory class, or None.
+        :param scope_manager: a class implementing a scope manager, or None for
+            default (ThreadLocalScopeManager).
         """
         if validate:
             self._validate_config(config)
         self.config = config
+        self.scope_manager = scope_manager
         if get_boolean(self.config.get('metrics', True), True):
             self._metrics_factory = metrics_factory or LegacyMetricsFactory(metrics or Metrics())
         else:
@@ -413,6 +416,7 @@ class Config(object):
             max_tag_value_length=self.max_tag_value_length,
             extra_codecs=self.propagation,
             throttler=throttler,
+            scope_manager=self.scope_manager,
         )
 
     def _initialize_global_tracer(self, tracer):
