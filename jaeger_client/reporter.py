@@ -24,6 +24,7 @@ from tornado.concurrent import Future
 from .constants import DEFAULT_FLUSH_INTERVAL
 from . import ioloop_util
 from .metrics import Metrics, LegacyMetricsFactory
+from jaeger_client.thrift_gen.agent import Agent
 from .senders import UDPSender
 from .utils import ErrorReporter
 
@@ -97,7 +98,13 @@ class Reporter(NullReporter):
         from threading import Lock
 
         # TODO for next major rev: remove channel param in favor of sender
-        self._sender = sender or self._create_default_sender(channel)
+        self.agent = Agent.Client(channel, self)
+        self._sender = sender or UDPSender(
+            port=channel._reporting_port,
+            host=channel._host,
+            io_loop=channel.io_loop,
+            agent=self.agent
+        )
         self.queue_capacity = queue_capacity
         self.batch_size = batch_size
         self.metrics_factory = metrics_factory or LegacyMetricsFactory(metrics or Metrics())
@@ -108,36 +115,24 @@ class Reporter(NullReporter):
         if queue_capacity < batch_size:
             raise ValueError('Queue capacity cannot be less than batch size')
 
-        self.io_loop = io_loop or self.fetch_io_loop(channel, self._sender)
-
-        if self.io_loop is None:
-            self.logger.error('Jaeger Reporter has no IOLoop')
+        if io_loop:
+            self.io_loop = io_loop
         else:
-            self.queue = tornado.queues.Queue(maxsize=queue_capacity)
-            self.stop = object()
-            self.stopped = False
-            self.stop_lock = Lock()
-            self.flush_interval = flush_interval or None
-            self.io_loop.spawn_callback(self._consume_queue)
+            self.io_loop = self._sender._io_loop
 
-    @staticmethod
-    def fetch_io_loop(channel, sender):
-        if channel:
-            return channel.io_loop
-        elif sender:
-            return sender.io_loop
-        return None
-
-    def _create_default_sender(self, channel):
-        sender = UDPSender(
-            port=channel.reporting_port,
-            host=channel.host,
-            io_loop=channel.io_loop
-        )
-        return sender
+        self.queue = tornado.queues.Queue(maxsize=queue_capacity)
+        self.stop = object()
+        self.stopped = False
+        self.stop_lock = Lock()
+        self.flush_interval = flush_interval or None
+        self.io_loop.spawn_callback(self._consume_queue)
 
     def set_process(self, service_name, tags, max_length):
         self._sender.set_process(service_name, tags, max_length)
+
+    # method for protocol factory
+    def getProtocol(self, transport):
+        return self._sender.getProtocol(transport)
 
     def report_span(self, span):
         # We should not be calling `queue.put_nowait()` from random threads,

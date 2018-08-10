@@ -35,8 +35,8 @@ def test_base_sender_create_io_loop_if_not_provided():
 
     sender = senders.Sender()
 
-    assert sender.io_loop is not None
-    assert isinstance(sender.io_loop, ioloop.IOLoop)
+    assert sender._io_loop is not None
+    assert isinstance(sender._io_loop, ioloop.IOLoop)
 
 
 def test_base_sender_send_not_implemented():
@@ -111,7 +111,7 @@ class SenderFlushTest(AsyncTestCase):
 
             sender.spans = [self.span()]
 
-            sender.agent.emitBatch = mock.MagicMock(side_effect=exception(value))
+            sender._agent.emitBatch = mock.MagicMock(side_effect=exception(value))
             assert sender.span_count == 1
 
             try:
@@ -128,28 +128,28 @@ def test_udp_sender_instantiate_thrift_agent():
 
     sender = senders.UDPSender(host='mock', port=4242)
 
-    assert sender.agent is not None
-    assert isinstance(sender.agent, Agent.Client)
+    assert sender._agent is not None
+    assert isinstance(sender._agent, Agent.Client)
 
 
 def test_udp_sender_intantiate_local_agent_channel():
 
     sender = senders.UDPSender(host='mock', port=4242)
 
-    assert sender.channel is not None
-    assert sender.channel.io_loop == sender.io_loop
-    assert isinstance(sender.channel, LocalAgentSender)
+    assert sender._channel is not None
+    assert sender._channel.io_loop == sender._io_loop
+    assert isinstance(sender._channel, LocalAgentSender)
 
 
 def test_udp_sender_calls_agent_emitBatch_on_send():
 
     test_data = {'foo': 'bar'}
     sender = senders.UDPSender(host='mock', port=4242)
-    sender.agent = mock.Mock()
+    sender._agent = mock.Mock()
 
     sender.send(test_data)
 
-    sender.agent.emitBatch.assert_called_once_with(test_data)
+    sender._agent.emitBatch.assert_called_once_with(test_data)
 
 
 def test_udp_sender_implements_thrift_protocol_factory():

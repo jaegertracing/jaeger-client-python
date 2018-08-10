@@ -27,15 +27,13 @@ from thrift.protocol import TCompactProtocol
 from jaeger_client.thrift_gen.agent import Agent
 
 
-DEFAULT_SAMPLING_PORT = 5778
-
 logger = logging.getLogger('jaeger_tracing')
 
 
 class Sender(object):
     def __init__(self, io_loop=None):
         from threading import Lock
-        self.io_loop = io_loop or self._create_new_thread_loop()
+        self._io_loop = io_loop or self._create_new_thread_loop()
         self._process_lock = Lock()
         self._process = None
         self.spans = []
@@ -86,14 +84,17 @@ class Sender(object):
             self._thread_loop.start()
         return self._thread_loop._io_loop
 
+    def getProtocol(self, transport):
+        raise NotImplementedError('This method should be implemented by subclasses')
+
 
 class UDPSender(Sender):
-    def __init__(self, host, port, io_loop=None):
+    def __init__(self, host, port, io_loop=None, agent=None):
         super(UDPSender, self).__init__(io_loop=io_loop)
-        self.host = host
-        self.port = port
-        self.channel = self._create_local_agent_channel(self.io_loop)
-        self.agent = Agent.Client(self.channel, self)
+        self._host = host
+        self._port = port
+        self._channel = self._create_local_agent_channel(self._io_loop)
+        self._agent = agent or Agent.Client(self._channel, self)
 
     @tornado.gen.coroutine
     def send(self, batch):
@@ -101,7 +102,7 @@ class UDPSender(Sender):
         Send batch of spans out via thrift transport.
         """
         try:
-            yield self.agent.emitBatch(batch)
+            yield self._agent.emitBatch(batch)
         except socket.error as e:
             reraise(type(e),
                     type(e)('Failed to submit traces to jaeger-agent socket: {}'.format(e)),
@@ -120,9 +121,9 @@ class UDPSender(Sender):
         """
         logger.info('Initializing Jaeger Tracer with UDP reporter')
         return LocalAgentSender(
-            host=self.host,
-            sampling_port=DEFAULT_SAMPLING_PORT,
-            reporting_port=self.port,
+            host=self._host,
+            sampling_port=5778,
+            reporting_port=self._port,
             io_loop=io_loop
         )
 
