@@ -61,6 +61,7 @@ def _marshall_span(span):
 def test_large_ids(tracer):
 
     def serialize(span_id):
+        """Checks that there are no exceptions during marshalling."""
         parent_ctx = SpanContext(trace_id=span_id, span_id=span_id,
                                  parent_id=0, flags=1)
         parent = Span(context=parent_ctx, operation_name='x', tracer=tracer)
@@ -68,10 +69,6 @@ def test_large_ids(tracer):
                                  references=child_of(parent.context))
         span.finish()
         _marshall_span(span)
-
-    trace_id = 0
-    serialize(trace_id)
-    assert thrift.id_to_int(trace_id) == 0
 
     trace_id = 0x77fd53dc6b437681
     serialize(trace_id)

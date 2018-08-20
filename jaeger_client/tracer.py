@@ -143,7 +143,7 @@ class Tracer(opentracing.Tracer):
         rpc_server = tags and \
             tags.get(ext_tags.SPAN_KIND) == ext_tags.SPAN_KIND_RPC_SERVER
 
-        if parent is None or parent.is_debug_id_container_only:
+        if parent is None or not parent.has_trace:
             trace_id = self.random_id()
             span_id = trace_id
             parent_id = None
@@ -157,10 +157,12 @@ class Tracer(opentracing.Tracer):
                     tags = tags or {}
                     for k, v in six.iteritems(sampler_tags):
                         tags[k] = v
-            elif self.is_debug_allowed(operation_name):  # have debug id
+            elif parent.debug_id and self.is_debug_allowed(operation_name):
                 flags = SAMPLED_FLAG | DEBUG_FLAG
                 tags = tags or {}
                 tags[self.debug_id_header] = parent.debug_id
+            if parent and parent.baggage:
+                baggage = dict(parent.baggage)  # TODO do we need to clone?
         else:
             trace_id = parent.trace_id
             if rpc_server and self.one_span_per_rpc:
@@ -171,7 +173,7 @@ class Tracer(opentracing.Tracer):
                 span_id = self.random_id()
                 parent_id = parent.span_id
             flags = parent.flags
-            baggage = dict(parent.baggage)
+            baggage = dict(parent.baggage)  # TODO do we need to clone?
 
         span_ctx = SpanContext(trace_id=trace_id, span_id=span_id,
                                parent_id=parent_id, flags=flags,
