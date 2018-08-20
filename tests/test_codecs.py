@@ -410,7 +410,6 @@ def _test_baggage_without_trace_id(tracer, trace_id_header, baggage_header_prefi
     with mock.patch('jaeger_client.codecs.span_context_from_string') as \
             from_str:
         from_str.return_value = (0, 1, 1, 1)  # make trace ID == 0 (i.e. invalid)
-        # with self.assertRaises(SpanContextCorruptedException):
         span_context = codec.extract(headers)
         span = tracer.start_span('test', child_of=span_context)
         assert span.context.baggage == match
