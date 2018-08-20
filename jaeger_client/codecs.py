@@ -19,6 +19,7 @@ from opentracing import (
     SpanContextCorruptedException,
 )
 from .constants import (
+    BAGGAGE_HEADER_KEY,
     BAGGAGE_HEADER_PREFIX,
     DEBUG_ID_HEADER_KEY,
     TRACE_ID_HEADER,
@@ -43,11 +44,13 @@ class TextCodec(Codec):
                  url_encoding=False,
                  trace_id_header=TRACE_ID_HEADER,
                  baggage_header_prefix=BAGGAGE_HEADER_PREFIX,
-                 debug_id_header=DEBUG_ID_HEADER_KEY):
+                 debug_id_header=DEBUG_ID_HEADER_KEY,
+                 baggage_header=BAGGAGE_HEADER_KEY):
         self.url_encoding = url_encoding
         self.trace_id_header = trace_id_header.lower().replace('_', '-')
         self.baggage_prefix = baggage_header_prefix.lower().replace('_', '-')
         self.debug_id_header = debug_id_header.lower().replace('_', '-')
+        self.baggage_header = baggage_header
         self.prefix_length = len(baggage_header_prefix)
 
     def inject(self, span_context, carrier):
@@ -110,15 +113,27 @@ class TextCodec(Codec):
                 if self.url_encoding:
                     value = urllib_parse.unquote(value)
                 debug_id = value
-        if not trace_id and baggage:
-            raise SpanContextCorruptedException('baggage without trace ctx')
-        if not trace_id:
-            if debug_id is not None:
-                return SpanContext.with_debug_id(debug_id=debug_id)
+            elif uc_key == self.baggage_header:
+                if self.url_encoding:
+                    value = urllib_parse.unquote(value)
+                baggage = self._parse_baggage_header(value, baggage)
+        if not trace_id or not span_id:
+            # reset all IDs
+            trace_id, span_id, parent_id, flags = None, None, None, None
+        if not trace_id and not debug_id and not baggage:
             return None
         return SpanContext(trace_id=trace_id, span_id=span_id,
                            parent_id=parent_id, flags=flags,
-                           baggage=baggage)
+                           baggage=baggage, debug_id=debug_id)
+
+    def _parse_baggage_header(self, header, baggage):
+        for part in header.split(','):
+            kv = part.strip().split('=')
+            if len(kv) == 2:
+                if not baggage:
+                    baggage = {}
+                baggage[kv[0]] = kv[1]
+        return baggage
 
 
 class BinaryCodec(Codec):

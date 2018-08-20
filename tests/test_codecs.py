@@ -208,19 +208,6 @@ class TestCodecs(unittest.TestCase):
                 'hermes': 'LaBarbara Hermes',
             }
 
-    def test_baggage_without_trace_id(self):
-        codec = TextCodec(trace_id_header='Trace_ID',
-                          baggage_header_prefix='Trace-Attr-')
-        headers = {
-            'Trace-ID': '0:7f:0:1',  # trace_id = 0 is invalid
-            'trace-attr-Kiff': 'Amy',
-            'trace-atTR-HERMES': 'LaBarbara'
-        }
-        with mock.patch('jaeger_client.codecs.span_context_from_string') as \
-                from_str:
-            from_str.return_value = (0, 1, 1, 1)
-            with self.assertRaises(SpanContextCorruptedException):
-                codec.extract(headers)
 
     def test_context_from_large_ids(self):
         codec = TextCodec(trace_id_header='Trace_ID',
@@ -379,6 +366,56 @@ class TestCodecs(unittest.TestCase):
             codec.inject({}, {})
         with self.assertRaises(InvalidCarrierException):
             codec.extract({})
+
+
+def test_default_baggage_without_trace_id(tracer):
+    _test_baggage_without_trace_id(
+        tracer=tracer,
+        trace_id_header='Trace_ID',
+        baggage_header_prefix='Trace-baggage-',
+        headers={
+            'Trace-ID': '1:7f:0:1',
+            'trace-baggage-Kiff': 'Amy',
+            'trace-BAGGAGE-HERMES': 'LaBarbara',
+        },
+        match={
+            'kiff': 'Amy',
+            'hermes': 'LaBarbara',
+        },
+    )
+
+
+def test_ad_hoc_baggage_without_trace_id(tracer):
+    _test_baggage_without_trace_id(
+        tracer=tracer,
+        trace_id_header='Trace_ID',
+        baggage_header_prefix='Trace-baggage-',
+        headers={
+            'Trace-ID': '1:7f:0:1',
+            'jaeger-baggage': 'kiff=Amy, hermes=LaBarbara, bender=Bender',
+        },
+        match={
+            'kiff': 'Amy',
+            'hermes': 'LaBarbara',
+            'bender': 'Bender',
+        },
+    )
+
+
+def _test_baggage_without_trace_id(tracer, trace_id_header, baggage_header_prefix, headers, match):
+    codec = TextCodec(
+        trace_id_header=trace_id_header,
+        baggage_header_prefix=baggage_header_prefix,
+    )
+    with mock.patch('jaeger_client.codecs.span_context_from_string') as \
+            from_str:
+        from_str.return_value = (0, 1, 1, 1)  # make trace ID == 0 (i.e. invalid)
+        span_context = codec.extract(headers)
+        span = tracer.start_span('test', child_of=span_context)
+        assert span.context.baggage == match
+        # also check baggage through API
+        for k, v in six.iteritems(match):
+            assert span.get_baggage_item(k) == v
 
 
 @pytest.mark.parametrize('fmt,carrier', [

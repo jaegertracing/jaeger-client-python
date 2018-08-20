@@ -39,6 +39,12 @@ BAGGAGE_HEADER_PREFIX = 'uberctx-' if six.PY3 else b'uberctx-'
 # be found in the UI using this value as a correlation ID.
 DEBUG_ID_HEADER_KEY = 'jaeger-debug-id'
 
+# The name of HTTP header or a TextMap carrier key that can be used to pass
+# additional baggage to the span, e.g. when executing an ad-hoc curl request:
+# curl -H 'jaeger-baggage: k1=v1,k2=v2' http://...
+BAGGAGE_HEADER_KEY = 'jaeger-baggage'
+
+
 JAEGER_CLIENT_VERSION = 'Python-%s' % __version__
 
 # Tracer-scoped tag that tells the version of Jaeger client library
