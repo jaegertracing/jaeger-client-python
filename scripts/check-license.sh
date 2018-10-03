@@ -1,4 +1,5 @@
 #!/bin/sh
+#!/bin/sh
 
 licRes=$(
 for file in $(find jaeger_client tests crossdock -type f -iname '*.py' ! -path '*/thrift_gen/*'); do
