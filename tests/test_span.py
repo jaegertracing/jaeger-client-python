@@ -228,3 +228,17 @@ def test_span_tag_value_max_length(tracer):
     tag_n = len(span.tags) - 1
     assert span.tags[tag_n].key == 'x'
     assert span.tags[tag_n].vStr == 'x' * 42
+
+def test_span_tag_bool(tracer):
+    span = tracer.start_span(operation_name='y')
+    span.set_tag('y', True)
+    tag_n = len(span.tags) - 1
+    assert span.tags[tag_n].key == 'y'
+    assert span.tags[tag_n].vBool is True
+
+def test_span_tag_long(tracer):
+    span = tracer.start_span(operation_name='z')
+    span.set_tag('z', 200)
+    tag_n = len(span.tags) - 1
+    assert span.tags[tag_n].key == 'z'
+    assert span.tags[tag_n].vLong == 200
