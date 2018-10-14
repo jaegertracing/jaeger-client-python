@@ -81,11 +81,10 @@ class Span(opentracing.Span):
             if key == ext_tags.SAMPLING_PRIORITY and not self._set_sampling_priority(value):
                 return self
             if self.is_sampled():
-                tag = thrift.make_string_tag(
+                tag = thrift.make_tag(
                     key=key,
                     value=value,
-                    max_length=self.tracer.max_tag_value_length,
-                )
+                    max_length=self.tracer.max_tag_value_length, )
                 self.tags.append(tag)
         return self
 
