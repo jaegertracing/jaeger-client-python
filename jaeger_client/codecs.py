@@ -295,7 +295,6 @@ class B3Codec(Codec):
         elif span_context.flags & SAMPLED_FLAG == SAMPLED_FLAG:
             carrier[self.sampled_header] = '1'
 
-
     @staticmethod
     def _get_header_value_hex(carrier, header_lc_to_header_orig, header_lc):
         header = header_lc_to_header_orig.get(header_lc)
