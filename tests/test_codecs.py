@@ -339,6 +339,9 @@ class TestCodecs(unittest.TestCase):
         span_context = codec.extract(carrier)
         assert span_context.flags == 0x01
 
+        # validate missing context
+        assert codec.extract({}) is None
+
         # validate invalid hex string
         with self.assertRaises(SpanContextCorruptedException):
             codec.extract({'x-B3-TraceId': 'a2fb4a1d1a96d312z'})
