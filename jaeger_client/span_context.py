@@ -36,7 +36,10 @@ class SpanContext(opentracing.SpanContext):
 
     def with_baggage_item(self, key, value):
         baggage = dict(self._baggage)
-        baggage[key] = value
+        if value is not None:
+            baggage[key] = value
+        else:
+            baggage.pop(key, None)
         return SpanContext(
             trace_id=self.trace_id,
             span_id=self.span_id,

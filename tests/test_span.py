@@ -40,6 +40,8 @@ def test_baggage():
     span.set_baggage_item('X_y', '123')
     assert span.get_baggage_item('X_y') == '123'
     assert span.get_baggage_item('x-Y') is None
+    span.set_baggage_item('nonExistingKey', None).set_baggage_item('z', None)
+    assert 'z' not in span.context.baggage
 
 
 def _fields_to_dict(span_log):
@@ -62,6 +64,12 @@ def test_baggage_logs():
     assert len(span.logs) == 2
     assert _fields_to_dict(span.logs[1]) == {
         "event": "baggage", "key": "x", "value": "b", "override": "true",
+    }
+    span.set_baggage_item('x', None)  # deletion
+    assert span.get_baggage_item('x') is None
+    assert len(span.logs) == 3
+    assert _fields_to_dict(span.logs[2]) == {
+        "event": "baggage", "key": "x", "value": "None", "override": "true"
     }
 
 
@@ -99,6 +107,7 @@ def test_sampling_priority(tracer):
     assert span.is_sampled() is False
     span.set_tag(ext_tags.SAMPLING_PRIORITY, 'test')
     assert span.is_sampled() is False
+
 
 def test_span_logging(tracer):
     tpl = collections.namedtuple(
@@ -229,12 +238,14 @@ def test_span_tag_value_max_length(tracer):
     assert span.tags[tag_n].key == 'x'
     assert span.tags[tag_n].vStr == 'x' * 42
 
+
 def test_span_tag_bool(tracer):
     span = tracer.start_span(operation_name='y')
     span.set_tag('y', True)
     tag_n = len(span.tags) - 1
     assert span.tags[tag_n].key == 'y'
     assert span.tags[tag_n].vBool is True
+
 
 def test_span_tag_long(tracer):
     span = tracer.start_span(operation_name='z')
