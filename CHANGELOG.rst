@@ -3,10 +3,12 @@
 History
 -------
 
-3.11.1 (unreleased)
+3.12.0 (2018-11-02)
 -------------------
 
-- Nothing changed yet.
+- Support deleting key from baggage (#216) <TianYi ZHU>
+- Preserve datatype of tag values (#213) <Trond Hindenes>
+- Support `jaeger-baggage` header for ad-hoc baggage (#207) <Yuri Shkuro>
 
 
 3.11.0 (2018-08-02)
