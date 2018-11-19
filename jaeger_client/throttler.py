@@ -161,7 +161,7 @@ class RemoteThrottler(object):
         except Exception as e:
             self.metrics.throttler_update_failure(1)
             self.error_reporter.error(
-                'Fail to parse throttling credits response '
+                'Failed to parse throttling credits response '
                 'from jaeger-agent: %s [%s]', e, response_body)
             return
 

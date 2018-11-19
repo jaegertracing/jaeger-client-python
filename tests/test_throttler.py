@@ -90,6 +90,6 @@ def test_throttler_request_callback():
     throttler._request_callback(future)
     assert throttler.credits['test-operation'] == 2.0
 
-    future.result.return_value.body = 'bad json'
+    future.result.return_value.body = '{ "bad": "json" }'
     throttler._request_callback(future)
     assert throttler.error_reporter.error.call_count == 2
