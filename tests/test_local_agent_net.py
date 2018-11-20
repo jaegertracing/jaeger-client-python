@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import pytest
+import tornado.testing
 import tornado.web
 from urllib.parse import urlparse
 from jaeger_client.local_agent_net import LocalAgentSender
@@ -49,39 +50,36 @@ class CreditHandler(tornado.web.RequestHandler):
     def get(self):
         self.write(test_credits)
 
-application = tornado.web.Application([
-    (r"/sampling", AgentHandler),
-    (r"/credits", CreditHandler),
-])
 
-@pytest.fixture
-def app():
-    return application
+class Test(tornado.testing.AsyncHTTPTestCase):
+    application = tornado.web.Application([
+        (r"/sampling", AgentHandler),
+        (r"/credits", CreditHandler),
+    ])
 
+    def get_app(self):
+        return Test.application
 
-@pytest.mark.gen_test
-def test_request_sampling_strategy(http_client, base_url):
-    o = urlparse(base_url)
-    sender = LocalAgentSender(
-        host='localhost',
-        sampling_port=o.port,
-        reporting_port=DEFAULT_REPORTING_PORT
-    )
-    response = yield sender.request_sampling_strategy(service_name='svc', timeout=15)
-    assert response.body == test_strategy.encode('utf-8')
+    def test_request_sampling_strategy(self):
+        sender = LocalAgentSender(
+            host='127.0.0.1',
+            sampling_port=self.get_http_port(),
+            reporting_port=DEFAULT_REPORTING_PORT
+        )
+        response = self.io_loop.run_sync(lambda: sender.request_sampling_strategy(service_name='svc', timeout=15), timeout=15)
+        assert response.body == test_strategy.encode('utf-8')
 
-@pytest.mark.gen_test
-def test_request_throttling_credits(http_client, base_url):
-    o = urlparse(base_url)
-    sender = LocalAgentSender(
-        host='localhost',
-        sampling_port=o.port,
-        reporting_port=DEFAULT_REPORTING_PORT,
-        throttling_port=o.port,
-    )
-    response = yield sender.request_throttling_credits(
-                                service_name='svc',
-                                client_id=test_client_id,
-                                operations=['test-operation'],
-                                timeout=15)
-    assert response.body == test_credits.encode('utf-8')
+    def test_request_throttling_credits(self):
+        sender = LocalAgentSender(
+            host='127.0.0.1',
+            sampling_port=self.get_http_port(),
+            reporting_port=DEFAULT_REPORTING_PORT,
+            throttling_port=self.get_http_port(),
+        )
+        response = self.io_loop.run_sync(lambda: sender.request_throttling_credits(
+                                    service_name='svc',
+                                    client_id=test_client_id,
+                                    operations=['test-operation'],
+                                    timeout=15),
+                                    timeout=15)
+        assert response.body == test_credits.encode('utf-8')

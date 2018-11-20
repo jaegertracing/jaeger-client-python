@@ -57,7 +57,6 @@ setup(
             'pytest-cov==2.5.1',
             'coverage<4.4',  # can remove after https://bitbucket.org/ned/coveragepy/issues/581/44b1-44-breaking-in-ci
             'pytest-timeout==1.3.1',
-            'pytest-tornado',
             'pytest-benchmark[histogram]>=3.0.0rc1',
             'pytest-localserver',
             'flake8<3',  # see https://github.com/zheller/flake8-quotes/issues/29
