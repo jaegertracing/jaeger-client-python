@@ -37,4 +37,4 @@ after_success:
   - if [ "$COVER" = "1" ]; then codecov -v ; fi
 
 after_failure:
-  - timeout 5 if [ "$CROSSDOCK" = "1" ]; then make crossdock-logs ; fi
+  - if [ "$CROSSDOCK" = "1" ]; then make crossdock-logs ; fi
