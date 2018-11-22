@@ -54,7 +54,7 @@ setup(
             'mock==1.0.1',
             'pycurl>=7.43,<8',
             # pinned to avoid RemovedInPytest4Warning
-            'pytest==3.6.0',
+            'pytest>=3.7.0,<3.8.0',
             'pytest-cov==2.5.1',
             'coverage<4.4',  # can remove after https://bitbucket.org/ned/coveragepy/issues/581/44b1-44-breaking-in-ci
             'pytest-timeout==1.3.1',
