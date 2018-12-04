@@ -3,10 +3,12 @@
 History
 -------
 
-3.12.1 (unreleased)
+3.12.1 (2018-12-04)
 -------------------
 
-- Nothing changed yet.
+- Mark reporter_queue_size Config option as valid (#209) <Tim Joseph Dumol>
+- Allow setting of the Jaeger Agent Host via environment variable (#218) <Tim Stoop>
+- Wrap parsing of throttling response in try block to avoid errors (#219) <Isaac Hier>
 
 
 3.12.0 (2018-11-02)
