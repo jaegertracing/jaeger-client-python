@@ -116,6 +116,7 @@ class Config(object):
                         'tags',
                         'enabled',
                         'reporter_batch_size',
+                        'reporter_queue_size',
                         'propagation',
                         'max_tag_value_length',
                         'reporter_flush_interval',

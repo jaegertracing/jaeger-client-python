@@ -135,6 +135,10 @@ class ConfigTests(unittest.TestCase):
         with self.assertRaises(Exception):
             _ = Config({"unexpected":"value"}, validate=True)
 
+    def test_reporter_queue_size_valid(self):
+        config = Config({"reporter_queue_size": 100}, service_name='x', validate=True)
+        assert config.reporter_queue_size == 100
+
     def test_missing_service_name(self):
         with self.assertRaises(ValueError):
             _ = Config({})
