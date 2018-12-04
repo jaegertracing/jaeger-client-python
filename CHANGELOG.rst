@@ -3,10 +3,10 @@
 History
 -------
 
-3.12.1 (unreleased)
+3.12.1 (2018-12-04)
 -------------------
 
-- Nothing changed yet.
+- Wrap parsing of throttling response in try block to avoid errors (#219) <Isaac Hier>
 
 
 3.12.0 (2018-11-02)
