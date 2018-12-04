@@ -87,6 +87,10 @@ class ConfigTests(unittest.TestCase):
         c = Config({'local_agent': {'reporting_host': 'jaeger.local'}}, service_name='x')
         assert c.local_agent_reporting_host == 'jaeger.local'
 
+        os.environ['JAEGER_AGENT_HOST'] = 'jaeger-env.local'
+        c = Config({}, service_name='x')
+        assert c.local_agent_reporting_host == 'jaeger-env.local'
+
     def test_max_tag_value_length(self):
         c = Config({}, service_name='x')
         assert c.max_tag_value_length == constants.MAX_TAG_VALUE_LENGTH

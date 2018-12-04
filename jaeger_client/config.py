@@ -260,6 +260,11 @@ class Config(object):
         try:
             return self.local_agent_group()['reporting_host']
         except:
+            pass
+
+        if os.getenv('JAEGER_AGENT_HOST') is not None:
+            return os.getenv('JAEGER_AGENT_HOST')
+        else:
             return DEFAULT_REPORTING_HOST
 
     @property
