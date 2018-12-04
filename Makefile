@@ -28,7 +28,6 @@ bootstrap:
 	pip install virtualenv
 	python setup.py develop
 
-
 .PHONY: test
 test: clean
 	$(pytest) $(test_args) --benchmark-skip
