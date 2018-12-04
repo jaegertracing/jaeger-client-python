@@ -3,7 +3,7 @@
 History
 -------
 
-3.12.1 (2018-12-04)
+3.13.0 (2018-12-04)
 -------------------
 
 - Mark reporter_queue_size Config option as valid (#209) <Tim Joseph Dumol>
