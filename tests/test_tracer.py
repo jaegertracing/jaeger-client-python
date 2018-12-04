@@ -26,10 +26,13 @@ from jaeger_client import ConstSampler, SpanContext, Tracer
 from jaeger_client import constants as c
 
 
-def find_tag(span, key):
+def find_tag(span, key, tag_type='str'):
     for tag in span.tags:
         if tag.key == key:
-            return tag.vStr
+            if tag_type == 'str':
+                return tag.vStr
+            elif tag_type == 'bool':
+                return tag.vBool
     return None
 
 
@@ -209,7 +212,7 @@ def test_tracer_tags_no_hostname():
 @pytest.mark.parametrize('span_type,expected_tags', [
     ('root', {
         'sampler.type': 'const',
-        'sampler.param': 'True',
+        'sampler.param': True,
     }),
     ('child', {
         'sampler.type': None,
@@ -237,7 +240,7 @@ def test_tracer_tags_on_root_span(span_type, expected_tags):
                 tags={ext_tags.SPAN_KIND: ext_tags.SPAN_KIND_RPC_SERVER}
             )
         for key, value in six.iteritems(expected_tags):
-            found_tag = find_tag(span, key)
+            found_tag = find_tag(span, key, type(value).__name__)
             if value is None:
                 assert found_tag is None, 'test (%s)' % span_type
                 continue

@@ -53,10 +53,11 @@ setup(
         'tests': [
             'mock==1.0.1',
             'pycurl>=7.43,<8',
-            'pytest>=3.6.0',
-            'pytest-cov',
+            # pinned to avoid RemovedInPytest4Warning
+            'pytest>=3.7.0,<3.8.0',
+            'pytest-cov==2.5.1',
             'coverage<4.4',  # can remove after https://bitbucket.org/ned/coveragepy/issues/581/44b1-44-breaking-in-ci
-            'pytest-timeout',
+            'pytest-timeout==1.3.1',
             'pytest-tornado',
             'pytest-benchmark[histogram]>=3.0.0rc1',
             'pytest-localserver',
@@ -65,7 +66,7 @@ setup(
             'codecov',
             'tchannel>=0.27', # This is only used in python 2
             'opentracing_instrumentation>=2,<3',
-            'prometheus_client',
+            'prometheus_client==0.3.1',
         ]
     },
 )

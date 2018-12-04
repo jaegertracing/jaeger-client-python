@@ -47,7 +47,31 @@ def _to_string(s):
         return str(e)
 
 
-def make_string_tag(key, value, max_length):
+def make_tag(key, value, max_length):
+    if type(value).__name__ == 'bool':  # isinstance doesnt work on booleans
+        return _make_bool_tag(
+            key=key,
+            value=value
+        )
+    elif isinstance(value, int):
+        return _make_long_tag(
+            key=key,
+            value=value
+        )
+    elif isinstance(value, float):
+        return _make_double_tag(
+            key=key,
+            value=value
+        )
+    else:
+        return _make_string_tag(
+            key=key,
+            value=value,
+            max_length=max_length
+        )
+
+
+def _make_string_tag(key, value, max_length):
     key = _to_string(key)
     value = _to_string(value)
     if len(value) > max_length:
@@ -56,6 +80,33 @@ def make_string_tag(key, value, max_length):
         key=key,
         vStr=value,
         vType=ttypes.TagType.STRING,
+    )
+
+
+def _make_long_tag(key, value):
+    key = _to_string(key)
+    return ttypes.Tag(
+        key=key,
+        vLong=value,
+        vType=ttypes.TagType.LONG
+    )
+
+
+def _make_double_tag(key, value):
+    key = _to_string(key)
+    return ttypes.Tag(
+        key=key,
+        vDouble=value,
+        vType=ttypes.TagType.DOUBLE
+    )
+
+
+def _make_bool_tag(key, value):
+    key = _to_string(key)
+    return ttypes.Tag(
+        key=key,
+        vBool=value,
+        vType=ttypes.TagType.BOOL
     )
 
 
@@ -72,7 +123,7 @@ def timestamp_micros(ts):
 def make_tags(tags, max_length):
     # TODO extend to support non-string tag values
     return [
-        make_string_tag(key=k, value=v, max_length=max_length)
+        make_tag(key=k, value=v, max_length=max_length)
         for k, v in six.iteritems(tags or {})
     ]
 

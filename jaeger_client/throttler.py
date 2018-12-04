@@ -156,15 +156,14 @@ class RemoteThrottler(object):
             throttling_response = json.loads(response_body)
             self.logger.debug('Received throttling response: %s',
                               throttling_response)
+            self._update_credits(throttling_response)
             self.metrics.throttler_update_success(1)
         except Exception as e:
             self.metrics.throttler_update_failure(1)
             self.error_reporter.error(
-                'Fail to parse throttling credits response '
+                'Failed to parse throttling credits response '
                 'from jaeger-agent: %s [%s]', e, response_body)
             return
-
-        self._update_credits(throttling_response)
 
     def _update_credits(self, response):
         with self.lock:

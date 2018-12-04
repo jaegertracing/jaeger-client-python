@@ -1,6 +1,6 @@
 XDOCK_YAML=crossdock/docker-compose.yml
 TRACETEST_THRIFT=idl/thrift/crossdock/tracetest.thrift
-JAEGER_COMPOSE_URL=https://raw.githubusercontent.com/jaegertracing/jaeger/master/docker-compose/jaeger-docker-compose.yml
+JAEGER_COMPOSE_URL=https://raw.githubusercontent.com/jaegertracing/jaeger/master/crossdock/jaeger-docker-compose.yml
 XDOCK_JAEGER_YAML=crossdock/jaeger-docker-compose.yml
 
 .PHONY: clean-compile
