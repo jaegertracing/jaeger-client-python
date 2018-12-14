@@ -11,8 +11,6 @@ We gratefully welcome improvements to documentation as well as to code.
 
 ## Developing
 
-Jaeger Python client currently only supports Python 2.7.
-
 This repository uses [virtualenv](https://pypi.python.org/pypi/virtualenv) and `pip` to manage dependencies.
 To install all dependencies, run:
 
