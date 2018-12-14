@@ -1,4 +1,4 @@
-[![Build Status][ci-img]][ci] [![Coverage Status][cov-img]][cov] [![PyPI version][pypi-img]][pypi] [![FOSSA Status][fossa-img]][fossa]
+[![Build Status][ci-img]][ci] [![Coverage Status][cov-img]][cov] [![PyPI Version][pypi-img]][pypi] [![Python Version][pythonversion-img]][pythonversion] [![FOSSA Status][fossa-img]][fossa]
 
 # Jaeger Bindings for Python OpenTracing API
 
@@ -166,5 +166,7 @@ Please make sure your framework does the same.
 [cov]: https://codecov.io/gh/jaegertracing/jaeger-client-python
 [pypi-img]: https://badge.fury.io/py/jaeger-client.svg
 [pypi]: https://badge.fury.io/py/jaeger-client
+[pythonversion-img]: https://img.shields.io/pypi/pyversions/jaeger-client.svg
+[pytonversion]: https://pypi.org/project/jaeger-client
 [fossa-img]: https://app.fossa.io/api/projects/git%2Bgithub.com%2Fjaegertracing%2Fjaeger-client-python.svg?type=shield
 [fossa]: https://app.fossa.io/projects/git%2Bgithub.com%2Fjaegertracing%2Fjaeger-client-python?ref=badge_shield
