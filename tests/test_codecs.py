@@ -339,8 +339,19 @@ class TestCodecs(unittest.TestCase):
         span_context = codec.extract(carrier)
         assert span_context.flags == 0x01
 
+        # validate present debug header with falsy value
+        carrier = {'X-b3-SpanId': 'a2fb4a1d1a96d312', 'X-B3-flags': '0',
+                   'X-B3-traceId': '463ac35c9f6413ad48485a3953bb6124'}
+        span_context = codec.extract(carrier)
+        assert span_context.flags == 0x00
+
         # validate missing context
         assert codec.extract({}) is None
+
+        # validate explicit none in context
+        carrier = {'X-b3-SpanId': None,
+                   'X-B3-traceId': '463ac35c9f6413ad48485a3953bb6124'}
+        assert codec.extract(carrier) is None
 
         # validate invalid hex string
         with self.assertRaises(SpanContextCorruptedException):
