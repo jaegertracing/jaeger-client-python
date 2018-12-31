@@ -295,32 +295,27 @@ class B3Codec(Codec):
         elif span_context.flags & SAMPLED_FLAG == SAMPLED_FLAG:
             carrier[self.sampled_header] = '1'
 
-    @staticmethod
-    def _get_header_value_hex(carrier, header_lc_to_header_orig, header_lc):
-        header = header_lc_to_header_orig.get(header_lc)
-        if header is None:
-            return None
-        header_value = carrier.get(header)
-        if header_value is not None:
-            header_value = header_to_hex(header_value)
-        return header_value
-
     def extract(self, carrier):
         if not isinstance(carrier, dict):
             raise InvalidCarrierException('carrier not a dictionary')
-        lowercase_keys = dict([(k.lower(), k) for k in carrier])
-        trace_id = self._get_header_value_hex(carrier, lowercase_keys, self._trace_header_lc)
-        span_id = self._get_header_value_hex(carrier, lowercase_keys, self._span_header_lc)
-        parent_id = self._get_header_value_hex(carrier, lowercase_keys, self._parent_span_header_lc)
+        trace_id = span_id = parent_id = None
+        flags = 0x00
+        for header_key, header_value in six.iteritems(carrier):
+            if header_value is None:
+                continue
+            lower_key = header_key.lower()
+            if lower_key == self._trace_header_lc:
+                trace_id = header_to_hex(header_value)
+            elif lower_key == self._span_header_lc:
+                span_id = header_to_hex(header_value)
+            elif lower_key == self._parent_span_header_lc:
+                parent_id = header_to_hex(header_value)
+            elif lower_key == self._sampled_header_lc and header_value == '1':
+                flags |= SAMPLED_FLAG
+            elif lower_key == self._flags_header_lc and header_value == '1':
+                flags |= DEBUG_FLAG
         if not trace_id or not span_id:
             return None
-        flags = 0x00
-        sampled = carrier.get(lowercase_keys.get(self._sampled_header_lc))
-        if sampled == '1':
-            flags |= SAMPLED_FLAG
-        debug = carrier.get(lowercase_keys.get(self._flags_header_lc))
-        if debug == '1':
-            flags |= DEBUG_FLAG
         return SpanContext(trace_id=trace_id, span_id=span_id,
                            parent_id=parent_id, flags=flags,
                            baggage=None)
