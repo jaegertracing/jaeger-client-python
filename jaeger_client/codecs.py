@@ -298,19 +298,24 @@ class B3Codec(Codec):
     def extract(self, carrier):
         if not isinstance(carrier, dict):
             raise InvalidCarrierException('carrier not a dictionary')
-        lowercase_keys = dict([(k.lower(), k) for k in carrier])
-        trace_id = header_to_hex(carrier.get(lowercase_keys.get(self._trace_header_lc)))
-        span_id = header_to_hex(carrier.get(lowercase_keys.get(self._span_header_lc)))
-        parent_id = carrier.get(lowercase_keys.get(self._parent_span_header_lc))
-        if parent_id:
-            parent_id = header_to_hex(parent_id)
+        trace_id = span_id = parent_id = None
         flags = 0x00
-        sampled = carrier.get(lowercase_keys.get(self._sampled_header_lc))
-        if sampled == '1':
-            flags |= SAMPLED_FLAG
-        debug = carrier.get(lowercase_keys.get(self._flags_header_lc))
-        if debug == '1':
-            flags |= DEBUG_FLAG
+        for header_key, header_value in six.iteritems(carrier):
+            if header_value is None:
+                continue
+            lower_key = header_key.lower()
+            if lower_key == self._trace_header_lc:
+                trace_id = header_to_hex(header_value)
+            elif lower_key == self._span_header_lc:
+                span_id = header_to_hex(header_value)
+            elif lower_key == self._parent_span_header_lc:
+                parent_id = header_to_hex(header_value)
+            elif lower_key == self._sampled_header_lc and header_value == '1':
+                flags |= SAMPLED_FLAG
+            elif lower_key == self._flags_header_lc and header_value == '1':
+                flags |= DEBUG_FLAG
+        if not trace_id or not span_id:
+            return None
         return SpanContext(trace_id=trace_id, span_id=span_id,
                            parent_id=parent_id, flags=flags,
                            baggage=None)
