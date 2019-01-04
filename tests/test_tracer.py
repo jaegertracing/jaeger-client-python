@@ -305,3 +305,22 @@ def test_tracer_throttler():
     debug_span_context = SpanContext.with_debug_id('debug-id')
     span = tracer.start_span('test-operation', child_of=debug_span_context)
     assert not span.is_debug()
+
+
+def test_tracer_128bit_trace_id():
+    reporter = mock.MagicMock()
+    sampler = mock.MagicMock()
+    tracer = Tracer(
+        service_name='x',
+        reporter=reporter,
+        sampler=sampler,
+    )
+    assert tracer.max_trace_id_bits == c._max_id_bits
+
+    tracer = Tracer(
+        service_name='x',
+        reporter=reporter,
+        sampler=sampler,
+        generate_128bit_trace_id=True,
+    )
+    assert tracer.max_trace_id_bits == c._max_trace_id_bits

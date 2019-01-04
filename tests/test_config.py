@@ -156,3 +156,20 @@ class ConfigTests(unittest.TestCase):
     def test_default_local_agent_reporting_port(self):
         c = Config({}, service_name='x')
         assert c.local_agent_reporting_port == 6831
+
+    def test_generate_128bit_trace_id(self):
+        c = Config({}, service_name='x')
+        assert c.generate_128bit_trace_id is False
+
+        c = Config({'generate_128bit_trace_id': True}, service_name='x')
+        assert c.generate_128bit_trace_id is True
+
+        os.environ['JAEGER_TRACEID_128BIT'] = 'true'
+        c = Config({'generate_128bit_trace_id': False}, service_name='x')
+        assert c.generate_128bit_trace_id is False
+
+        c = Config({}, service_name='x')
+        assert c.generate_128bit_trace_id is True
+
+        os.environ.pop('JAEGER_TRACEID_128BIT')
+        assert os.getenv('JAEGER_TRACEID_128BIT', None) is None
