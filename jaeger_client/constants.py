@@ -18,8 +18,14 @@ from . import __version__
 
 import six
 
-# Max number of bits to use when generating random ID
+# DEPRECATED: max number of bits to use when generating random ID
 MAX_ID_BITS = 64
+
+# Max number of bits allowed to use when generating Trace ID
+_max_trace_id_bits = 128
+
+# Max number of bits to use when generating random ID
+_max_id_bits = 64
 
 # How often remotely controlled sampler polls for sampling strategy
 DEFAULT_SAMPLING_INTERVAL = 60

@@ -26,6 +26,24 @@ if six.PY3:
     long = int
 
 
+def _id_to_low(big_id):
+    """
+    :param big_id: id in integer
+    :return: Returns the right most 64 bits of big_id
+    """
+    if big_id is not None:
+        return big_id & (_max_unsigned_id - 1)
+
+
+def _id_to_high(big_id):
+    """
+    :param big_id: id in integer
+    :return: Returns the left most 64 bits of big_id
+    """
+    if big_id is not None:
+        return (big_id >> 64) & (_max_unsigned_id - 1)
+
+
 def id_to_int(big_id):
     if big_id is None:
         return None
@@ -150,8 +168,8 @@ def make_jaeger_batch(spans, process):
     for span in spans:
         with span.update_lock:
             jaeger_span = ttypes.Span(
-                traceIdLow=id_to_int(span.trace_id),
-                traceIdHigh=0,
+                traceIdLow=id_to_int(_id_to_low(span.trace_id)),
+                traceIdHigh=id_to_int(_id_to_high(span.trace_id)),
                 spanId=id_to_int(span.span_id),
                 parentSpanId=id_to_int(span.parent_id) or 0,
                 operationName=span.operation_name,
