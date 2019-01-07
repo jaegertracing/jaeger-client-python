@@ -125,6 +125,7 @@ class ProbabilisticSampler(Sampler):
         self.boundary = rate * self.max_number
 
     def is_sampled(self, trace_id, operation=''):
+        trace_id = trace_id & (self.max_number - 1)
         return trace_id < self.boundary, self._tags
 
     def close(self):
