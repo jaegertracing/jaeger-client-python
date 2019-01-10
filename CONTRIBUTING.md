@@ -37,7 +37,8 @@ It can be fixed with:
 pip uninstall pycurl
 export LDFLAGS="-L/usr/local/opt/openssl/lib"
 export CPPFLAGS="-I/usr/local/opt/openssl/include"
-pip install --no-cache-dir --compile --ignore-installed --install-option="--with-openssl" pycurl
+export PYCURL_SSL_LIBRARY=openssl
+pip install --no-cache-dir --compile --ignore-installed --install-option="--with-openssl" --install-option="--openssl-dir=/usr/local/opt/openssl" pycurl
 ```
 
 ## Making A Change
