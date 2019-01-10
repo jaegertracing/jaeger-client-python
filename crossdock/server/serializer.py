@@ -76,7 +76,7 @@ def traceresponse_from_struct(json_obj):
 def traceresponse_from_json(json_str):
     try:
         return traceresponse_from_struct(json.loads(json_str))
-    except:
+    except:  # noqa: E722
         logging.exception('Failed to parse JSON')
         raise
 
