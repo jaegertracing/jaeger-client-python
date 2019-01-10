@@ -66,7 +66,7 @@ clean:
 
 .PHONY: lint
 lint:
-	$(flake8) $(projects) tests
+	$(flake8) $(projects)
 	./scripts/check-license.sh
 
 .PHONY: shell

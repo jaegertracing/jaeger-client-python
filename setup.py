@@ -62,7 +62,7 @@ setup(
             'pytest-tornado',
             'pytest-benchmark[histogram]>=3.0.0rc1',
             'pytest-localserver',
-            'flake8<3',  # see https://github.com/zheller/flake8-quotes/issues/29
+            'flake8',
             'flake8-quotes',
             'codecov',
             'tchannel>=0.27', # This is only used in python 2

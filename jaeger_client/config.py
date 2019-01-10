@@ -230,7 +230,7 @@ class Config(object):
             return get_boolean(self.local_agent_group().get('enabled',
                                LOCAL_AGENT_DEFAULT_ENABLED),
                                LOCAL_AGENT_DEFAULT_ENABLED)
-        except:
+        except:  # noqa: E722
             return LOCAL_AGENT_DEFAULT_ENABLED
 
     @property
@@ -238,7 +238,7 @@ class Config(object):
         # noinspection PyBroadException
         try:
             return int(self.local_agent_group()['sampling_port'])
-        except:
+        except:  # noqa: E722
             return DEFAULT_SAMPLING_PORT
 
     @property
@@ -246,12 +246,12 @@ class Config(object):
         # noinspection PyBroadException
         try:
             return int(self.local_agent_group()['reporting_port'])
-        except:
+        except:  # noqa: E722
             pass
 
         try:
             return int(os.getenv('JAEGER_AGENT_PORT'))
-        except:
+        except:  # noqa: E722
             return DEFAULT_REPORTING_PORT
 
     @property
@@ -259,7 +259,7 @@ class Config(object):
         # noinspection PyBroadException
         try:
             return self.local_agent_group()['reporting_host']
-        except:
+        except:  # noqa: E722
             pass
 
         if os.getenv('JAEGER_AGENT_HOST') is not None:
@@ -304,7 +304,7 @@ class Config(object):
         # noinspection PyBroadException
         try:
             return int(throttler_config['port'])
-        except:
+        except:  # noqa: E722
             return DEFAULT_THROTTLER_PORT
 
     @property
@@ -315,7 +315,7 @@ class Config(object):
         # noinspection PyBroadException
         try:
             return int(throttler_config['refresh_interval'])
-        except:
+        except:  # noqa: E722
             return DEFAULT_THROTTLER_REFRESH_INTERVAL
 
     @staticmethod
