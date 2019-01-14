@@ -67,8 +67,6 @@ def local_ip():
         ip = get_local_ip_by_interfaces()
         if ip is None:
             ip = get_local_ip_by_socket()
-            if ip is None:
-                ip = 'Unknown IP'
     return ip
 
 
