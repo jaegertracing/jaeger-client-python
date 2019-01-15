@@ -16,6 +16,7 @@ from __future__ import absolute_import
 
 import unittest
 from collections import namedtuple
+from itertools import product
 import six
 
 import mock
@@ -211,11 +212,11 @@ class TestCodecs(unittest.TestCase):
         codec = TextCodec(trace_id_header='Trace_ID',
                           baggage_header_prefix='Trace-Attr-')
         headers = {
-            'Trace-ID': 'FFFFFFFFFFFFFFFF:FFFFFFFFFFFFFFFF:FFFFFFFFFFFFFFFF:1',
+            'Trace-ID': 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF:FFFFFFFFFFFFFFFF:FFFFFFFFFFFFFFFF:1',
         }
         context = codec.extract(headers)
-        assert context.trace_id == 0xFFFFFFFFFFFFFFFF
-        assert context.trace_id == (1 << 64) - 1
+        assert context.trace_id == 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+        assert context.trace_id == (1 << 128) - 1
         assert context.trace_id > 0
         assert context.span_id == 0xFFFFFFFFFFFFFFFF
         assert context.span_id == (1 << 64) - 1
@@ -437,11 +438,18 @@ def _test_baggage_without_trace_id(tracer, trace_id_header, baggage_header_prefi
     (ZipkinSpanFormat, {}),
 ])
 def test_round_trip(tracer, fmt, carrier):
-    span = tracer.start_span('test-%s' % fmt)
-    tracer.inject(span, fmt, carrier)
-    context = tracer.extract(fmt, carrier)
-    span2 = tracer.start_span('test-%s' % fmt, child_of=context)
-    assert span.trace_id == span2.trace_id
+    tracer_128bit = Tracer(
+        service_name='test',
+        reporter=InMemoryReporter(),
+        sampler=ConstSampler(True),
+        generate_128bit_trace_id=True)
+
+    for tracer1, tracer2 in product([tracer, tracer_128bit], repeat=2):
+        span = tracer1.start_span('test-%s' % fmt)
+        tracer1.inject(span, fmt, carrier)
+        context = tracer2.extract(fmt, carrier)
+        span2 = tracer2.start_span('test-%s' % fmt, child_of=context)
+        assert span.trace_id == span2.trace_id
 
 
 def test_debug_id():
