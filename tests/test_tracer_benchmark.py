@@ -60,7 +60,7 @@ def test_100pct_sampling_250mcs(benchmark):
 def test_all_batched_size10(benchmark):
     from tchannel.sync import TChannel
     ch = TChannel(name='foo')
-    f = ch.advertise(routers=["127.0.0.1:21300", "127.0.0.1:21301"])
+    f = ch.advertise(routers=['127.0.0.1:21300', '127.0.0.1:21301'])
     f.result()
     tracer = Tracer.default_tracer(ch, service_name='benchmark',
                                    sampler=ConstSampler(True))
@@ -72,7 +72,7 @@ def test_all_batched_size10(benchmark):
 def test_all_batched_size5(benchmark):
     from tchannel.sync import TChannel
     ch = TChannel(name='foo')
-    f = ch.advertise(routers=["127.0.0.1:21300", "127.0.0.1:21301"])
+    f = ch.advertise(routers=['127.0.0.1:21300', '127.0.0.1:21301'])
     f.result()
     tracer = Tracer.default_tracer(ch, service_name='benchmark',
                                    sampler=ConstSampler(True))
@@ -84,7 +84,7 @@ def test_all_batched_size5(benchmark):
 def test_all_not_batched(benchmark):
     from tchannel.sync import TChannel
     ch = TChannel(name='foo')
-    f = ch.advertise(routers=["127.0.0.1:21300", "127.0.0.1:21301"])
+    f = ch.advertise(routers=['127.0.0.1:21300', '127.0.0.1:21301'])
     f.result()
     tracer = Tracer.default_tracer(ch, service_name='benchmark', sampler=ConstSampler(True))
     tracer.reporter.batch_size = 1

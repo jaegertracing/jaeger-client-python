@@ -1,4 +1,3 @@
-from __future__ import print_function
 # Copyright (c) 2016 Uber Technologies, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,6 +12,7 @@ from __future__ import print_function
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
 from six.moves import range
 
 import logging
@@ -141,8 +141,13 @@ class ReporterTest(AsyncTestCase):
     def _new_span(name):
         tracer = FakeTrace(ip_address='127.0.0.1',
                            service_name='reporter_test')
-        ctx = SpanContext(trace_id=1, span_id=1, parent_id=None, flags=1)
-        span = Span(context=ctx, tracer=tracer, operation_name=name)
+        ctx = SpanContext(trace_id=1,
+                          span_id=1,
+                          parent_id=None,
+                          flags=1)
+        span = Span(context=ctx,
+                    tracer=tracer,
+                    operation_name=name)
         span.start_time = time.time()
         span.end_time = span.start_time + 0.001  # 1ms
         return span

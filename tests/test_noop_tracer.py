@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from __future__ import absolute_import
 
 import opentracing
@@ -32,7 +33,9 @@ def test_new_trace():
     assert child.get_baggage_item('Fry') is None
     carrier = {}
     tracer.inject(
-        span_context=child.context, format=Format.TEXT_MAP, carrier=carrier)
+        span_context=child.context,
+        format=Format.TEXT_MAP,
+        carrier=carrier)
     assert carrier == dict()
     child.finish()
 

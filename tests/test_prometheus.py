@@ -19,12 +19,16 @@ from prometheus_client import REGISTRY
 
 def test_prometheus_metrics_counter():
     metrics = PrometheusMetricsFactory(namespace='test')
-    counter1 = metrics.create_counter(name='jaeger:test_counter', tags={'result': 'ok'})
+    counter1 = metrics.create_counter(name='jaeger:test_counter',
+                                      tags={'result': 'ok'})
     counter1(1)
-    counter2 = metrics.create_counter(name='jaeger:test_counter', tags={'result': 'ok'})
+    counter2 = metrics.create_counter(name='jaeger:test_counter',
+                                      tags={'result': 'ok'})
     counter2(1)
-    after = REGISTRY.get_sample_value('test_jaeger:test_counter', {'result': 'ok'})
+    after = REGISTRY.get_sample_value('test_jaeger:test_counter',
+                                      {'result': 'ok'})
     assert 2 == after
+
 
 def test_prometheus_metrics_counter_without_tags():
     metrics = PrometheusMetricsFactory()
@@ -33,12 +37,16 @@ def test_prometheus_metrics_counter_without_tags():
     after = REGISTRY.get_sample_value('jaeger:test_counter_no_tags')
     assert 1 == after
 
+
 def test_prometheus_metrics_guage():
     metrics = PrometheusMetricsFactory(namespace='test')
-    gauge = metrics.create_gauge(name='jaeger:test_gauge', tags={'result': 'ok'})
+    gauge = metrics.create_gauge(name='jaeger:test_gauge',
+                                 tags={'result': 'ok'})
     gauge(1)
-    after = REGISTRY.get_sample_value('test_jaeger:test_gauge', {'result': 'ok'})
+    after = REGISTRY.get_sample_value('test_jaeger:test_gauge',
+                                      {'result': 'ok'})
     assert 1 == after
+
 
 def test_prometheus_metrics_gauge_without_tags():
     metrics = PrometheusMetricsFactory()

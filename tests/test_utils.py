@@ -64,7 +64,7 @@ class ConfigTests(unittest.TestCase):
         mock_logger = mock.MagicMock()
         # 0 log interval means we're always after the deadline, so always log
         er = utils.ErrorReporter(None, logger=mock_logger, log_interval_minutes=0)
-        er._last_error_reported_at=0
+        er._last_error_reported_at = 0
         er.error('foo', 1, 'error args')
         assert mock_logger.error.call_args == (('foo', 1, 'error args',),)
 

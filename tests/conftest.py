@@ -25,5 +25,6 @@ def tracer():
     return Tracer(
         service_name='test_service_1', reporter=reporter, sampler=sampler)
 
+
 AsyncHTTPClient.configure('tornado.curl_httpclient.CurlAsyncHTTPClient')
 print('Configured AsyncHTTPClient to use tornado.curl_httpclient.CurlAsyncHTTPClient')

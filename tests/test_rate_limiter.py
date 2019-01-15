@@ -18,6 +18,7 @@ import mock
 
 from jaeger_client.rate_limiter import RateLimiter
 
+
 def test_rate_limiting_sampler():
     rate_limiter = RateLimiter(2, 2)
     assert rate_limiter.balance <= 2.0
@@ -81,4 +82,4 @@ def test_rate_limiting_sampler():
         assert rate_limiter.timestamp() == ts
         assert rate_limiter.check_credit(1)
         rate_limiter.update(2.0, 2.0)
-        assert rate_limiter.balance == 4.0/3.0
+        assert rate_limiter.balance == 4.0 / 3.0

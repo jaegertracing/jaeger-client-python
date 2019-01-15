@@ -60,7 +60,7 @@ class ConfigTests(unittest.TestCase):
     def test_probabilistic_sampler(self):
         with self.assertRaises(Exception):
             cfg = {'sampler': {'type': 'probabilistic', 'param': 'xx'}}
-            _ = Config(cfg, service_name='x').sampler
+            Config(cfg, service_name='x').sampler
         c = Config({'sampler': {'type': 'probabilistic', 'param': 0.5}},
                    service_name='x')
         assert type(c.sampler) is ProbabilisticSampler
@@ -69,7 +69,7 @@ class ConfigTests(unittest.TestCase):
     def test_rate_limiting_sampler(self):
         with self.assertRaises(Exception):
             cfg = {'sampler': {'type': 'rate_limiting', 'param': 'xx'}}
-            _ = Config(cfg, service_name='x').sampler
+            Config(cfg, service_name='x').sampler
         c = Config({'sampler': {'type': 'rate_limiting', 'param': 1234}},
                    service_name='x')
         assert type(c.sampler) is RateLimitingSampler
@@ -133,18 +133,18 @@ class ConfigTests(unittest.TestCase):
 
     def test_for_unexpected_config_entries(self):
         with self.assertRaises(Exception):
-            _ = Config({"unexpected":"value"}, validate=True)
+            Config({'unexpected': 'value'}, validate=True)
 
     def test_reporter_queue_size_valid(self):
-        config = Config({"reporter_queue_size": 100}, service_name='x', validate=True)
+        config = Config({'reporter_queue_size': 100}, service_name='x', validate=True)
         assert config.reporter_queue_size == 100
 
     def test_missing_service_name(self):
         with self.assertRaises(ValueError):
-            _ = Config({})
+            Config({})
 
     def test_disable_metrics(self):
-        config = Config({ 'metrics': False }, service_name='x')
+        config = Config({'metrics': False}, service_name='x')
         assert isinstance(config._metrics_factory, MetricsFactory)
 
     def test_initialize_tracer(self):
