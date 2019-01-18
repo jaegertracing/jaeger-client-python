@@ -13,8 +13,6 @@
 # limitations under the License.
 
 from __future__ import absolute_import
-
-import mock
 import unittest
 
 from jaeger_client.TUDPTransport import TUDPTransport
@@ -26,7 +24,7 @@ class TUDPTransportTests(unittest.TestCase):
 
     def test_constructor_blocking(self):
         t = TUDPTransport('127.0.0.1', 12345, blocking=True)
-        assert t.transport_sock.gettimeout() == None
+        assert t.transport_sock.gettimeout() is None
 
     def test_constructor_nonblocking(self):
         t = TUDPTransport('127.0.0.1', 12345, blocking=False)
@@ -36,11 +34,11 @@ class TUDPTransportTests(unittest.TestCase):
         self.t.write(b'hello')
 
     def test_isopen_when_open(self):
-        assert self.t.isOpen() == True
+        assert self.t.isOpen() is True
 
     def test_isopen_when_closed(self):
         self.t.close()
-        assert self.t.isOpen() == False
+        assert self.t.isOpen() is False
 
     def test_close(self):
         self.t.close()

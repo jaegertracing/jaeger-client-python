@@ -45,17 +45,17 @@ def test_start_trace(tracer):
 
         span = tracer.start_span('test')
         span.set_tag(ext_tags.SPAN_KIND, ext_tags.SPAN_KIND_RPC_SERVER)
-        assert span, "Span must not be nil"
-        assert span.tracer == tracer, "Tracer must be referenced from span"
+        assert span, 'Span must not be nil'
+        assert span.tracer == tracer, 'Tracer must be referenced from span'
         assert find_tag(span, 'span.kind') == ext_tags.SPAN_KIND_RPC_SERVER, \
             'Span must be server-side'
-        assert span.trace_id == 12345, "Must match trace_id"
-        assert span.is_sampled(), "Must be sampled"
-        assert span.parent_id is None, "Must not have parent_id (root span)"
-        assert span.start_time == 54321, "Must match timestamp"
+        assert span.trace_id == 12345, 'Must match trace_id'
+        assert span.is_sampled(), 'Must be sampled'
+        assert span.parent_id is None, 'Must not have parent_id (root span)'
+        assert span.start_time == 54321, 'Must match timestamp'
 
         span.finish()
-        assert span.end_time is not None, "Must have end_time defined"
+        assert span.end_time is not None, 'Must have end_time defined'
         tracer.reporter.assert_called_once()
 
     tracer.close()
@@ -63,7 +63,7 @@ def test_start_trace(tracer):
 
 def test_forced_sampling(tracer):
     tracer.sampler = ConstSampler(False)
-    span = tracer.start_span("test2",
+    span = tracer.start_span('test2',
                              tags={ext_tags.SAMPLING_PRIORITY: 1})
     assert span.is_sampled()
     assert span.is_debug()
@@ -71,19 +71,19 @@ def test_forced_sampling(tracer):
 
 @pytest.mark.parametrize('mode,', ['arg', 'ref'])
 def test_start_child(tracer, mode):
-    root = tracer.start_span("test")
+    root = tracer.start_span('test')
     if mode == 'arg':
-        span = tracer.start_span("test", child_of=root.context)
+        span = tracer.start_span('test', child_of=root.context)
     elif mode == 'ref':
-        span = tracer.start_span("test", references=child_of(root.context))
+        span = tracer.start_span('test', references=child_of(root.context))
     else:
         raise ValueError('bad mode')
     span.set_tag(ext_tags.SPAN_KIND, ext_tags.SPAN_KIND_RPC_SERVER)
-    assert span.is_sampled(), "Must be sampled"
-    assert span.trace_id == root.trace_id, "Must have the same trace id"
-    assert span.parent_id == root.span_id, "Must inherit parent id"
+    assert span.is_sampled(), 'Must be sampled'
+    assert span.trace_id == root.trace_id, 'Must have the same trace id'
+    assert span.parent_id == root.span_id, 'Must inherit parent id'
     span.finish()
-    assert span.end_time is not None, "Must have end_time set"
+    assert span.end_time is not None, 'Must have end_time set'
     tracer.reporter.assert_called_once()
     tracer.close()
 
@@ -91,23 +91,23 @@ def test_start_child(tracer, mode):
 @pytest.mark.parametrize('one_span_per_rpc,', [True, False])
 def test_one_span_per_rpc(tracer, one_span_per_rpc):
     tracer.one_span_per_rpc = one_span_per_rpc
-    span = tracer.start_span("client")
+    span = tracer.start_span('client')
     span.set_tag(ext_tags.SPAN_KIND, ext_tags.SPAN_KIND_RPC_CLIENT)
     child = tracer.start_span(
-        "server", 
+        'server',
         references=child_of(span.context),
         tags={ext_tags.SPAN_KIND: ext_tags.SPAN_KIND_RPC_SERVER},
     )
-    assert span.trace_id == child.trace_id, "Must have the same trace ids"
+    assert span.trace_id == child.trace_id, 'Must have the same trace ids'
     if one_span_per_rpc:
-        assert span.span_id == child.span_id, "Must have the same span ids"
+        assert span.span_id == child.span_id, 'Must have the same span ids'
     else:
-        assert span.span_id != child.span_id, "Must have different span ids"
+        assert span.span_id != child.span_id, 'Must have different span ids'
 
 
 def test_child_span(tracer):
-    span = tracer.start_span("test")
-    child = tracer.start_span("child", references=child_of(span.context))
+    span = tracer.start_span('test')
+    child = tracer.start_span('child', references=child_of(span.context))
     child.set_tag(ext_tags.SPAN_KIND, ext_tags.SPAN_KIND_RPC_CLIENT)
     child.set_tag('bender', 'is great')
     child.log_event('kiss-my-shiny-metal-...')
@@ -118,25 +118,25 @@ def test_child_span(tracer):
     assert len(child.logs) == 1, 'Child must have one events'
 
     tracer.sampler = ConstSampler(False)
-    span = tracer.start_span("test")
-    child = tracer.start_span("child", references=child_of(span.context))
+    span = tracer.start_span('test')
+    child = tracer.start_span('child', references=child_of(span.context))
     child.set_tag('bender', 'is great')
     child.log_event('kiss-my-shiny-metal-...')
     child.finish()
     span.finish()
-    assert len(child.logs) == 0, "Must have no events, not sampled"
-    assert len(child.tags) == 0, "Must have no attributes, not sampled"
+    assert len(child.logs) == 0, 'Must have no events, not sampled'
+    assert len(child.tags) == 0, 'Must have no attributes, not sampled'
     tracer.close()
 
 
 def test_sampler_effects(tracer):
     tracer.sampler = ConstSampler(True)
-    span = tracer.start_span("test")
-    assert span.is_sampled(), "Must be sampled"
+    span = tracer.start_span('test')
+    assert span.is_sampled(), 'Must be sampled'
 
     tracer.sampler = ConstSampler(False)
-    span = tracer.start_span("test")
-    assert not span.is_sampled(), "Must not be sampled"
+    span = tracer.start_span('test')
+    assert not span.is_sampled(), 'Must not be sampled'
     tracer.close()
 
 
@@ -253,17 +253,17 @@ def test_tracer_override_codecs():
     reporter = mock.MagicMock()
     sampler = ConstSampler(True)
     codecs = {
-        'extra_codec': "codec_placeholder",
-        Format.BINARY: "overridden_binary_codec"
+        'extra_codec': 'codec_placeholder',
+        Format.BINARY: 'overridden_binary_codec'
 
     }
     with mock.patch('socket.gethostname', return_value='dream-host.com'):
         tracer = Tracer(service_name='x', reporter=reporter, sampler=sampler,
                         extra_codecs=codecs)
-        assert tracer.codecs['extra_codec'] == "codec_placeholder",\
-                "Extra codec not found"
-        assert tracer.codecs[Format.BINARY] == "overridden_binary_codec",\
-                "Binary format codec not overridden"
+        assert tracer.codecs['extra_codec'] == 'codec_placeholder',\
+                                               'Extra codec not found'
+        assert tracer.codecs[Format.BINARY] == 'overridden_binary_codec',\
+                                               'Binary format codec not overridden'
 
 
 def test_tracer_hostname_tag():
@@ -276,8 +276,7 @@ def test_tracer_hostname_tag():
         sampler=sampler,
     )
 
-    assert tracer.tags[c.JAEGER_HOSTNAME_TAG_KEY] == \
-            'jaeger-client-app.local'
+    assert tracer.tags[c.JAEGER_HOSTNAME_TAG_KEY] == 'jaeger-client-app.local'
 
 
 def test_tracer_ip_tag():
@@ -290,8 +289,8 @@ def test_tracer_ip_tag():
         sampler=sampler,
     )
 
-    assert tracer.tags[c.JAEGER_IP_TAG_KEY] == \
-            '192.0.2.3'
+    assert tracer.tags[c.JAEGER_IP_TAG_KEY] == '192.0.2.3'
+
 
 def test_tracer_throttler():
     tracer = Tracer(

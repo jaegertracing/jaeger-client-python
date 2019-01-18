@@ -25,7 +25,7 @@ from thrift.transport.TTransport import TMemoryBuffer
 
 
 def test_submit_batch(tracer):
-    span = tracer.start_span("test-span")
+    span = tracer.start_span('test-span')
     span.set_tag('bender', 'is great')
     span.set_tag('peer.ipv4', 123123)
     span.set_tag('unicode_val', u'non-ascii: \xe9')
@@ -95,21 +95,26 @@ def test_large_tags():
     tag = thrift.make_tag('x', 'y' * 300, max_length=256)
     assert len(tag.vStr) <= 256
 
+
 def test_bool_tags():
     tag = thrift.make_tag('booltag', True, max_length=256)
     assert tag.vBool is True
+
 
 def test_bool_tags_false():
     tag = thrift.make_tag('booltag', False, max_length=256)
     assert tag.vBool is False
 
+
 def test_long_tags():
     tag = thrift.make_tag('longtag', 404, max_length=256)
     assert tag.vLong == 404
 
+
 def test_double_tags():
     tag = thrift.make_tag('doubletag', 12.1, max_length=256)
     assert tag.vDouble == 12.1
+
 
 def test_parse_sampling_strategy():
     # probabilistic

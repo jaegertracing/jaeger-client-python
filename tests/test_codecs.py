@@ -37,7 +37,6 @@ from opentracing.propagation import (
 
 class TestCodecs(unittest.TestCase):
 
-
     def test_abstract_codec(self):
         codec = Codec()
         with self.assertRaises(NotImplementedError):
@@ -208,7 +207,6 @@ class TestCodecs(unittest.TestCase):
                 'hermes': 'LaBarbara Hermes',
             }
 
-
     def test_context_from_large_ids(self):
         codec = TextCodec(trace_id_header='Trace_ID',
                           baggage_header_prefix='Trace-Attr-')
@@ -306,7 +304,8 @@ class TestCodecs(unittest.TestCase):
         span = Span(context=ctx, operation_name='x', tracer=None, start_time=1)
         carrier = {}
         codec.inject(span_context=span, carrier=carrier)
-        assert carrier == {'X-B3-SpanId': format(127, 'x').zfill(16), 'X-B3-ParentSpanId': format(32, 'x').zfill(16),
+        assert carrier == {'X-B3-SpanId': format(127, 'x').zfill(16),
+                           'X-B3-ParentSpanId': format(32, 'x').zfill(16),
                            'X-B3-TraceId': format(256, 'x').zfill(16), 'X-B3-Sampled': '1'}
 
     def test_b3_extract(self):
@@ -500,9 +499,9 @@ def test_baggage_as_unicode_strings_with_httplib(httpserver):
         span.set_baggage_item(b[0], b[1])
 
         headers = {}
-        tracer.inject(
-            span_context=span.context, format=Format.TEXT_MAP, carrier=headers
-        )
+        tracer.inject(span_context=span.context,
+                      format=Format.TEXT_MAP,
+                      carrier=headers)
         # make sure httplib doesn't blow up
         request = urllib_under_test.Request(httpserver.url, None, headers)
         response = urllib_under_test.urlopen(request)

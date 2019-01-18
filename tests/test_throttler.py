@@ -26,10 +26,13 @@ def test_throttler_simple():
     allowed = throttler.is_allowed('test-operation')
     assert not allowed
 
+
 def test_throttler_no_io_loop():
     channel = mock.MagicMock()
     channel.io_loop = None
     throttler = RemoteThrottler(channel, 'test-service')
+    assert throttler
+
 
 def test_throttler_credits():
     channel = mock.MagicMock()
@@ -38,6 +41,7 @@ def test_throttler_credits():
     allowed = throttler.is_allowed('test-operation')
     assert allowed
     assert throttler.credits['test-operation'] == 2.0
+
 
 def test_throttler_init_polling():
     channel = mock.MagicMock()
@@ -50,12 +54,13 @@ def test_throttler_init_polling():
     throttler._init_polling()
     assert channel.io_loop.call_later.call_count == 1
 
+
 def test_throttler_delayed_polling():
     channel = mock.MagicMock()
     channel.io_loop.time = time.time
     channel.io_loop._next_timeout = 1
     throttler = RemoteThrottler(channel, 'test-service')
-    throttler.credits = { 'test-operation': 0 }
+    throttler.credits = {'test-operation': 0}
     # noinspection PyProtectedMember
     throttler._delayed_polling()
     assert channel.request_throttling_credits.call_count == 1
@@ -64,6 +69,7 @@ def test_throttler_delayed_polling():
     throttler.periodic = None
     throttler._delayed_polling()
     assert throttler.periodic is None
+
 
 def test_throttler_request_callback():
     channel = mock.MagicMock()

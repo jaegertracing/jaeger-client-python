@@ -68,15 +68,15 @@ def test_legacy_metrics_factory():
     tm = mock.MagicMock()
     gm = mock.MagicMock()
     mf = LegacyMetricsFactory(Metrics(count=cm, timing=tm, gauge=gm))
-    counter = mf.create_counter(name='foo', tags={'k':'v','a':'counter'})
+    counter = mf.create_counter(name='foo', tags={'k': 'v', 'a': 'counter'})
     counter(1)
     assert cm.call_args == (('foo.a_counter.k_v', 1),)
 
-    gauge = mf.create_gauge(name='bar', tags={'k':'v', 'a':'gauge'})
+    gauge = mf.create_gauge(name='bar', tags={'k': 'v', 'a': 'gauge'})
     gauge(2)
     assert gm.call_args == (('bar.a_gauge.k_v', 2),)
 
-    timing = mf.create_timer(name='rawr', tags={'k':'v', 'a':'timer'})
+    timing = mf.create_timer(name='rawr', tags={'k': 'v', 'a': 'timer'})
     timing(3)
     assert tm.call_args == (('rawr.a_timer.k_v', 0.003),)
 
@@ -89,11 +89,11 @@ def test_legacy_metrics_factory():
 
 def test_legacy_metrics_factory_noop():
     mf = LegacyMetricsFactory(Metrics())
-    counter = mf.create_counter(name='foo', tags={'a':'counter'})
+    counter = mf.create_counter(name='foo', tags={'a': 'counter'})
     counter(1)
 
-    gauge = mf.create_gauge(name='bar', tags={'a':'gauge'})
+    gauge = mf.create_gauge(name='bar', tags={'a': 'gauge'})
     gauge(2)
 
-    timing = mf.create_timer(name='rawr', tags={'a':'timer'})
+    timing = mf.create_timer(name='rawr', tags={'a': 'timer'})
     timing(3)

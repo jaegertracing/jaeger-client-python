@@ -64,7 +64,7 @@ class ConfigTests(unittest.TestCase):
         mock_logger = mock.MagicMock()
         # 0 log interval means we're always after the deadline, so always log
         er = utils.ErrorReporter(None, logger=mock_logger, log_interval_minutes=0)
-        er._last_error_reported_at=0
+        er._last_error_reported_at = 0
         er.error('foo', 1, 'error args')
         assert mock_logger.error.call_args == (('foo', 1, 'error args',),)
 
@@ -76,6 +76,7 @@ def test_local_ip_does_not_blow_up():
     with mock.patch('socket.gethostbyname',
                     side_effect=[IOError(), '127.0.0.1']):
         jaeger_client.utils.local_ip()
+
 
 def test_get_local_ip_by_socket_does_not_blow_up():
     import jaeger_client.utils

@@ -57,19 +57,19 @@ def test_baggage_logs():
     assert span.get_baggage_item('x') == 'a'
     assert len(span.logs) == 1
     assert _fields_to_dict(span.logs[0]) == {
-        "event": "baggage", "key": "x", "value": "a",
+        'event': 'baggage', 'key': 'x', 'value': 'a',
     }
     span.set_baggage_item('x', 'b')  # override
     assert span.get_baggage_item('x') == 'b'
     assert len(span.logs) == 2
     assert _fields_to_dict(span.logs[1]) == {
-        "event": "baggage", "key": "x", "value": "b", "override": "true",
+        'event': 'baggage', 'key': 'x', 'value': 'b', 'override': 'true',
     }
     span.set_baggage_item('x', None)  # deletion
     assert span.get_baggage_item('x') is None
     assert len(span.logs) == 3
     assert _fields_to_dict(span.logs[2]) == {
-        "event": "baggage", "key": "x", "value": "None", "override": "true"
+        'event': 'baggage', 'key': 'x', 'value': 'None', 'override': 'true'
     }
 
 
