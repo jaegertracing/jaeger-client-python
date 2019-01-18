@@ -76,3 +76,8 @@ def test_local_ip_does_not_blow_up():
     with mock.patch('socket.gethostbyname',
                     side_effect=[IOError(), '127.0.0.1']):
         jaeger_client.utils.local_ip()
+
+
+def test_get_local_ip_by_socket_does_not_blow_up():
+    import jaeger_client.utils
+    jaeger_client.utils.get_local_ip_by_socket()
