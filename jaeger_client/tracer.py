@@ -44,6 +44,7 @@ class Tracer(opentracing.Tracer):
         self, service_name, reporter, sampler, metrics=None,
         metrics_factory=None,
         trace_id_header=constants.TRACE_ID_HEADER,
+        generate_128bit_trace_id=False,
         baggage_header_prefix=constants.BAGGAGE_HEADER_PREFIX,
         debug_id_header=constants.DEBUG_ID_HEADER_KEY,
         one_span_per_rpc=False, extra_codecs=None,
@@ -60,6 +61,8 @@ class Tracer(opentracing.Tracer):
         self.debug_id_header = debug_id_header
         self.one_span_per_rpc = one_span_per_rpc
         self.max_tag_value_length = max_tag_value_length
+        self.max_trace_id_bits = constants._max_trace_id_bits if generate_128bit_trace_id \
+            else constants._max_id_bits
         self.codecs = {
             Format.TEXT_MAP: TextCodec(
                 url_encoding=False,
@@ -144,8 +147,8 @@ class Tracer(opentracing.Tracer):
             tags.get(ext_tags.SPAN_KIND) == ext_tags.SPAN_KIND_RPC_SERVER
 
         if parent is None or not parent.has_trace:
-            trace_id = self.random_id()
-            span_id = trace_id
+            trace_id = self._random_id(self.max_trace_id_bits)
+            span_id = self._random_id(constants._max_id_bits)
             parent_id = None
             flags = 0
             baggage = None
@@ -170,7 +173,7 @@ class Tracer(opentracing.Tracer):
                 span_id = parent.span_id
                 parent_id = parent.parent_id
             else:
-                span_id = self.random_id()
+                span_id = self._random_id(constants._max_id_bits)
                 parent_id = parent.span_id
             flags = parent.flags
             baggage = dict(parent.baggage)  # TODO do we need to clone?
@@ -238,7 +241,13 @@ class Tracer(opentracing.Tracer):
         self.metrics.spans_finished(1)
 
     def random_id(self):
+        """
+        DEPRECATED: use _random_id() instead
+        """
         return self.random.getrandbits(constants.MAX_ID_BITS)
+
+    def _random_id(self, bitsize):
+        return self.random.getrandbits(bitsize)
 
     def is_debug_allowed(self, *args, **kwargs):
         if not self.throttler:

@@ -22,7 +22,7 @@ import six
 from threading import Lock
 from tornado.ioloop import PeriodicCallback
 from .constants import (
-    MAX_ID_BITS,
+    _max_id_bits,
     DEFAULT_SAMPLING_INTERVAL,
     SAMPLER_TYPE_CONST,
     SAMPLER_TYPE_PROBABILISTIC,
@@ -121,10 +121,11 @@ class ProbabilisticSampler(Sampler):
         )
         assert 0.0 <= rate <= 1.0, 'Sampling rate must be between 0.0 and 1.0'
         self.rate = rate
-        self.max_number = 1 << MAX_ID_BITS
+        self.max_number = 1 << _max_id_bits
         self.boundary = rate * self.max_number
 
     def is_sampled(self, trace_id, operation=''):
+        trace_id = trace_id & (self.max_number - 1)
         return trace_id < self.boundary, self._tags
 
     def close(self):

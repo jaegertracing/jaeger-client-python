@@ -195,7 +195,7 @@ def test_guaranteed_throughput_probabilistic_sampler():
     sampled, tags = sampler.is_sampled(MAX_INT - 10)
     assert sampled
     assert tags == get_tags('probabilistic', 0.51)
-    sampled, tags = sampler.is_sampled(MAX_INT + (MAX_INT / 4))
+    sampled, tags = sampler.is_sampled(int(MAX_INT + (MAX_INT / 4)))
     assert sampled
     assert tags == get_tags('lowerbound', 0.51)
 
@@ -234,7 +234,7 @@ def test_adaptive_sampler():
         # Move time forward by a second to guarantee the rate limiter has enough credits
         mock_time.side_effect = lambda: ts + 1
 
-        sampled, tags = sampler.is_sampled(MAX_INT + (MAX_INT / 4), 'new_op')
+        sampled, tags = sampler.is_sampled(int(MAX_INT + (MAX_INT / 4)), 'new_op')
         assert sampled
         assert tags == get_tags('lowerbound', 0.51)
 
@@ -243,7 +243,7 @@ def test_adaptive_sampler():
     sampled, tags = sampler.is_sampled(MAX_INT - 10, 'new_op_2')
     assert sampled
     assert tags == get_tags('probabilistic', 0.51)
-    sampled, _ = sampler.is_sampled(MAX_INT + (MAX_INT / 4), 'new_op_2')
+    sampled, _ = sampler.is_sampled(int(MAX_INT + (MAX_INT / 4)), 'new_op_2')
     assert not sampled
     assert '%s' % sampler == 'AdaptiveSampler(0.510000, 3.000000, 2)'
 

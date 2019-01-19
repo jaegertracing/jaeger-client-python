@@ -16,6 +16,7 @@ from __future__ import absolute_import
 
 import unittest
 from collections import namedtuple
+from itertools import product
 import six
 
 import mock
@@ -28,6 +29,7 @@ from jaeger_client.codecs import (
 )
 from jaeger_client.config import Config
 from jaeger_client.reporter import InMemoryReporter
+from jaeger_client import constants
 from opentracing import Format
 from opentracing.propagation import (
     InvalidCarrierException,
@@ -82,6 +84,8 @@ class TestCodecs(unittest.TestCase):
         tests = [
             [(256, 127, None, 1), '100:7f:0:1'],
             [(256, 127, 256, 0), '100:7f:100:0'],
+            [(0xffffffffffffffffffffffffffffffff, 127, 256, 0),
+             'ffffffffffffffffffffffffffffffff:7f:100:0'],
         ]
         for test in tests:
             ctx = test[0]
@@ -211,11 +215,11 @@ class TestCodecs(unittest.TestCase):
         codec = TextCodec(trace_id_header='Trace_ID',
                           baggage_header_prefix='Trace-Attr-')
         headers = {
-            'Trace-ID': 'FFFFFFFFFFFFFFFF:FFFFFFFFFFFFFFFF:FFFFFFFFFFFFFFFF:1',
+            'Trace-ID': 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF:FFFFFFFFFFFFFFFF:FFFFFFFFFFFFFFFF:1',
         }
         context = codec.extract(headers)
-        assert context.trace_id == 0xFFFFFFFFFFFFFFFF
-        assert context.trace_id == (1 << 64) - 1
+        assert context.trace_id == 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+        assert context.trace_id == (1 << 128) - 1
         assert context.trace_id > 0
         assert context.span_id == 0xFFFFFFFFFFFFFFFF
         assert context.span_id == (1 << 64) - 1
@@ -437,11 +441,64 @@ def _test_baggage_without_trace_id(tracer, trace_id_header, baggage_header_prefi
     (ZipkinSpanFormat, {}),
 ])
 def test_round_trip(tracer, fmt, carrier):
-    span = tracer.start_span('test-%s' % fmt)
-    tracer.inject(span, fmt, carrier)
-    context = tracer.extract(fmt, carrier)
-    span2 = tracer.start_span('test-%s' % fmt, child_of=context)
-    assert span.trace_id == span2.trace_id
+    tracer_128bit = Tracer(
+        service_name='test',
+        reporter=InMemoryReporter(),
+        sampler=ConstSampler(True),
+        generate_128bit_trace_id=True)
+
+    for tracer1, tracer2 in product([tracer, tracer_128bit], repeat=2):
+        span = tracer1.start_span('test-%s' % fmt)
+        tracer1.inject(span, fmt, carrier)
+        context = tracer2.extract(fmt, carrier)
+        span2 = tracer2.start_span('test-%s' % fmt, child_of=context)
+        assert span.trace_id == span2.trace_id
+
+
+def _text_codec_to_trace_id_string(carrier):
+    return carrier[constants.TRACE_ID_HEADER].split(':')[0]
+
+
+def _zipkin_codec_to_trace_id_string(carrier):
+    return '{:x}'.format(carrier['trace_id'])
+
+
+@pytest.mark.parametrize('fmt,carrier,get_trace_id', [
+    (Format.TEXT_MAP, {}, _text_codec_to_trace_id_string),
+    (Format.HTTP_HEADERS, {}, _text_codec_to_trace_id_string),
+    (ZipkinSpanFormat, {}, _zipkin_codec_to_trace_id_string),
+])
+def test_inject_with_128bit_trace_id(tracer, fmt, carrier, get_trace_id):
+    tracer_128bit = Tracer(
+        service_name='test',
+        reporter=InMemoryReporter(),
+        sampler=ConstSampler(True),
+        generate_128bit_trace_id=True)
+
+    for tracer in [tracer, tracer_128bit]:
+        length = tracer.max_trace_id_bits / 4
+        trace_id = (1 << 64) - 1 if length == 16 else (1 << 128) - 1
+        ctx = SpanContext(trace_id=trace_id, span_id=127, parent_id=None,
+                          flags=1)
+        span = Span(ctx, operation_name='test-%s' % fmt, tracer=None, start_time=1)
+        tracer.inject(span, fmt, carrier)
+        assert len(get_trace_id(carrier)) == length
+
+        # test if the trace_id arrived on wire remains same even if
+        # the tracer is configured for 64bit ids or 128bit ids
+        ctx = SpanContext(trace_id=(1 << 128) - 1, span_id=127, parent_id=None,
+                          flags=0)
+        span = tracer.start_span('test-%s' % fmt, child_of=ctx)
+        carrier = dict()
+        tracer.inject(span, fmt, carrier)
+        assert len(get_trace_id(carrier)) == 32
+
+        ctx = SpanContext(trace_id=(1 << 64) - 1, span_id=127, parent_id=None,
+                          flags=0)
+        span = tracer.start_span('test-%s' % fmt, child_of=ctx)
+        carrier = dict()
+        tracer.inject(span, fmt, carrier)
+        assert len(get_trace_id(carrier)) == 16
 
 
 def test_debug_id():

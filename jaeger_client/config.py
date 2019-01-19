@@ -122,6 +122,7 @@ class Config(object):
                         'reporter_flush_interval',
                         'sampling_refresh_interval',
                         'trace_id_header',
+                        'generate_128bit_trace_id',
                         'baggage_header_prefix',
                         'service_name',
                         'throttler']
@@ -165,6 +166,16 @@ class Config(object):
         :return: Returns the name of the HTTP header used to encode trace ID
         """
         return self.config.get('trace_id_header', TRACE_ID_HEADER)
+
+    @property
+    def generate_128bit_trace_id(self):
+        """
+        :return: Returns boolean value to indicate if 128bit trace_id
+        generation is enabled
+        """
+        if 'generate_128bit_trace_id' in self.config:
+            return get_boolean(self.config['generate_128bit_trace_id'], False)
+        return os.getenv('JAEGER_TRACEID_128BIT') == 'true'
 
     @property
     def baggage_header_prefix(self):
@@ -395,6 +406,7 @@ class Config(object):
             sampler=sampler,
             metrics_factory=self._metrics_factory,
             trace_id_header=self.trace_id_header,
+            generate_128bit_trace_id=self.generate_128bit_trace_id,
             baggage_header_prefix=self.baggage_header_prefix,
             debug_id_header=self.debug_id_header,
             tags=self.tags,

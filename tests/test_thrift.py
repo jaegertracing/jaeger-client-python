@@ -60,9 +60,9 @@ def _marshall_span(span):
 
 def test_large_ids(tracer):
 
-    def serialize(span_id):
+    def serialize(trace_id, span_id):
         """Checks that there are no exceptions during marshalling."""
-        parent_ctx = SpanContext(trace_id=span_id, span_id=span_id,
+        parent_ctx = SpanContext(trace_id=trace_id, span_id=span_id,
                                  parent_id=0, flags=1)
         parent = Span(context=parent_ctx, operation_name='x', tracer=tracer)
         span = tracer.start_span(operation_name='x',
@@ -71,24 +71,43 @@ def test_large_ids(tracer):
         _marshall_span(span)
 
     trace_id = 0x77fd53dc6b437681
-    serialize(trace_id)
+    serialize(trace_id, trace_id)
     assert thrift.id_to_int(trace_id) == 0x77fd53dc6b437681
 
     trace_id = 0x7fffffffffffffff
-    serialize(trace_id)
+    serialize(trace_id, trace_id)
     assert thrift.id_to_int(trace_id) == 0x7fffffffffffffff
 
     trace_id = 0x8000000000000000
-    serialize(trace_id)
+    serialize(trace_id, trace_id)
     assert thrift.id_to_int(trace_id) == -0x8000000000000000
 
     trace_id = 0x97fd53dc6b437681
-    serialize(trace_id)
+    serialize(trace_id, trace_id)
 
     trace_id = (1 << 64) - 1
     assert trace_id == 0xffffffffffffffff
-    serialize(trace_id)
+    serialize(trace_id, trace_id)
     assert thrift.id_to_int(trace_id) == -1
+
+    trace_id = (1 << 128) - 1
+    span_id = 0xffffffffffffffff
+    assert trace_id == 0xffffffffffffffffffffffffffffffff
+    serialize(trace_id, span_id)
+    assert thrift._id_to_low(trace_id) == 0xffffffffffffffff
+    assert thrift._id_to_high(trace_id) == 0xffffffffffffffff
+
+    trace_id = 0xfb34678b8864f051e5c8c603484e57
+    span_id = 0x77fd53dc6b437681
+    serialize(trace_id, span_id)
+    assert thrift._id_to_low(trace_id) == 0x51e5c8c603484e57
+    assert thrift._id_to_high(trace_id) == 0xfb34678b8864f0
+
+
+def test_none_ids():
+    assert thrift.id_to_int(None) is None
+    assert thrift._id_to_low(None) is None
+    assert thrift._id_to_high(None) is None
 
 
 def test_large_tags():
