@@ -195,6 +195,33 @@ class ReporterTest(AsyncTestCase):
         assert 1 == reporter.metrics_factory.counters[span_dropped_key]
 
     @gen_test
+    def test_sender_flushed_with_partial_batch(self):
+        reporter, sender = self._new_reporter(batch_size=100, flush=.5)
+        for i in range(50):
+            reporter.report_span(self._new_span(i))
+
+        yield self._wait_for(lambda: len(sender.futures) > 0)
+        assert 1 == len(sender.futures)
+        sender.futures[0].set_result(1)
+
+        span_sent_key = 'jaeger:reporter_spans.result_ok'
+        yield self._wait_for(lambda: span_sent_key in reporter.metrics_factory.counters)
+        assert reporter.metrics_factory.counters[span_sent_key] == 50
+
+    @gen_test
+    def test_sender_flush_errors_handled_with_partial_batch(self):
+        reporter, sender = self._new_reporter(batch_size=100, flush=.5)
+        reporter.error_reporter = ErrorReporter(
+            metrics=Metrics(), logger=logging.getLogger())
+        reporter._sender.send = mock.MagicMock(side_effect=ValueError())
+        for i in range(50):
+            reporter.report_span(self._new_span(i))
+
+        reporter_failure_key = 'jaeger:reporter_spans.result_err'
+        yield self._wait_for(lambda: reporter_failure_key in reporter.metrics_factory.counters)
+        assert reporter.metrics_factory.counters[reporter_failure_key] == 50
+
+    @gen_test
     def test_submit_failure(self):
         reporter, sender = self._new_reporter(batch_size=1)
         reporter.error_reporter = ErrorReporter(
@@ -260,7 +287,7 @@ class ReporterTest(AsyncTestCase):
 
     @gen_test
     def test_close_drains_queue(self):
-        reporter, sender = self._new_reporter(batch_size=1, flush=0.050)
+        reporter, sender = self._new_reporter(batch_size=1, flush=0.5)
         reporter.report_span(self._new_span('0'))
 
         yield self._wait_for(lambda: len(sender.futures) > 0)
@@ -276,7 +303,7 @@ class ReporterTest(AsyncTestCase):
             return future_result(True)
 
         reporter._sender.send = send
-        reporter.batch_size = 3
+        reporter._sender._batch_size = 3
         for i in range(10):
             reporter.report_span(self._new_span('%s' % i))
         assert reporter.queue.qsize() == 10, 'queued 10 spans'

@@ -79,8 +79,6 @@ class Reporter(NullReporter):
                  sender=None, **kwargs):
         """
         :param channel: a communication channel to jaeger-agent
-        :param sender: senders.Sender subclass implementing send method,
-            for sending batch of spans to jaeger.
         :param queue_capacity: how many spans we can hold in memory before
             starting to drop spans
         :param batch_size: how many spans we can submit at once to Collector
@@ -91,6 +89,8 @@ class Reporter(NullReporter):
         :param metrics: an instance of Metrics class, or None. This parameter
             has been deprecated, please use metrics_factory instead.
         :param metrics_factory: an instance of MetricsFactory class, or None.
+        :param sender: an instance of a senders.Sender subclass for sending
+            batches of spans to jaeger.
         :param kwargs:
             'logger'
         :return:
@@ -103,7 +103,8 @@ class Reporter(NullReporter):
             port=channel._reporting_port,
             host=channel._host,
             io_loop=channel.io_loop,
-            agent=self.agent
+            agent=self.agent,
+            batch_size=batch_size
         )
         self.queue_capacity = queue_capacity
         self.batch_size = batch_size
@@ -121,7 +122,7 @@ class Reporter(NullReporter):
             self.io_loop = self._sender._io_loop
 
         self.queue = tornado.queues.Queue(maxsize=queue_capacity)
-        self.stop = object()
+        self.stop = object()  # sentinel
         self.stopped = False
         self.stop_lock = Lock()
         self.flush_interval = flush_interval or None
@@ -156,39 +157,59 @@ class Reporter(NullReporter):
     @tornado.gen.coroutine
     def _consume_queue(self):
         stopped = False
-
         while not stopped:
-            while self._sender.span_count < self.batch_size:
+            interval = self.flush_interval
+            spans_appended = 0
+            while True:
+                t0 = self.io_loop.time()
+                timeout = interval + t0 if self.flush_interval else None
                 try:
-                    # using timeout allows periodic flush with smaller packet
-                    timeout = self.flush_interval + self.io_loop.time() \
-                        if self.flush_interval and self._sender.span_count else None
                     span = yield self.queue.get(timeout=timeout)
+                    t1 = self.io_loop.time()
                 except tornado.gen.TimeoutError:
+                    # Always flush on timeouts, as they signify interval completion
                     break
-                else:
-                    if span == self.stop:
-                        stopped = True
-                        self.queue.task_done()
-                        # don't return yet, submit accumulated spans first
-                        break
-                    else:
-                        self._sender.append(span)
 
-            if self._sender.span_count:
-                num_spans = self._sender.span_count
-                try:
-                    yield self._sender.flush()
-                except Exception as exc:
-                    self.metrics.reporter_failure(num_spans)
-                    self.error_reporter.error(exc)
-                else:
-                    self.metrics.reporter_success(num_spans)
-
-                for _ in range(num_spans):
+                if span == self.stop:
+                    stopped = True
                     self.queue.task_done()
+                    break
 
-            self.metrics.reporter_queue_length(self.queue.qsize())
+                spans_appended += 1
+                try:
+                    spans_reported = yield self._sender.append(span)
+                except Exception as exc:
+                    # Assume append() triggered flush(), which failed and
+                    # included all previously appended spans
+                    self.metrics.reporter_failure(spans_appended)
+                    self.error_reporter.error(exc)
+                    for _ in range(spans_appended):
+                        self.queue.task_done()
+                    spans_appended = 0
+                else:
+                    if spans_reported:
+                        self.metrics.reporter_success(spans_reported)
+                        for _ in range(spans_reported):
+                            self.queue.task_done()
+                        spans_appended -= spans_reported
+
+                if self.flush_interval:
+                    interval -= t1 - t0
+
+            try:
+                spans_reported = yield self._sender.flush()
+            except Exception as exc:
+                # Assume number of failed spans is equal to previously appended
+                self.metrics.reporter_failure(spans_appended)
+                self.error_reporter.error(exc)
+                for _ in range(spans_appended):
+                    self.queue.task_done()
+            else:
+                self.metrics.reporter_success(spans_reported)
+                for _ in range(spans_reported):
+                    self.queue.task_done()
+                self.metrics.reporter_queue_length(self.queue.qsize())
+
         self.logger.info('Span publisher exited')
 
     def close(self):

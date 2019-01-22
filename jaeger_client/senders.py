@@ -31,16 +31,27 @@ logger = logging.getLogger('jaeger_tracing')
 
 
 class Sender(object):
-    def __init__(self, io_loop=None):
+    def __init__(self, io_loop=None, batch_size=10):
         from threading import Lock
         self._io_loop = io_loop or self._create_new_thread_loop()
         self._process_lock = Lock()
         self._process = None
+        self._batch_size = batch_size
         self.spans = []
 
+    @tornado.gen.coroutine
     def append(self, span):
-        """Queue a span for subsequent submission calls to flush()"""
+        """
+        Queue a span for subsequent submission calls to flush().
+        If number of appended spans is equal to batch size, initiate flush().
+        """
+        spans_flushed = 0
         self.spans.append(span)
+
+        if len(self.spans) == self._batch_size:
+            spans_flushed = yield self.flush()
+
+        raise tornado.gen.Return(spans_flushed)
 
     @property
     def span_count(self):
@@ -48,24 +59,33 @@ class Sender(object):
 
     @tornado.gen.coroutine
     def flush(self):
-        """Examine span and process state before yielding to _flush() for batching and transport."""
+        """
+        Flush spans, if any, if process has been set. Returns number of spans successfully flushed.
+        """
+        spans_sent = 0
         if self.spans:
             with self._process_lock:
                 process = self._process
             if process:
                 try:
-                    yield self._flush(self.spans, self._process)
+                    spans_sent = yield self._batch_and_send(self.spans, self._process)
                 finally:
                     self.spans = []
+        raise tornado.gen.Return(spans_sent)
 
     @tornado.gen.coroutine
-    def _flush(self, spans, process):
-        """Batch spans and invokes send(). Override with specific batching logic, if desired."""
+    def _batch_and_send(self, spans, process):
+        """
+        Batch spans and invokes send(), returning number of spans sent.
+        Override with specific batching logic, if desired.
+        """
         batch = thrift.make_jaeger_batch(spans=spans, process=process)
         yield self.send(batch)
+        raise tornado.gen.Return(len(spans))
 
     @tornado.gen.coroutine
     def send(self, batch):
+        """Send batch of spans to collector via desired transport."""
         raise NotImplementedError('This method should be implemented by subclasses')
 
     def set_process(self, service_name, tags, max_length):
@@ -89,8 +109,8 @@ class Sender(object):
 
 
 class UDPSender(Sender):
-    def __init__(self, host, port, io_loop=None, agent=None):
-        super(UDPSender, self).__init__(io_loop=io_loop)
+    def __init__(self, host, port, io_loop=None, agent=None, batch_size=10):
+        super(UDPSender, self).__init__(io_loop=io_loop, batch_size=batch_size)
         self._host = host
         self._port = port
         self._channel = self._create_local_agent_channel(self._io_loop)

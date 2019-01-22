@@ -20,7 +20,6 @@ import collections
 import mock
 import pytest
 from tornado import ioloop
-from tornado import gen
 from tornado.testing import AsyncTestCase, gen_test
 
 from jaeger_client import senders
@@ -55,14 +54,14 @@ def test_base_sender_set_process_instantiate_jaeger_process():
 def test_base_sender_spanless_flush_is_noop():
     sender = senders.Sender()
     flushed = sender.flush().result()
-    assert flushed is None
+    assert flushed == 0
 
-    
+
 def test_base_sender_processless_flush_is_noop():
     sender = senders.Sender()
     sender.spans.append('foo')
     flushed = sender.flush().result()
-    assert flushed is None
+    assert flushed == 0
 
 
 class CustomException(Exception):
