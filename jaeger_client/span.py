@@ -32,12 +32,13 @@ class Span(opentracing.Span):
                  'logs', 'tags', 'update_lock']
 
     def __init__(self, context, tracer, operation_name,
-                 tags=None, start_time=None):
+                 tags=None, start_time=None, references=None):
         super(Span, self).__init__(context=context, tracer=tracer)
         self.operation_name = operation_name
         self.start_time = start_time or time.time()
         self.end_time = None
         self.update_lock = threading.Lock()
+        self.references = references
         # we store tags and logs as Thrift objects to avoid extra allocations
         self.tags = []
         self.logs = []
