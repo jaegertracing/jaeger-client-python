@@ -53,6 +53,26 @@ if __name__ == "__main__":
     tracer.close()  # flush any buffered spans
 ```
 
+**NOTE**: If you're using the Jaeger `all-in-one` Docker image (or similar) and want to run Jaeger in a separate container from your app, use the code below to define the host and port that the Jaeger agent is running on. *Note that this is not recommended, as Jaeger sends spans over UDP and UDP does not guarantee delivery.* (See [this thread](https://github.com/jaegertracing/jaeger-client-python/issues/47) for more details.)
+
+```python
+    config = Config(
+        config={ # usually read from some yaml config
+            'sampler': {
+                'type': 'const',
+                'param': 1,
+            },
+            'local_agent': {
+                'reporting_host': 'your-reporting-host',
+                'reporting_port': 'your-reporting-port',
+            },
+            'logging': True,
+        },  
+        service_name='your-app-name',
+        validate=True,
+    )
+```
+
 ### Other Instrumentation
 
 The [opentracing-contrib](https://github.com/opentracing-contrib) project has a few modules that provide explicit instrumentation support for popular frameworks like Django and Flask.
