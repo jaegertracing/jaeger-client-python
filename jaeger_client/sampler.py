@@ -417,8 +417,7 @@ class RemoteControlledSampler(Sampler):
         return PeriodicCallback(
             callback=self._poll_sampling_manager,
             # convert interval to milliseconds
-            callback_time=self.sampling_refresh_interval * 1000,
-            io_loop=self.io_loop)
+            callback_time=self.sampling_refresh_interval * 1000)
 
     def _sampling_request_callback(self, future):
         exception = future.exception()

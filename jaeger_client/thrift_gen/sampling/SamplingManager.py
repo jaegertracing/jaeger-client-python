@@ -42,7 +42,7 @@ class Client(Iface):
     self._reqs = {}
     self._transport.io_loop.spawn_callback(self._start_receiving)
 
-  @gen.engine
+  @gen.coroutine
   def _start_receiving(self):
     while True:
       try:
