@@ -89,7 +89,6 @@ class Tracer(opentracing.Tracer):
         if tags:
             self.tags.update(tags)
 
-
         if self.tags.get(constants.JAEGER_IP_TAG_KEY) is None:
             self.tags[constants.JAEGER_IP_TAG_KEY] = local_ip()
 
