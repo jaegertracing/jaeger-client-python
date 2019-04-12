@@ -123,7 +123,8 @@ class Tracer(opentracing.Tracer):
                    references=None,
                    tags=None,
                    start_time=None,
-                   ignore_active_span=False):
+                   ignore_active_span=False,
+    ):
         """
         Start and return a new Span representing a unit of work.
 
@@ -211,7 +212,8 @@ class Tracer(opentracing.Tracer):
                           tags=None,
                           start_time=None,
                           ignore_active_span=False,
-                          finish_on_close=True):
+                          finish_on_close=True,
+    ):
         """
         Returns a newly started and activated :class:`Scope`
 
