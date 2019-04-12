@@ -37,3 +37,17 @@ class APITest(unittest.TestCase, APICompatibilityCheckMixin):
 
     def is_parent(self, parent, span):
         return span.parent_id == getattr(parent, "span_id", None)
+
+    # NOTE: this overrides a method defined in ApiComaptibilityCheckMixin in
+    # order to add the scope.close() call, which prevents the tracer from
+    # leaving an active scope in thread local storage
+    def test_start_active_span(self):
+        # the first usage returns a `Scope` that wraps a root `Span`
+        tracer = self.tracer()
+        scope = tracer.start_active_span('Fry')
+
+        assert scope.span is not None
+        if self.check_scope_manager():
+            assert self.is_parent(None, scope.span)
+
+        scope.close()
