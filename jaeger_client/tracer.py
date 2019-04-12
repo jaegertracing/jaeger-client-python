@@ -123,7 +123,7 @@ class Tracer(opentracing.Tracer):
                    tags=None,
                    start_time=None,
                    ignore_active_span=False,
-    ):
+                   ):
         """
         Start and return a new Span representing a unit of work.
 
@@ -212,7 +212,7 @@ class Tracer(opentracing.Tracer):
                           start_time=None,
                           ignore_active_span=False,
                           finish_on_close=True,
-    ):
+                          ):
         """
         Returns a newly started and activated :class:`Scope`
 
@@ -243,7 +243,6 @@ class Tracer(opentracing.Tracer):
             ignore_active_span,
         )
         return self.scope_manager.activate(span, finish_on_close)
-
 
     def inject(self, span_context, format, carrier):
         codec = self.codecs.get(format, None)

@@ -36,7 +36,7 @@ class APITest(unittest.TestCase, APICompatibilityCheckMixin):
         pass
 
     def is_parent(self, parent, span):
-        return span.parent_id == getattr(parent, "span_id", None)
+        return span.parent_id == getattr(parent, 'span_id', None)
 
     # NOTE: this overrides a method defined in ApiComaptibilityCheckMixin in
     # order to add the scope.close() call, which prevents the tracer from
