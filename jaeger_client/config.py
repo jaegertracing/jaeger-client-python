@@ -91,7 +91,7 @@ class Config(object):
         :param service_name: default service name.
             Can be overwritten by config['service_name'].
         :param metrics_factory: an instance of MetricsFactory class, or None.
-        :param scope_manager: a class implementing a scope manager, or None for
+        :param scope_manager: an instance of a scope manager, or None for
             default (ThreadLocalScopeManager).
         """
         if validate:

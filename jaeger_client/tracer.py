@@ -112,8 +112,7 @@ class Tracer(opentracing.Tracer):
         )
 
         super(Tracer, self).__init__(
-            scope_manager=scope_manager() if scope_manager
-            else ThreadLocalScopeManager()
+            scope_manager=scope_manager or ThreadLocalScopeManager()
         )
 
     def start_span(self,
