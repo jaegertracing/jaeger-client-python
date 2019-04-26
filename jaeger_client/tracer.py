@@ -234,12 +234,12 @@ class Tracer(opentracing.Tracer):
         :return: a :class:`Scope`, already registered via the :class:`ScopeManager`.
         """
         span = self.start_span(
-            operation_name,
-            child_of,
-            references,
-            tags,
-            start_time,
-            ignore_active_span,
+            operation_name=operation_name,
+            child_of=child_of,
+            references=references,
+            tags=tags,
+            start_time=start_time,
+            ignore_active_span=ignore_active_span,
         )
         return self.scope_manager.activate(span, finish_on_close)
 
