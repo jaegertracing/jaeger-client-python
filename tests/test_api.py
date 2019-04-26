@@ -41,8 +41,9 @@ class APITest(unittest.TestCase, APICompatibilityCheckMixin):
     # NOTE: this overrides a method defined in ApiComaptibilityCheckMixin in
     # order to add the scope.close() call, which prevents the tracer from
     # leaving an active scope in thread local storage
-    # TODO: remove after
-    # https://github.com/opentracing/opentracing-python/issues/117 is fixed
+    # TODO: remove after switching to opentracing-python 2.1.0, issue for
+    # tracking the release:
+    # https://github.com/opentracing/opentracing-python/issues/119
     def test_start_active_span(self):
         # the first usage returns a `Scope` that wraps a root `Span`
         tracer = self.tracer()
