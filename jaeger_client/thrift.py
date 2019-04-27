@@ -169,7 +169,7 @@ def make_ref_type(span_ref_type):
 
 def make_references(references):
     if not references:
-        return
+        return None
     list_of_span_refs = list()
     for span_ref in references:
         list_of_span_refs.append(ttypes.SpanRef(

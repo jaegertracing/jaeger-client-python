@@ -141,8 +141,9 @@ class Tracer(opentracing.Tracer):
         rpc_server = tags and \
             tags.get(ext_tags.SPAN_KIND) == ext_tags.SPAN_KIND_RPC_SERVER
 
-        valid_references = list()
+        valid_references = None
         if references:
+            valid_references = list()
             if not isinstance(references, list):
                 references = [references]
             for reference in references:
