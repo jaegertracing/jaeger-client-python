@@ -3,10 +3,20 @@
 History
 -------
 
-3.13.1 (unreleased)
--------------------
+4.0.0 (2019-04-27)
+------------------
 
-- Nothing changed yet.
+- (Support OpenTracing API v2.0 (#206) <Michał Szymański>
+- Add support for references (#241) <Bhavin Gandhi>
+- Add info on configuring Jaeger agent location. (#245) <Carlos Nunez>
+- Add 128bit trace_id support (#230) <Bhavin Gandhi>
+- Enable linting of tests (#227) <pravarag>
+- Enable windows support by isolating ioctl calls (#233) <CARRIERE Etienne>
+- Unpin flake8 to allow v3 (#231) <Yuri Shkuro>
+- Fix pycurl install advice <Yuri Shkuro>
+- Fix handling of missing headers in the b3 codec (#215) <cshowe>
+- Fix typo in the link name <Yuri Shkuro>
+- Add supported python version to README (#226) <Won Jun Jang>
 
 
 3.13.0 (2018-12-04)
