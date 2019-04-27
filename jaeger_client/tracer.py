@@ -131,7 +131,7 @@ class Tracer(opentracing.Tracer):
         :param child_of: shortcut for 'child_of' reference
         :param references: (optional) either a single Reference object or a
             list of Reference objects that identify one or more parent
-            SpanContexts. (See the Reference documentation for detail)
+            SpanContexts. (See the opentracing.Reference documentation for detail)
         :param tags: optional dictionary of Span Tags. The caller gives up
             ownership of that dictionary, because the Tracer may use it as-is
             to avoid extra data copying.
@@ -149,15 +149,22 @@ class Tracer(opentracing.Tracer):
                 and not parent:
             parent = self.active_span
 
-        if references:
-            if isinstance(references, list):
-                # TODO only the first reference is currently used
-                references = references[0]
-            parent = references.referenced_context
-
         # allow Span to be passed as reference, not just SpanContext
         if isinstance(parent, Span):
             parent = parent.context
+
+        valid_references = None
+        if references:
+            valid_references = list()
+            if not isinstance(references, list):
+                references = [references]
+            for reference in references:
+                if reference.referenced_context is not None:
+                    valid_references.append(reference)
+
+        # setting first reference as parent
+        if valid_references and (parent is None or not parent.has_trace):
+            parent = valid_references[0].referenced_context
 
         rpc_server = tags and \
             tags.get(ext_tags.SPAN_KIND) == ext_tags.SPAN_KIND_RPC_SERVER
@@ -199,7 +206,7 @@ class Tracer(opentracing.Tracer):
                                baggage=baggage)
         span = Span(context=span_ctx, tracer=self,
                     operation_name=operation_name,
-                    tags=tags, start_time=start_time)
+                    tags=tags, start_time=start_time, references=valid_references)
 
         self._emit_span_metrics(span=span, join=rpc_server)
 

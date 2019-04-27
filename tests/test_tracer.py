@@ -20,7 +20,7 @@ import socket
 import pytest
 import tornado.httputil
 
-from opentracing import Format, child_of
+from opentracing import Format, child_of, follows_from
 from opentracing.ext import tags as ext_tags
 from jaeger_client import ConstSampler, SpanContext, Tracer
 from jaeger_client import constants as c
@@ -126,6 +126,41 @@ def test_child_span(tracer):
     span.finish()
     assert len(child.logs) == 0, 'Must have no events, not sampled'
     assert len(child.tags) == 0, 'Must have no attributes, not sampled'
+    tracer.close()
+
+
+def test_follows_from(tracer):
+    span = tracer.start_span('test')
+    span1 = tracer.start_span('test2')
+    follow_span = tracer.start_span('follow-span', references=[follows_from(span.context),
+                                                               follows_from(span1.context),
+                                                               follows_from(None)])
+    span.finish()
+    span1.finish()
+    follow_span.finish()
+    tracer.reporter.report_span.assert_called_once()
+    assert len(follow_span.references) == 2
+    assert follow_span.context.parent_id == span.context.span_id
+    for reference in follow_span.references:
+        assert reference.referenced_context is not None
+
+    span = tracer.start_span('test')
+    follow_span = tracer.start_span(references=follows_from(span.context))
+    span.finish()
+    follow_span.finish()
+    tracer.reporter.report_span.assert_called_once()
+    assert isinstance(follow_span.references, list)
+
+    span = tracer.start_span('test')
+    parent_span = tracer.start_span('test-parent')
+    child_span = tracer.start_span('test-child', child_of=parent_span,
+                                   references=follows_from(span.context))
+    span.finish()
+    parent_span.finish()
+    child_span.finish()
+    tracer.reporter.report_span.assert_called_once()
+    assert child_span.context.parent_id == parent_span.context.span_id
+    assert len(child_span.references) == 1
     tracer.close()
 
 
