@@ -144,9 +144,9 @@ class Tracer(opentracing.Tracer):
         """
         parent = child_of
 
-        if (self.active_span is not None and
-                not ignore_active_span and
-                not parent):
+        if self.active_span is not None \
+                and not ignore_active_span \
+                and not parent:
             parent = self.active_span
 
         if references:
