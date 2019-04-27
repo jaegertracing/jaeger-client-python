@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import six
+from opentracing.tracer import ReferenceType
 
 import jaeger_client.thrift_gen.jaeger.ttypes as ttypes
 import jaeger_client.thrift_gen.sampling.SamplingManager as sampling_manager
@@ -160,6 +161,26 @@ def make_process(service_name, tags, max_length):
     )
 
 
+def make_ref_type(span_ref_type):
+    if span_ref_type == ReferenceType.FOLLOWS_FROM:
+        return ttypes.SpanRefType.FOLLOWS_FROM
+    return ttypes.SpanRefType.CHILD_OF
+
+
+def make_references(references):
+    if not references:
+        return None
+    list_of_span_refs = list()
+    for span_ref in references:
+        list_of_span_refs.append(ttypes.SpanRef(
+            refType=make_ref_type(span_ref.type),
+            traceIdLow=id_to_int(_id_to_low(span_ref.referenced_context.trace_id)),
+            traceIdHigh=id_to_int(_id_to_high(span_ref.referenced_context.trace_id)),
+            spanId=id_to_int(span_ref.referenced_context.span_id),
+        ))
+    return list_of_span_refs
+
+
 def make_jaeger_batch(spans, process):
     batch = ttypes.Batch(
         spans=[],
@@ -173,7 +194,7 @@ def make_jaeger_batch(spans, process):
                 spanId=id_to_int(span.span_id),
                 parentSpanId=id_to_int(span.parent_id) or 0,
                 operationName=span.operation_name,
-                # references = references, # TODO
+                references=make_references(span.references),
                 flags=span.context.flags,
                 startTime=timestamp_micros(span.start_time),
                 duration=timestamp_micros(span.end_time - span.start_time),

@@ -16,7 +16,7 @@ from io import BytesIO
 
 import jaeger_client.thrift_gen.jaeger.ttypes as ttypes
 import jaeger_client.thrift_gen.sampling.SamplingManager as sampling_manager
-from opentracing import child_of
+from opentracing import child_of, follows_from
 from jaeger_client import ProbabilisticSampler, RateLimitingSampler
 from jaeger_client import thrift, Span, SpanContext
 from jaeger_client.thrift_gen.agent import Agent as Agent
@@ -175,3 +175,14 @@ def test_parse_sampling_strategy():
     resp.strategyType = 'x'
     s, e = thrift.parse_sampling_strategy(response=resp)
     assert s is None and e is not None
+
+
+def test_parse_span_references(tracer):
+    span = tracer.start_span('test')
+    span2 = tracer.start_span('test2')
+    follow_span = tracer.start_span('test-follow', references=[follows_from(span.context),
+                                                               child_of(span2.context)])
+    span.finish()
+    span2.finish()
+    follow_span.finish()
+    _marshall_span(follow_span)
