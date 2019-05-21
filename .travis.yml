@@ -23,14 +23,19 @@ env:
   matrix:
     - TORNADO=">=4,<5"
     - TORNADO=">=5,<6"
-    - COVER=1 CROSSDOCK=1
+    - COVER=1
+    - CROSSDOCK=1
 
 matrix:
   exclude:
   - python: "3.5"
-    env: COVER=1 CROSSDOCK=1
+    env: COVER=1
+  - python: "3.5"
+    env: CROSSDOCK=1
   - python: "3.6"
-    env: COVER=1 CROSSDOCK=1
+    env: COVER=1
+  - python: "3.6"
+    env: CROSSDOCK=1
 
 install:
   - make bootstrap
