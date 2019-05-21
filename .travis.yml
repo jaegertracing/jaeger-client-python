@@ -4,14 +4,10 @@ dist: trusty
 
 language: python
 
-matrix:
-  include:
-  - python: '2.7'
-    env: COVER=1
-  - python: '2.7'
-    env: CROSSDOCK=1
-  - python: '3.5'
-  - python: '3.6'
+python:
+  - "2.7"
+  - "3.5"
+  - "3.6"
 
 services:
   - docker
@@ -24,9 +20,21 @@ env:
     - secure: "V2CBqCBxMOv9H3v/DcDVPABcxktssVaupbQh7qU2rLFWv5SmJKBN+0ZixmPFQ5ivwNcs93HM+Qck6plY+VGxIFMppvkUveJqKoXnLvk/fdrOyeneQubYXxR3Z2FF5Klml8Jdhi6L6BbYNyeCSMBUljCHj5cnEVA9Z+z8jUxywxk1KjtEDIulzb79TaZaA6pQVA9NRzxnGWqNnlV+9D35Ik0JXMRVMumSPwux6yJvoCQG3J6oJ/drvsdD890xnofuDc71yZTNXKQABqkRheTvDFaQdP8TDSyy71q9A74L+PRpwxP+cF77w8EzXRcFGKrl0xJZMQDpr8Wz8JUL36ft9xSoI6EJChyipIl2G2K1wpx6N8/9YxTkVIDiSxt5CvqJj2gt37GjR8W6qU3cBnwrpFaC+RJtiou/YJstSmwC/hsskTSKy3wDaa7G13pMhXEAhvfplDOchOuNG6ElLkatJ1RxPTdKtZc1YGg4OTcXFg+BqRIEZ57RJ3qTsxpWjZYmo2RwklAL6CfaFBUPGZiNrE4MGhO4/cXbqqaXG+X2sercW658+o7M7RE/BwC4+e5mDGOLGiry5Qy7+9bVJqJKTN8UVmhCJ23MNasVqAcQvzsGp1nZYQYFzcSfGRzqrqM2zIY6sjj5rfDGyYd8ifQFEi6fdWgMqF17PgUvKUHd5dM="
     # DOCKER_PASS
     - secure: "xxoMQo7hF+yr8SyITXonPQahEDcy5Y+uyX4kiVQxtlRIN/Nd1vL64PIocB/M4k9MhSMmz15fFjTtHuzk/tVKpHpgX9SFVCRRAt5qbzekm9NOce25BqJm33zgEKO979sNtn5Aen8ocU5uIar9IKhzV/SaEXPDqNmCGlnF/xAbvKjtTq+PjLy4xj6UKHTvSfYQFsOBgVzmZk759XVAiODN2szIzzXTNMfxOK6FG7w7O2U9VZ7lsvqC7NymXSocp4iF4kOlvAq13sFGYYMJ+1yReODAGNsUZv0TPgPT5NSxPA5OxjVNlPnlmvD6IjZvzpkciPyjsUTV8OIiuyE8GdUKc1FHKvUavN16ac7vC2dAv1VYNFvlr61RIpUAMNk+7k9fX6M5mHBzhnfNSjF2MmKyVDv4PqgLAQOtk9Vbhd8EdZS+/3MRg8DZDWQE8h0rPJQTPWDTMQ4q4yQcpygBnICB0gACIlTFSevnvsTQGUQfR/0GPB8AGsEHTSw7FUQI7dD1JYteRlgk9vNeYpeYrtgom5v9KSeaio1gTB7OlTd3car2iTYSPUgYpXLLY4vV/HEVW+FUWtCkgojWACUmFschNGPxV+nkjjlgj+Nonnz4XK5Y4l4W8Y6N7fTpxEIB9O+5e+Xnf6RhvoWvw/uMbagvK2U+sqFcV0tj8KyfWqtAm3s="
+  matrix:
+    - TORNADO=">=4,<5"
+    - TORNADO=">=5,<6"
+    - COVER=1 CROSSDOCK=1
+
+matrix:
+  exclude:
+  - python: "3.5"
+    env: COVER=1 CROSSDOCK=1
+  - python: "3.6"
+    env: COVER=1 CROSSDOCK=1
 
 install:
   - make bootstrap
+  - pip install -q "tornado$TORNADO"
   - if [ "$CROSSDOCK" == "1" ]; then bash ./scripts/install-crossdock-deps.sh ; fi
 
 script:
