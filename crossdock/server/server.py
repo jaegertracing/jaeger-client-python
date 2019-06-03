@@ -43,7 +43,7 @@ tracer = Tracer(
     service_name='python',
     reporter=NullReporter(),
     sampler=ConstSampler(decision=True))
-opentracing.tracer = tracer
+opentracing.set_global_tracer(tracer)
 
 
 idl_path = 'idl/thrift/crossdock/tracetest.thrift'
@@ -121,7 +121,7 @@ def get_observed_span(span):
 
 class Server(object):
     def __init__(self, port):
-        self.tracer = opentracing.tracer
+        self.tracer = opentracing.global_tracer()
         self.tchannel = self.make_tchannel(port)
 
     def make_tchannel(self, port):

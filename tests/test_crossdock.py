@@ -100,7 +100,7 @@ def test_trace_propagation(
     body = json.dumps(level1)
 
     with mock.patch('opentracing.tracer', tracer):
-        assert opentracing.tracer == tracer  # sanity check that patch worked
+        assert opentracing.global_tracer() == tracer  # sanity check that patch worked
 
         req = HTTPRequest(url='%s/start_trace' % base_url, method='POST',
                           headers={'Content-Type': 'application/json'},
