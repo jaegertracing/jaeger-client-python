@@ -39,6 +39,7 @@ test_ci: clean test-import test lint
 test-import:
 	virtualenv import-test
 	import-test/bin/pip install -e .
+	pip install "tornado$(TORNADO)"  # Reinstall Tornado version for testing.
 	import-test/bin/python -c "import jaeger_client"
 	rm -rf import-test
 

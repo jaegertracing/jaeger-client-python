@@ -46,6 +46,8 @@ services:
     python:
         build:
             context: ../.
+            args:
+              tornado: ${TORNADO}
             dockerfile: crossdock/Dockerfile
         ports:
             - "8080-8082"

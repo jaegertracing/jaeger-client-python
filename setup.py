@@ -66,8 +66,8 @@ setup(
             'flake8',
             'flake8-quotes',
             'codecov',
-            'tchannel>=0.27', # This is only used in python 2
-            'opentracing_instrumentation',
+            'tchannel>=0.27',  # This is only used in python 2
+            'opentracing_instrumentation>=3,<4',
             'prometheus_client==0.3.1',
         ]
     },
