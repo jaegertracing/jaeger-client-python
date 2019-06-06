@@ -1,3 +1,17 @@
+# Copyright (c) 2019 The Jaeger Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import mock
 import sys
 from jaeger_client import Span, SpanContext
@@ -16,7 +30,7 @@ def test_traceback_full():
     except ValueError:
         traceback = sys.exc_info()[2]
         span.log_kv({'stack': traceback})
-        fields_dict = {field.key : field.vStr for field in span.logs[0].fields}
+        fields_dict = {field.key: field.vStr for field in span.logs[0].fields}
 
         assert 'stack' in fields_dict
         stack_message = fields_dict['stack']
@@ -24,9 +38,9 @@ def test_traceback_full():
         assert stack_message_lines[0] == 'Traceback (most recent call last):'
         assert stack_message_lines[1].startswith('  File ')
         assert stack_message_lines[2] == \
-                "    raise ValueError('Something unexpected happened!')"
+            "    raise ValueError('Something unexpected happened!')"
         assert stack_message_lines[3] == \
-                'ValueError: Something unexpected happened!'
+            'ValueError: Something unexpected happened!'
 
 
 def test_traceback_cut():
@@ -42,7 +56,7 @@ def test_traceback_cut():
     except ValueError:
         traceback = sys.exc_info()[2]
         span.log_kv({'stack': traceback})
-        fields_dict = {field.key : field.vStr for field in span.logs[0].fields}
+        fields_dict = {field.key: field.vStr for field in span.logs[0].fields}
 
         assert 'stack' in fields_dict
         stack_message = fields_dict['stack']
