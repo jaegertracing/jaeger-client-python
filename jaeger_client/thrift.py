@@ -99,7 +99,7 @@ def make_tag(key, value, max_length):
 
 def _make_traceback_tag(key, value, max_length):
     key = _to_string(key)
-    value = str(value) + '\n' + traceback.format_exc()  # location + message
+    value = traceback.format_exc()
     if len(value) > max_length:
         value = value[:max_length]
     return ttypes.Tag(
