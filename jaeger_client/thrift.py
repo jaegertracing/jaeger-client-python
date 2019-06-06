@@ -61,8 +61,6 @@ def _to_string(s):
         # Thrift in PY2 likes strings as bytes
         if six.PY2 and isinstance(s, six.text_type):
             return s.encode('utf-8')
-        elif isinstance(s, Exception):
-            return traceback.format_exc()
         else:
             return str(s)
     except Exception as e:
@@ -85,12 +83,30 @@ def make_tag(key, value, max_length):
             key=key,
             value=value
         )
+    elif type(value).__name__ == 'traceback':
+        return _make_traceback_tag(
+            key=key,
+            value=value,
+            max_length=max_length
+        )
     else:
         return _make_string_tag(
             key=key,
             value=value,
             max_length=max_length
         )
+
+
+def _make_traceback_tag(key, value, max_length):
+    key = _to_string(key)
+    value = str(value) + '\n' + traceback.format_exc()  # location + message
+    if len(value) > max_length:
+        value = value[:max_length]
+    return ttypes.Tag(
+        key=key,
+        vStr=value,
+        vType=ttypes.TagType.STRING,
+    )
 
 
 def _make_string_tag(key, value, max_length):
