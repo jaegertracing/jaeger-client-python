@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import traceback
 import six
 from opentracing.tracer import ReferenceType
 
@@ -60,6 +61,8 @@ def _to_string(s):
         # Thrift in PY2 likes strings as bytes
         if six.PY2 and isinstance(s, six.text_type):
             return s.encode('utf-8')
+        elif isinstance(s, Exception):
+            return traceback.format_exc()
         else:
             return str(s)
     except Exception as e:
