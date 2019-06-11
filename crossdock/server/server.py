@@ -16,6 +16,7 @@ import logging
 
 import tornado.web
 import opentracing
+from opentracing.scope_managers.tornado import TornadoScopeManager
 import tornado.ioloop
 import tornado.httpclient
 from tornado.web import asynchronous
@@ -42,7 +43,8 @@ DefaultServerPortTChannel = 8082
 tracer = Tracer(
     service_name='python',
     reporter=NullReporter(),
-    sampler=ConstSampler(decision=True))
+    sampler=ConstSampler(decision=True),
+    scope_manager=TornadoScopeManager())
 opentracing.set_global_tracer(tracer)
 
 

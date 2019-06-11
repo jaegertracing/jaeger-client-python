@@ -115,8 +115,7 @@ class RemoteThrottler(object):
         periodic = PeriodicCallback(
             callback=callback,
             # convert interval to milliseconds
-            callback_time=self.refresh_interval * 1000,
-            io_loop=self.channel.io_loop)
+            callback_time=self.refresh_interval * 1000)
         self._fetch_credits(self._operations())
         with self.lock:
             if not self.running:
