@@ -420,7 +420,7 @@ class Config(object):
         )
 
     def _initialize_global_tracer(self, tracer):
-        opentracing.tracer = tracer
+        opentracing.set_global_tracer(tracer)
         logger.info('opentracing.tracer initialized to %s[app_name=%s]',
                     tracer, self.service_name)
 
