@@ -67,7 +67,7 @@ def _to_string(s):
         return str(e)
 
 
-def make_tag(key, value, max_length):
+def make_tag(key, value, max_length, max_traceback_length):
     if type(value).__name__ == 'bool':  # isinstance doesnt work on booleans
         return _make_bool_tag(
             key=key,
@@ -87,7 +87,7 @@ def make_tag(key, value, max_length):
         return _make_traceback_tag(
             key=key,
             value=value,
-            max_length=max_length
+            max_length=max_traceback_length
         )
     else:
         return _make_string_tag(
@@ -158,25 +158,28 @@ def timestamp_micros(ts):
     return long(ts * 1000000)
 
 
-def make_tags(tags, max_length):
+def make_tags(tags, max_length, max_traceback_length):
     # TODO extend to support non-string tag values
     return [
-        make_tag(key=k, value=v, max_length=max_length)
+        make_tag(key=k, value=v, max_length=max_length,
+                 max_traceback_length=max_traceback_length)
         for k, v in six.iteritems(tags or {})
     ]
 
 
-def make_log(timestamp, fields, max_length):
+def make_log(timestamp, fields, max_length, max_traceback_length):
     return ttypes.Log(
         timestamp=timestamp_micros(ts=timestamp),
-        fields=make_tags(tags=fields, max_length=max_length),
+        fields=make_tags(tags=fields, max_length=max_length,
+                         max_traceback_length=max_traceback_length),
     )
 
 
-def make_process(service_name, tags, max_length):
+def make_process(service_name, tags, max_length, max_traceback_length):
     return ttypes.Process(
         serviceName=service_name,
-        tags=make_tags(tags=tags, max_length=max_length),
+        tags=make_tags(tags=tags, max_length=max_length,
+                       max_traceback_length=max_traceback_length),
     )
 
 

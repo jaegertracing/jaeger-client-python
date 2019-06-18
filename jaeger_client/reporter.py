@@ -39,7 +39,7 @@ class NullReporter(object):
     def report_span(self, span):
         pass
 
-    def set_process(self, service_name, tags, max_length):
+    def set_process(self, service_name, tags, max_length, max_traceback_length):
         pass
 
     def close(self):
@@ -123,10 +123,11 @@ class Reporter(NullReporter):
         self._process_lock = Lock()
         self._process = None
 
-    def set_process(self, service_name, tags, max_length):
+    def set_process(self, service_name, tags, max_length, max_traceback_length):
         with self._process_lock:
             self._process = thrift.make_process(
                 service_name=service_name, tags=tags, max_length=max_length,
+                max_traceback_length=max_traceback_length,
             )
 
     def report_span(self, span):
@@ -250,9 +251,9 @@ class CompositeReporter(NullReporter):
     def __init__(self, *reporters):
         self.reporters = reporters
 
-    def set_process(self, service_name, tags, max_length):
+    def set_process(self, service_name, tags, max_length, max_traceback_length):
         for reporter in self.reporters:
-            reporter.set_process(service_name, tags, max_length)
+            reporter.set_process(service_name, tags, max_length, max_traceback_length)
 
     def report_span(self, span):
         for reporter in self.reporters:
