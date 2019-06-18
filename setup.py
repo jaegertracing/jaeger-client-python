@@ -39,7 +39,7 @@ setup(
     install_requires=[
         'threadloop>=1,<2',
         'thrift',
-        'tornado>=4.3,<5',
+        'tornado>=4.3,<6',
         'opentracing>=2.1,<3.0',
     ],
     # Uncomment below if need to test with unreleased version of opentracing
@@ -66,8 +66,8 @@ setup(
             'flake8',
             'flake8-quotes',
             'codecov',
-            'tchannel>=0.27', # This is only used in python 2
-            'opentracing_instrumentation>=2,<3',
+            'tchannel>=0.27',  # This is only used in python 2
+            'opentracing_instrumentation>=3,<4',
             'prometheus_client==0.3.1',
         ]
     },

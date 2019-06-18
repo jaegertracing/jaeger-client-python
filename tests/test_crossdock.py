@@ -20,6 +20,7 @@ import json
 import os
 import pytest
 import opentracing
+from opentracing.scope_managers.tornado import TornadoScopeManager
 from mock import MagicMock
 from tornado.httpclient import HTTPRequest
 from jaeger_client import Tracer, ConstSampler
@@ -47,6 +48,7 @@ def tracer():
         service_name='test-tracer',
         sampler=ConstSampler(True),
         reporter=InMemoryReporter(),
+        scope_manager=TornadoScopeManager()
     )
     try:
         yield tracer
@@ -100,7 +102,7 @@ def test_trace_propagation(
     body = json.dumps(level1)
 
     with mock.patch('opentracing.tracer', tracer):
-        assert opentracing.tracer == tracer  # sanity check that patch worked
+        assert opentracing.global_tracer() == tracer  # sanity check that patch worked
 
         req = HTTPRequest(url='%s/start_trace' % base_url, method='POST',
                           headers={'Content-Type': 'application/json'},

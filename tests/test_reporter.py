@@ -58,42 +58,6 @@ def test_logging_reporter():
     reporter.close().result()
 
 
-def test_composite_reporter():
-    reporter = jaeger_client.reporter.CompositeReporter(
-        jaeger_client.reporter.NullReporter(),
-        jaeger_client.reporter.LoggingReporter())
-    with mock.patch('jaeger_client.reporter.NullReporter.set_process') \
-            as null_mock:
-        with mock.patch('jaeger_client.reporter.LoggingReporter.set_process') \
-                as log_mock:
-            reporter.set_process('x', {}, 123, 1234)
-            null_mock.assert_called_with('x', {}, 123, 1234)
-            log_mock.assert_called_with('x', {}, 123, 1234)
-    with mock.patch('jaeger_client.reporter.NullReporter.report_span') \
-            as null_mock:
-        with mock.patch('jaeger_client.reporter.LoggingReporter.report_span') \
-                as log_mock:
-            reporter.report_span({})
-            null_mock.assert_called_with({})
-            log_mock.assert_called_with({})
-    with mock.patch('jaeger_client.reporter.NullReporter.close') \
-            as null_mock:
-        with mock.patch('jaeger_client.reporter.LoggingReporter.close') \
-                as log_mock:
-
-            f1 = Future()
-            f2 = Future()
-            null_mock.return_value = f1
-            log_mock.return_value = f2
-            f = reporter.close()
-            null_mock.assert_called_once()
-            log_mock.assert_called_once()
-            assert not f.done()
-            f1.set_result(True)
-            f2.set_result(True)
-            assert f.done()
-
-
 class FakeSender(object):
     """
     Mock the _send() method of the reporter by capturing requests
@@ -296,3 +260,40 @@ class ReporterTest(AsyncTestCase):
         yield reporter.close()
         assert reporter.queue.qsize() == 0, 'all spans drained'
         assert count[0] == 4, 'last span submitted in one extrac batch'
+
+    @gen_test
+    def test_composite_reporter(self):
+        reporter = jaeger_client.reporter.CompositeReporter(
+            jaeger_client.reporter.NullReporter(),
+            jaeger_client.reporter.LoggingReporter())
+        with mock.patch('jaeger_client.reporter.NullReporter.set_process') \
+                as null_mock:
+            with mock.patch('jaeger_client.reporter.LoggingReporter.set_process') \
+                    as log_mock:
+                reporter.set_process('x', {}, 123, 1234)
+                null_mock.assert_called_with('x', {}, 123, 1234)
+                log_mock.assert_called_with('x', {}, 123, 1234)
+        with mock.patch('jaeger_client.reporter.NullReporter.report_span') \
+                as null_mock:
+            with mock.patch('jaeger_client.reporter.LoggingReporter.report_span') \
+                    as log_mock:
+                reporter.report_span({})
+                null_mock.assert_called_with({})
+                log_mock.assert_called_with({})
+        with mock.patch('jaeger_client.reporter.NullReporter.close') \
+                as null_mock:
+            with mock.patch('jaeger_client.reporter.LoggingReporter.close') \
+                    as log_mock:
+
+                f1 = Future()
+                f2 = Future()
+                null_mock.return_value = f1
+                log_mock.return_value = f2
+                f = reporter.close()
+                null_mock.assert_called_once()
+                log_mock.assert_called_once()
+                assert not f.done()
+                f1.set_result(True)
+                f2.set_result(True)
+                yield f
+                assert f.result()

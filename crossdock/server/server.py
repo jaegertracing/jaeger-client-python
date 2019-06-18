@@ -16,6 +16,7 @@ import logging
 
 import tornado.web
 import opentracing
+from opentracing.scope_managers.tornado import TornadoScopeManager
 import tornado.ioloop
 import tornado.httpclient
 from tornado.web import asynchronous
@@ -42,8 +43,9 @@ DefaultServerPortTChannel = 8082
 tracer = Tracer(
     service_name='python',
     reporter=NullReporter(),
-    sampler=ConstSampler(decision=True))
-opentracing.tracer = tracer
+    sampler=ConstSampler(decision=True),
+    scope_manager=TornadoScopeManager())
+opentracing.set_global_tracer(tracer)
 
 
 idl_path = 'idl/thrift/crossdock/tracetest.thrift'
@@ -121,7 +123,7 @@ def get_observed_span(span):
 
 class Server(object):
     def __init__(self, port):
-        self.tracer = opentracing.tracer
+        self.tracer = opentracing.global_tracer()
         self.tchannel = self.make_tchannel(port)
 
     def make_tchannel(self, port):
