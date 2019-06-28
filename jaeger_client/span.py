@@ -17,11 +17,14 @@ from __future__ import absolute_import
 import six
 import threading
 import time
+import logging
 
 import opentracing
 from opentracing.ext import tags as ext_tags
 from . import codecs, thrift
 from .constants import SAMPLED_FLAG, DEBUG_FLAG
+
+logger = logging.getLogger('jaeger_tracing')
 
 
 class Span(opentracing.Span):
@@ -37,6 +40,7 @@ class Span(opentracing.Span):
         self.operation_name = operation_name
         self.start_time = start_time or time.time()
         self.end_time = None
+        self.finished = False
         self.update_lock = threading.Lock()
         self.references = references
         # we store tags and logs as Thrift objects to avoid extra allocations
@@ -67,11 +71,15 @@ class Span(opentracing.Span):
         :param finish_time: an explicit Span finish timestamp as a unix
             timestamp per time.time()
         """
-        if not self.is_sampled():
-            return
+        with self.update_lock:
+            if self.finished:
+                logger.warning('Span has already been finished; will not be reported again.')
+                return
+            self.finished = True
+            self.end_time = finish_time or time.time()
 
-        self.end_time = finish_time or time.time()  # no locking
-        self.tracer.report_span(self)
+        if self.is_sampled():
+            self.tracer.report_span(self)
 
     def set_tag(self, key, value):
         """
