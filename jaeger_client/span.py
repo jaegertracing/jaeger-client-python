@@ -71,6 +71,9 @@ class Span(opentracing.Span):
         :param finish_time: an explicit Span finish timestamp as a unix
             timestamp per time.time()
         """
+        if not self.is_sampled():
+            return
+
         with self.update_lock:
             if self.finished:
                 logger.warning('Span has already been finished; will not be reported again.')
@@ -78,8 +81,7 @@ class Span(opentracing.Span):
             self.finished = True
             self.end_time = finish_time or time.time()
 
-        if self.is_sampled():
-            self.tracer.report_span(self)
+        self.tracer.report_span(self)
 
     def set_tag(self, key, value):
         """
