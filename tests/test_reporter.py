@@ -125,7 +125,7 @@ class ReporterTest(AsyncTestCase):
                             metrics_factory=FakeMetricsFactory(),
                             error_reporter=HardErrorReporter(),
                             queue_capacity=queue_cap)
-        reporter.set_process('service', {}, max_length=0, max_traceback_length=0)
+        reporter.set_process('service', {}, max_length=0)
         sender = FakeSender()
         reporter._send = sender
         return reporter, sender
@@ -270,9 +270,9 @@ class ReporterTest(AsyncTestCase):
                 as null_mock:
             with mock.patch('jaeger_client.reporter.LoggingReporter.set_process') \
                     as log_mock:
-                reporter.set_process('x', {}, 123, 1234)
-                null_mock.assert_called_with('x', {}, 123, 1234)
-                log_mock.assert_called_with('x', {}, 123, 1234)
+                reporter.set_process('x', {}, 123)
+                null_mock.assert_called_with('x', {}, 123)
+                log_mock.assert_called_with('x', {}, 123)
         with mock.patch('jaeger_client.reporter.NullReporter.report_span') \
                 as null_mock:
             with mock.patch('jaeger_client.reporter.LoggingReporter.report_span') \

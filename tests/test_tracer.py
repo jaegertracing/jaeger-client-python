@@ -225,11 +225,10 @@ def test_tracer_tags_passed_to_reporter():
     sampler = ConstSampler(True)
     tracer = Tracer(
         service_name='x', reporter=reporter, sampler=sampler,
-        max_tag_value_length=123, max_traceback_length=1234,
+        max_tag_value_length=123,
     )
     reporter.set_process.assert_called_once_with(
         service_name='x', tags=tracer.tags, max_length=123,
-        max_traceback_length=1234,
     )
 
 

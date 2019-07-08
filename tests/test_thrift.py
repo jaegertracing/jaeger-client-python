@@ -111,32 +111,27 @@ def test_none_ids():
 
 
 def test_large_tags():
-    tag = thrift.make_tag('x', 'y' * 300, max_length=256,
-                          max_traceback_length=512)
+    tag = thrift.make_tag('x', 'y' * 300, max_length=256)
     assert len(tag.vStr) <= 256
 
 
 def test_bool_tags():
-    tag = thrift.make_tag('booltag', True, max_length=256,
-                          max_traceback_length=512)
+    tag = thrift.make_tag('booltag', True, max_length=256)
     assert tag.vBool is True
 
 
 def test_bool_tags_false():
-    tag = thrift.make_tag('booltag', False, max_length=256,
-                          max_traceback_length=512)
+    tag = thrift.make_tag('booltag', False, max_length=256)
     assert tag.vBool is False
 
 
 def test_long_tags():
-    tag = thrift.make_tag('longtag', 404, max_length=256,
-                          max_traceback_length=512)
+    tag = thrift.make_tag('longtag', 404, max_length=256)
     assert tag.vLong == 404
 
 
 def test_double_tags():
-    tag = thrift.make_tag('doubletag', 12.1, max_length=256,
-                          max_traceback_length=512)
+    tag = thrift.make_tag('doubletag', 12.1, max_length=256)
     assert tag.vDouble == 12.1
 
 

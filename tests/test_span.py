@@ -25,7 +25,6 @@ from jaeger_client import Span, SpanContext, ConstSampler
 def test_baggage():
     mock_tracer = mock.MagicMock()
     mock_tracer.max_tag_value_length = 100
-    mock_tracer.max_traceback_length = 200
     ctx = SpanContext(trace_id=1, span_id=2, parent_id=None, flags=1)
     span = Span(context=ctx, operation_name='x', tracer=mock_tracer)
     assert span.get_baggage_item('x') is None
@@ -52,7 +51,6 @@ def _fields_to_dict(span_log):
 def test_baggage_logs():
     mock_tracer = mock.MagicMock()
     mock_tracer.max_tag_value_length = 100
-    mock_tracer.max_traceback_length = 200
     ctx = SpanContext(trace_id=1, span_id=2, parent_id=None, flags=1)
     span = Span(context=ctx, operation_name='x', tracer=mock_tracer)
     span.set_baggage_item('x', 'a')
@@ -78,7 +76,6 @@ def test_baggage_logs():
 def test_is_rpc():
     mock_tracer = mock.MagicMock()
     mock_tracer.max_tag_value_length = 100
-    mock_tracer.max_traceback_length = 200
     ctx = SpanContext(trace_id=1, span_id=2, parent_id=None, flags=1)
 
     span = Span(context=ctx, operation_name='x', tracer=mock_tracer)
@@ -235,7 +232,6 @@ def test_span_to_string(tracer):
 
 def test_span_tag_value_max_length(tracer):
     tracer.max_tag_value_length = 42
-    tracer.max_traceback_length = 200
     span = tracer.start_span(operation_name='x')
     span.set_tag('x', 'x' * 50)
     tag_n = len(span.tags) - 1

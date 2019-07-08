@@ -51,7 +51,6 @@ class Tracer(opentracing.Tracer):
         one_span_per_rpc=False, extra_codecs=None,
         tags=None,
         max_tag_value_length=constants.MAX_TAG_VALUE_LENGTH,
-        max_traceback_length=constants.MAX_TRACEBACK_LENGTH,
         throttler=None,
         scope_manager=None,
     ):
@@ -64,7 +63,6 @@ class Tracer(opentracing.Tracer):
         self.debug_id_header = debug_id_header
         self.one_span_per_rpc = one_span_per_rpc
         self.max_tag_value_length = max_tag_value_length
-        self.max_traceback_length = max_traceback_length
         self.max_trace_id_bits = constants._max_trace_id_bits if generate_128bit_trace_id \
             else constants._max_id_bits
         self.codecs = {
@@ -111,7 +109,6 @@ class Tracer(opentracing.Tracer):
             service_name=self.service_name,
             tags=self.tags,
             max_length=self.max_tag_value_length,
-            max_traceback_length=self.max_traceback_length,
         )
 
         super(Tracer, self).__init__(

@@ -15,6 +15,7 @@
 import traceback
 import six
 from opentracing.tracer import ReferenceType
+from .constants import MAX_TRACEBACK_LENGTH
 
 import jaeger_client.thrift_gen.jaeger.ttypes as ttypes
 import jaeger_client.thrift_gen.sampling.SamplingManager as sampling_manager
@@ -67,7 +68,7 @@ def _to_string(s):
         return str(e)
 
 
-def make_tag(key, value, max_length, max_traceback_length):
+def make_tag(key, value, max_length):
     if type(value).__name__ == 'bool':  # isinstance doesnt work on booleans
         return _make_bool_tag(
             key=key,
@@ -87,7 +88,6 @@ def make_tag(key, value, max_length, max_traceback_length):
         return _make_traceback_tag(
             key=key,
             value=value,
-            max_length=max_traceback_length
         )
     else:
         return _make_string_tag(
@@ -97,7 +97,7 @@ def make_tag(key, value, max_length, max_traceback_length):
         )
 
 
-def _make_traceback_tag(key, value, max_length):
+def _make_traceback_tag(key, value, max_length=MAX_TRACEBACK_LENGTH):
     key = _to_string(key)
     value = ''.join(traceback.format_tb(value))
     if len(value) > max_length:
@@ -158,28 +158,25 @@ def timestamp_micros(ts):
     return long(ts * 1000000)
 
 
-def make_tags(tags, max_length, max_traceback_length):
+def make_tags(tags, max_length):
     # TODO extend to support non-string tag values
     return [
-        make_tag(key=k, value=v, max_length=max_length,
-                 max_traceback_length=max_traceback_length)
+        make_tag(key=k, value=v, max_length=max_length)
         for k, v in six.iteritems(tags or {})
     ]
 
 
-def make_log(timestamp, fields, max_length, max_traceback_length):
+def make_log(timestamp, fields, max_length):
     return ttypes.Log(
         timestamp=timestamp_micros(ts=timestamp),
-        fields=make_tags(tags=fields, max_length=max_length,
-                         max_traceback_length=max_traceback_length),
+        fields=make_tags(tags=fields, max_length=max_length)
     )
 
 
-def make_process(service_name, tags, max_length, max_traceback_length):
+def make_process(service_name, tags, max_length):
     return ttypes.Process(
         serviceName=service_name,
-        tags=make_tags(tags=tags, max_length=max_length,
-                       max_traceback_length=max_traceback_length),
+        tags=make_tags(tags=tags, max_length=max_length)
     )
 
 
