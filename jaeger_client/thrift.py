@@ -169,14 +169,14 @@ def make_tags(tags, max_length):
 def make_log(timestamp, fields, max_length):
     return ttypes.Log(
         timestamp=timestamp_micros(ts=timestamp),
-        fields=make_tags(tags=fields, max_length=max_length)
+        fields=make_tags(tags=fields, max_length=max_length),
     )
 
 
 def make_process(service_name, tags, max_length):
     return ttypes.Process(
         serviceName=service_name,
-        tags=make_tags(tags=tags, max_length=max_length)
+        tags=make_tags(tags=tags, max_length=max_length),
     )
 
 
