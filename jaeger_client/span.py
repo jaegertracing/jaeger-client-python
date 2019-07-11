@@ -85,7 +85,9 @@ class Span(opentracing.Span):
                 tag = thrift.make_tag(
                     key=key,
                     value=value,
-                    max_length=self.tracer.max_tag_value_length, )
+                    max_length=self.tracer.max_tag_value_length,
+                    max_traceback_length=self._tracer.max_traceback_length,
+                )
                 self.tags.append(tag)
         return self
 
@@ -118,6 +120,7 @@ class Span(opentracing.Span):
                 timestamp=timestamp if timestamp else time.time(),
                 fields=key_values,
                 max_length=self._tracer.max_tag_value_length,
+                max_traceback_length=self._tracer.max_traceback_length,
             )
             with self.update_lock:
                 self.logs.append(log)

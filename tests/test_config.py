@@ -101,6 +101,16 @@ class ConfigTests(unittest.TestCase):
         t = c.create_tracer(NullReporter(), ConstSampler(True))
         assert t.max_tag_value_length == 333
 
+    def test_max_traceback_length(self):
+        c = Config({}, service_name='x')
+        assert c.max_traceback_length == constants.MAX_TRACEBACK_LENGTH
+
+        c = Config({'max_traceback_length': 333}, service_name='x')
+        assert c.max_traceback_length == 333
+
+        t = c.create_tracer(NullReporter(), ConstSampler(True))
+        assert t.max_traceback_length == 333
+
     def test_propagation(self):
         c = Config({}, service_name='x')
         assert c.propagation == {}
