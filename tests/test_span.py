@@ -255,6 +255,7 @@ def test_span_tag_long(tracer):
     assert span.tags[tag_n].key == 'z'
     assert span.tags[tag_n].vLong == 200
 
+
 def test_span_finish(tracer):
     tracer.sampler = ConstSampler(decision=True)
     span = tracer.start_span(operation_name='x')
