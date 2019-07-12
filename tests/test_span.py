@@ -18,6 +18,7 @@ import time
 import collections
 import json
 import mock
+import unittest
 
 from opentracing.ext import tags as ext_tags
 from jaeger_client import Span, SpanContext, ConstSampler
@@ -268,3 +269,4 @@ def test_span_finish(tracer):
     # test double finish warning
     span.finish(finish_time + 10)
     assert span.end_time == finish_time
+    unittest.TestCase.assertWarns(span.finish)

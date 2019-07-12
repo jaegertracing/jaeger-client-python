@@ -24,8 +24,8 @@ from opentracing.ext import tags as ext_tags
 from . import codecs, thrift
 from .constants import SAMPLED_FLAG, DEBUG_FLAG
 
-
 logger = logging.getLogger('jaeger_tracing')
+
 
 class Span(opentracing.Span):
     """Implements opentracing.Span."""
