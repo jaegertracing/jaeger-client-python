@@ -44,6 +44,7 @@ from .constants import (
     BAGGAGE_HEADER_PREFIX,
     DEBUG_ID_HEADER_KEY,
     MAX_TAG_VALUE_LENGTH,
+    MAX_TRACEBACK_LENGTH,
     DEFAULT_THROTTLER_REFRESH_INTERVAL,
 )
 from .metrics import LegacyMetricsFactory, MetricsFactory, Metrics
@@ -122,6 +123,7 @@ class Config(object):
                         'reporter_queue_size',
                         'propagation',
                         'max_tag_value_length',
+                        'max_traceback_length',
                         'reporter_flush_interval',
                         'sampling_refresh_interval',
                         'trace_id_header',
@@ -206,6 +208,14 @@ class Config(object):
         be truncated.
         """
         return self.config.get('max_tag_value_length', MAX_TAG_VALUE_LENGTH)
+
+    @property
+    def max_traceback_length(self):
+        """
+        :return: Returns max allowed traceback length when logging an error.
+        Longer values will be truncated.
+        """
+        return self.config.get('max_traceback_length', MAX_TRACEBACK_LENGTH)
 
     @property
     def sampler(self):
@@ -414,6 +424,7 @@ class Config(object):
             debug_id_header=self.debug_id_header,
             tags=self.tags,
             max_tag_value_length=self.max_tag_value_length,
+            max_traceback_length=self.max_traceback_length,
             extra_codecs=self.propagation,
             throttler=throttler,
             scope_manager=self.scope_manager,

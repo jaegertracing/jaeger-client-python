@@ -87,6 +87,9 @@ CLIENT_UUID_TAG_KEY = 'client-uuid'
 # max length for tag values. Longer values will be truncated.
 MAX_TAG_VALUE_LENGTH = 1024
 
+# max length for traceback data. Longer values will be truncated.
+MAX_TRACEBACK_LENGTH = 4096
+
 # Constant for sampled flag
 SAMPLED_FLAG = 0x01
 
