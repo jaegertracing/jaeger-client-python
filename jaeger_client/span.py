@@ -32,7 +32,7 @@ class Span(opentracing.Span):
 
     __slots__ = ['_tracer', '_context',
                  'operation_name', 'start_time', 'end_time',
-                 'logs', 'tags', 'update_lock']
+                 'logs', 'tags', 'finished', 'update_lock']
 
     def __init__(self, context, tracer, operation_name,
                  tags=None, start_time=None, references=None):
