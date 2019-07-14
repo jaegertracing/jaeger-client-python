@@ -14,6 +14,7 @@
 
 from __future__ import absolute_import
 
+import time
 import collections
 import json
 import mock
@@ -253,3 +254,17 @@ def test_span_tag_long(tracer):
     tag_n = len(span.tags) - 1
     assert span.tags[tag_n].key == 'z'
     assert span.tags[tag_n].vLong == 200
+
+
+def test_span_finish(tracer):
+    tracer.sampler = ConstSampler(decision=True)
+    span = tracer.start_span(operation_name='x')
+    assert span.is_sampled()
+
+    finish_time = time.time()
+    span.finish(finish_time)
+    assert span.finished is True
+
+    # test double finish warning
+    span.finish(finish_time + 10)
+    assert span.end_time == finish_time
