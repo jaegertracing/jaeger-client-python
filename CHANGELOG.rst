@@ -3,10 +3,12 @@
 History
 -------
 
-4.0.1 (unreleased)
+4.1.0 (2019-08-31)
 ------------------
 
-- Nothing changed yet.
+- Keep track if span is finished and do not double-report (#253) <Abhilash Gnan>
+- Add stack traceback to error logs (#250) <qqi0O0>
+- Support Tornado 5 (#247) <Vasilii Novikov>
 
 
 4.0.0 (2019-04-27)
