@@ -156,6 +156,8 @@ class ReporterTest(AsyncTestCase):
         span_dropped_key = 'jaeger:reporter_spans.result_dropped'
         assert span_dropped_key not in reporter.metrics_factory.counters
         reporter.report_span(self._new_span('1'))
+        yield self._wait_for(
+            lambda: span_dropped_key in reporter.metrics_factory.counters)
         assert 1 == reporter.metrics_factory.counters[span_dropped_key]
 
     @gen_test
@@ -248,6 +250,7 @@ class ReporterTest(AsyncTestCase):
         reporter.batch_size = 3
         for i in range(10):
             reporter.report_span(self._new_span('%s' % i))
+        yield self._wait_for(lambda: reporter.queue.qsize() > 0)
         assert reporter.queue.qsize() == 10, 'queued 10 spans'
 
         # now unblock consumer
