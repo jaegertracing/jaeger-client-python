@@ -87,6 +87,17 @@ Note: do not initialize the tracer during import, it may cause a deadlock (see i
 Instead define a function that returns a tracer (see example below) and call that function explicitly
 after all the imports are done.
 
+
+Also note that using `gevent.monkey` in asyncio-based applications (python 3+) may need to pass current event loop explicitly (see issue #256):
+ 
+ ```python
+from tornado import ioloop
+from jaeger_client import Config
+
+config = Config(config={}, service_name='your-app-name', validate=True)
+config.initialize_tracer(io_loop=ioloop.IOLoop.current())
+```
+
 ### Production
 
 The recommended way to initialize the tracer for production use:
