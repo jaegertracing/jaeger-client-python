@@ -130,12 +130,7 @@ class Reporter(NullReporter):
             )
 
     def report_span(self, span):
-        # We should not be calling `queue.put_nowait()` from random threads,
-        # only from the same IOLoop where the queue is consumed (T333431).
-        if tornado.ioloop.IOLoop.current(instance=False) == self.io_loop:
-            self._report_span_from_ioloop(span)
-        else:
-            self.io_loop.add_callback(self._report_span_from_ioloop, span)
+        self.io_loop.add_callback(self._report_span_from_ioloop, span)
 
     def _report_span_from_ioloop(self, span):
         try:
