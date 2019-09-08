@@ -134,9 +134,10 @@ tracer = config.initialize_tracer()
 
 For development, some parameters can be passed via `config` dictionary, as in the Getting Started example above. For more details please see the [Config class](jaeger_client/config.py).
 
-### WSGI
+### WSGI, multi-processing, fork(2)
 
-Applications running under WSGI usually fork multiple sub-processes to handle individual requests.
+When using this library in applications that fork child processes to handle individual requests, 
+such as with [WSGI / PEP 3333](https://wsgi.readthedocs.io/), care must be taken when initializing the tracer. 
 When Jaeger tracer is initialized, it may start a new background thread. If the process later forks,
 it might cause issues or hang the application (due to exclusive lock on the interpreter).
 Therefore, it is recommended that the tracer is not initialized until after the child processes
