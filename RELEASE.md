@@ -14,9 +14,10 @@ Before new release, add a summary of changes since last version to (CHANGELOG.rs
 pip install zest.releaser[recommended]
 prerelease
 release
-git push origin master --follow-tags
-python setup.py sdist upload -r pypi
+git push upstream master --follow-tags
+python setup.py sdist
+pip install twine
+twine upload --repository pypi --verbose dist/*
 postrelease
 git push
 ```
-
