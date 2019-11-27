@@ -3,10 +3,12 @@
 History
 -------
 
-4.1.1 (unreleased)
+4.2.0 (2019-11-27)
 ------------------
 
-- Nothing changed yet.
+- Remove Tornado upper boundary (#262) -- Vasilii Novikov
+- Add note about using gevent monkey (#258) -- Vasilii Novikov
+- Always schedule span reporting in io_loop via callback (#257) -- Vasilii Novikov
 
 
 4.1.0 (2019-08-31)
