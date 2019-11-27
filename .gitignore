@@ -35,6 +35,7 @@ pip-log.txt
 # Ignore python virtual environments
 env*
 thrift_env
+.envrc
 
 # Ignore local logs
 *.log
