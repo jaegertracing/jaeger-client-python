@@ -21,7 +21,7 @@ class PrometheusMetricsFactory(MetricsFactory):
     """
     Provides metrics backed by Prometheus
     """
-    def __init__(self, namespace='', name_label=''):
+    def __init__(self, namespace='', name_label=None):
         self._cache = defaultdict(object)
         self._namespace = namespace
         self._name_label = name_label
