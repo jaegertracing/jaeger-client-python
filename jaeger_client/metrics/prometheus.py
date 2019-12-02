@@ -42,28 +42,32 @@ class PrometheusMetricsFactory(MetricsFactory):
         return self._cache[cache_key]
 
     def create_counter(self, name, tags=None):
-        name_label = {'service': self._name_label}
-        if tags is None:
-            tags = name_label
-        else:
-            tags.update(name_label)
+        if self._name_label:
+            name_label = {'service': self._name_label}
+            if tags is None:
+                tags = name_label
+            else:
+                tags.update(name_label)
         label_name_list = self._get_tag_name_list(tags)
         counter = self._get_metric(Counter, name, label_name_list)
-        counter = counter.labels(**tags)
+        if tags is not None and len(tags) > 0:
+            counter = counter.labels(**tags)
 
         def increment(value):
             counter.inc(value)
         return increment
 
     def create_gauge(self, name, tags=None):
-        name_label = {'service': self._name_label}
-        if tags is None:
-            tags = name_label
-        else:
-            tags.update(name_label)
+        if self._name_label:
+            name_label = {'service': self._name_label}
+            if tags is None:
+                tags = name_label
+            else:
+                tags.update(name_label)
         label_name_list = self._get_tag_name_list(tags)
         gauge = self._get_metric(Gauge, name, label_name_list)
-        gauge = gauge.labels(**tags)
+        if tags is not None and len(tags) > 0:
+            gauge = gauge.labels(**tags)
 
         def update(value):
             gauge.set(value)
