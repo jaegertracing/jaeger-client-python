@@ -21,10 +21,10 @@ class PrometheusMetricsFactory(MetricsFactory):
     """
     Provides metrics backed by Prometheus
     """
-    def __init__(self, namespace='', name_label=None):
+    def __init__(self, namespace='', service_name_label=None):
         self._cache = defaultdict(object)
         self._namespace = namespace
-        self._name_label = name_label
+        self._service_name_label = service_name_label
 
     def _get_tag_name_list(self, tags):
         if tags is None:
@@ -42,8 +42,8 @@ class PrometheusMetricsFactory(MetricsFactory):
         return self._cache[cache_key]
 
     def create_counter(self, name, tags=None):
-        if self._name_label:
-            name_label = {'service': self._name_label}
+        if self._service_name_label:
+            name_label = {'service': self._service_name_label}
             if tags is None:
                 tags = name_label
             else:
@@ -58,8 +58,8 @@ class PrometheusMetricsFactory(MetricsFactory):
         return increment
 
     def create_gauge(self, name, tags=None):
-        if self._name_label:
-            name_label = {'service': self._name_label}
+        if self._service_name_label:
+            name_label = {'service': self._service_name_label}
             if tags is None:
                 tags = name_label
             else:
