@@ -36,7 +36,7 @@ if __name__ == "__main__":
                 'param': 1,
             },
             'logging': True,
-        },  
+        },
         service_name='your-app-name',
         validate=True,
     )
@@ -67,7 +67,7 @@ if __name__ == "__main__":
                 'reporting_port': 'your-reporting-port',
             },
             'logging': True,
-        },  
+        },
         service_name='your-app-name',
         validate=True,
     )
@@ -89,7 +89,7 @@ after all the imports are done.
 
 
 Also note that using `gevent.monkey` in asyncio-based applications (python 3+) may need to pass current event loop explicitly (see issue #256):
- 
+
  ```python
 from tornado import ioloop
 from jaeger_client import Config
@@ -115,7 +115,7 @@ If you need to create additional tracers (e.g., to create spans on the client si
 
 #### Prometheus metrics
 
-This module brings a [Prometheus](https://github.com/prometheus/client_python) integration to the internal Jaeger metrics.  
+This module brings a [Prometheus](https://github.com/prometheus/client_python) integration to the internal Jaeger metrics.
 The way to initialize the tracer with Prometheus metrics:
 
 ```python
@@ -125,10 +125,14 @@ config = Config(
         config={},
         service_name='your-app-name',
         validate=True,
-        metrics_factory=PrometheusMetricsFactory(namespace='your-app-name')
+        metrics_factory=PrometheusMetricsFactory(service_name_label='your-app-name')
 )
 tracer = config.initialize_tracer()
 ```
+
+Note that the optional argument `service_name_label` to the factory constructor
+will force it to tag all Jaeger client metrics with a label `service: your-app-name`.
+This way you can distinguish Jaeger client metrics produced by different services.
 
 ### Development
 
@@ -136,8 +140,8 @@ For development, some parameters can be passed via `config` dictionary, as in th
 
 ### WSGI, multi-processing, fork(2)
 
-When using this library in applications that fork child processes to handle individual requests, 
-such as with [WSGI / PEP 3333](https://wsgi.readthedocs.io/), care must be taken when initializing the tracer. 
+When using this library in applications that fork child processes to handle individual requests,
+such as with [WSGI / PEP 3333](https://wsgi.readthedocs.io/), care must be taken when initializing the tracer.
 When Jaeger tracer is initialized, it may start a new background thread. If the process later forks,
 it might cause issues or hang the application (due to exclusive lock on the interpreter).
 Therefore, it is recommended that the tracer is not initialized until after the child processes
