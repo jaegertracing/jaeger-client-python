@@ -62,10 +62,11 @@ def test_prometheus_metrics_metric_with_service_name_label():
     gauge(1)
     gauge_after = REGISTRY.get_sample_value('jaeger:test_gauge_with_service_name_label',
                                             {'service': 'test'})
-    counter = metrics.create_counter(name='jaeger:test_counter_with_service_name_label')
+    counter = metrics.create_counter(name='jaeger:test_counter_with_service_name_label',
+                                     tags={'x': 'y'})
     counter(1)
     counter_after = REGISTRY.get_sample_value('jaeger:test_counter_with_service_name_label',
-                                              {'service': 'test'})
+                                              {'service': 'test', 'x': 'y'})
     assert 1 == counter_after
     assert 1 == gauge_after
 
