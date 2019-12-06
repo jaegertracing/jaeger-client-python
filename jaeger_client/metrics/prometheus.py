@@ -36,14 +36,13 @@ class PrometheusMetricsFactory(MetricsFactory):
 
     def _get_metric(self, metricType, name, tags):
         if self._service_name_label:
-            name_label = {'service': self._service_name_label}
             if tags is None:
                 tags = {'service': self._service_name_label}
             else:
                 tags['service'] = self._service_name_label
 
         label_name_list = self._get_tag_name_list(tags)
-        cache_key = name + ''.join(label_name_list)
+        cache_key = name + '@@'.join(label_name_list)
 
         metric = self._cache.get(cache_key)
         if metric is None:

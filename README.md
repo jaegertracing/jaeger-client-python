@@ -130,6 +130,10 @@ config = Config(
 tracer = config.initialize_tracer()
 ```
 
+Note that the optional argument `service_name_label` to the factory constructor
+will force it to tag all Jaeger client metrics with a label `service: your-app-name`.
+This way you can distinguish Jaeger client metrics produced by different services.
+
 ### Development
 
 For development, some parameters can be passed via `config` dictionary, as in the Getting Started example above. For more details please see the [Config class](jaeger_client/config.py).
