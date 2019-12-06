@@ -55,18 +55,20 @@ def test_prometheus_metrics_gauge_without_tags():
     after = REGISTRY.get_sample_value('jaeger:test_gauge_no_tags')
     assert 1 == after
 
+
 def test_prometheus_metrics_metric_with_service_name_label():
-    metrics = PrometheusMetricsFactory(service_name_label="test")
+    metrics = PrometheusMetricsFactory(service_name_label='test')
     gauge = metrics.create_gauge(name='jaeger:test_gauge_with_service_name_label')
     gauge(1)
     gauge_after = REGISTRY.get_sample_value('jaeger:test_gauge_with_service_name_label',
-                                            {"service": "test"})
+                                            {'service': 'test'})
     counter = metrics.create_counter(name='jaeger:test_counter_with_service_name_label')
     counter(1)
     counter_after = REGISTRY.get_sample_value('jaeger:test_counter_with_service_name_label',
-                                              {"service": "test"})
+                                              {'service': 'test'})
     assert 1 == counter_after
     assert 1 == gauge_after
+
 
 def test_prometheus_metrics_metric_without_service_name_label():
     metrics = PrometheusMetricsFactory()
