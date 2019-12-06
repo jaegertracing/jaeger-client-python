@@ -34,40 +34,37 @@ class PrometheusMetricsFactory(MetricsFactory):
             tag_name_list.append(key)
         return tag_name_list
 
-    def _get_metric(self, metric, name, label_name_list):
-        cache_key = name + ''.join(label_name_list)
-        if self._cache.get(cache_key) is None:
-            self._cache[cache_key] = metric(name=name, documentation=name,
-                                            labelnames=label_name_list, namespace=self._namespace)
-        return self._cache[cache_key]
-
-    def create_counter(self, name, tags=None):
+    def _get_metric(self, metricType, name, tags):
         if self._service_name_label:
             name_label = {'service': self._service_name_label}
             if tags is None:
-                tags = name_label
+                tags = {'service': self._service_name_label}
             else:
-                tags.update(name_label)
+                tags['service'] = self._service_name_label
+
         label_name_list = self._get_tag_name_list(tags)
-        counter = self._get_metric(Counter, name, label_name_list)
+        cache_key = name + ''.join(label_name_list)
+
+        metric = self._cache.get(cache_key)
+        if metric is None:
+            metric = metricType(name=name, documentation=name,
+                                labelnames=label_name_list, namespace=self._namespace)
+            self._cache[cache_key] = metric
+
         if tags is not None and len(tags) > 0:
-            counter = counter.labels(**tags)
+            metric = metric.labels(**tags)
+
+        return metric
+
+    def create_counter(self, name, tags=None):
+        counter = self._get_metric(Counter, name, tags)
 
         def increment(value):
             counter.inc(value)
         return increment
 
     def create_gauge(self, name, tags=None):
-        if self._service_name_label:
-            name_label = {'service': self._service_name_label}
-            if tags is None:
-                tags = name_label
-            else:
-                tags.update(name_label)
-        label_name_list = self._get_tag_name_list(tags)
-        gauge = self._get_metric(Gauge, name, label_name_list)
-        if tags is not None and len(tags) > 0:
-            gauge = gauge.labels(**tags)
+        gauge = self._get_metric(Gauge, name, tags)
 
         def update(value):
             gauge.set(value)

@@ -125,7 +125,7 @@ config = Config(
         config={},
         service_name='your-app-name',
         validate=True,
-        metrics_factory=PrometheusMetricsFactory(name_label='your-app-name')
+        metrics_factory=PrometheusMetricsFactory(service_name_label='your-app-name')
 )
 tracer = config.initialize_tracer()
 ```
