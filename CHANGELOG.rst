@@ -3,10 +3,10 @@
 History
 -------
 
-4.2.1 (unreleased)
+4.3.0 (2020-01-14)
 ------------------
 
-- Nothing changed yet.
+- Allow adding 'service' label to Prometheus metrics (#269) -- Àlex Pérez
 
 
 4.2.0 (2019-11-27)
