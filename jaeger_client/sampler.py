@@ -269,6 +269,7 @@ class AdaptiveSampler(Sampler):
             samplers[operation] = sampler
 
         self.samplers = samplers
+        self.per_operation_default_samplers = {}
         self.default_sampler = \
             ProbabilisticSampler(strategies.get(DEFAULT_SAMPLING_PROBABILITY_STR,
                                                 DEFAULT_SAMPLING_PROBABILITY))
@@ -280,14 +281,19 @@ class AdaptiveSampler(Sampler):
     def is_sampled(self, trace_id, operation=''):
         sampler = self.samplers.get(operation)
         if not sampler:
-            if len(self.samplers) >= self.max_operations:
+            sampler = self.per_operation_default_samplers.get(operation)
+        if not sampler:
+            if (
+                len(self.samplers) + len(self.per_operation_default_samplers) >=
+                self.max_operations
+            ):
                 return self.default_sampler.is_sampled(trace_id, operation)
             sampler = GuaranteedThroughputProbabilisticSampler(
                 operation,
                 self.lower_bound,
                 self.default_sampling_probability
             )
-            self.samplers[operation] = sampler
+            self.per_operation_default_samplers[operation] = sampler
             return sampler.is_sampled(trace_id, operation)
         return sampler.is_sampled(trace_id, operation)
 
@@ -305,6 +311,9 @@ class AdaptiveSampler(Sampler):
                     sampling_rate
                 )
                 self.samplers[operation] = sampler
+
+                # newly-overridden default, clear the existing sampler
+                self.per_operation_default_samplers.pop(operation, None)
             else:
                 sampler.update(lower_bound, sampling_rate)
         self.lower_bound = strategies.get(DEFAULT_LOWER_BOUND_STR, DEFAULT_LOWER_BOUND)
@@ -314,6 +323,8 @@ class AdaptiveSampler(Sampler):
                 strategies.get(DEFAULT_SAMPLING_PROBABILITY_STR, DEFAULT_SAMPLING_PROBABILITY)
             self.default_sampler = \
                 ProbabilisticSampler(self.default_sampling_probability)
+            # clear any existing default samplers
+            self.per_operation_default_samplers.clear()
 
     def close(self):
         for _, sampler in six.iteritems(self.samplers):

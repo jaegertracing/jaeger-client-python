@@ -274,6 +274,11 @@ def test_adaptive_sampler():
     assert sampled
     assert tags == get_tags('probabilistic', 0.52)
 
+    # The probability for new_op should be the new default
+    sampled, tags = sampler.is_sampled(MAX_INT - 10, 'new_op')
+    assert sampled
+    assert tags == get_tags('probabilistic', 0.52)
+
     # A new operation has been added
     sampled, tags = sampler.is_sampled(MAX_INT - 10, 'new_op_3')
     assert sampled
@@ -292,7 +297,7 @@ def test_adaptive_sampler_default_values():
     assert sampled
     assert tags == \
         get_tags('probabilistic', 0.001), 'should use default probability'
-    assert '%s' % adaptive_sampler.samplers['op'] == \
+    assert '%s' % adaptive_sampler.per_operation_default_samplers['op'] == \
            'GuaranteedThroughputProbabilisticSampler(op, 0.001000, 0.001667)'
 
     adaptive_sampler.update(strategies={
@@ -320,7 +325,7 @@ def test_adaptive_sampler_default_values():
     assert tags == get_tags('probabilistic', 0.001)
     # TODO ruh roh, the lowerbound isn't changed
     #  if the operation isn't included in perOperationStrategies
-    assert '%s' % adaptive_sampler.samplers['op'] == \
+    assert '%s' % adaptive_sampler.per_operation_default_samplers['op'] == \
            'GuaranteedThroughputProbabilisticSampler(op, 0.001000, 0.001667)'
 
 
