@@ -1,6 +1,6 @@
 sudo: required
 
-dist: trusty
+dist: xenial
 
 language: python
 
@@ -36,6 +36,16 @@ matrix:
     env: TORNADO=">=5,<6"
   - python: "3.6"
     env: TORNADO=">=6"
+  - python: "3.7"
+    env: TORNADO=">=4,<5"
+  - python: "3.7"
+    env: TORNADO=">=5,<6"
+  - python: "3.7"
+    env: TORNADO=">=6"
+
+before_install:
+  # required for pycurl to install
+  - sudo apt-get install libgnutls28-dev
 
 install:
   - make bootstrap
