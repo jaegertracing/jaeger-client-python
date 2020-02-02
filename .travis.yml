@@ -43,6 +43,10 @@ matrix:
   - python: "3.7"
     env: TORNADO=">=6"
 
+before_install:
+  # required for pycurl to install
+  - sudo apt-get install libgnutls28-dev
+
 install:
   - make bootstrap
   - if [ "$CROSSDOCK" == "1" ]; then bash ./scripts/install-crossdock-deps.sh ; fi
