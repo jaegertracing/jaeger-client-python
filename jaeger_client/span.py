@@ -98,6 +98,10 @@ class Span(opentracing.Span):
                     max_length=self.tracer.max_tag_value_length,
                     max_traceback_length=self._tracer.max_traceback_length,
                 )
+                if isinstance(value, six.string_types) and \
+                        len(value) > self.tracer.max_tag_value_length:
+                    logger.warning('Truncated tag {} with length {} > {} in span {}'.format(
+                        key, len(value), self.tracer.max_tag_value_length, self))
                 self.tags.append(tag)
         return self
 
