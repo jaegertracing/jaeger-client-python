@@ -124,6 +124,7 @@ class Tracer(opentracing.Tracer):
                    tags=None,
                    start_time=None,
                    ignore_active_span=False,
+                   span_logger=None
                    ):
         """
         Start and return a new Span representing a unit of work.
@@ -208,7 +209,9 @@ class Tracer(opentracing.Tracer):
                                baggage=baggage)
         span = Span(context=span_ctx, tracer=self,
                     operation_name=operation_name,
-                    tags=tags, start_time=start_time, references=valid_references)
+                    tags=tags, start_time=start_time,
+                    references=valid_references, span_logger=span_logger
+                )
 
         self._emit_span_metrics(span=span, join=rpc_server)
 
