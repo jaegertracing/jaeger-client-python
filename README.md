@@ -73,6 +73,44 @@ if __name__ == "__main__":
     )
 ```
 
+If your project makes use of the python logger, you can set up your span objects to automatically capture the output of python loggers whilst they are active.
+
+```python
+
+import logging
+import time
+from jaeger_client import Config
+
+if __name__ == "__main__":
+    log_level = logging.DEBUG
+    logging.getLogger('my_app')
+    logging.basicConfig(format='%(asctime)s %(message)s', level=log_level)
+
+    config = Config(
+        config={ # usually read from some yaml config
+            'sampler': {
+                'type': 'const',
+                'param': 1,
+            },
+            'logging': False,
+        },
+        service_name='your-app-name',
+        validate=True,
+    )
+    # this call also sets opentracing.tracer
+    tracer = config.initialize_tracer()
+
+    with tracer.start_span('TestSpan', span_logger=logger) as span:
+        logger.info("Starting outer loop")
+
+        with tracer.start_span('ChildSpan', child_of=span) as child_span:
+            logger.debug("Starting inner loop")
+
+    time.sleep(2)   # yield to IOLoop to flush the spans - https://github.com/jaegertracing/jaeger-client-python/issues/50
+    tracer.close()  # flush any buffered spans
+
+```
+
 ### Other Instrumentation
 
 The [opentracing-contrib](https://github.com/opentracing-contrib) project has a few modules that provide explicit instrumentation support for popular frameworks like Django and Flask.
