@@ -73,6 +73,8 @@ if __name__ == "__main__":
     )
 ```
 
+### Automatic python log capture
+
 If your project makes use of the python logger, you can set up your span objects to automatically capture the output of python loggers whilst they are active.
 
 ```python
