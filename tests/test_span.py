@@ -22,6 +22,7 @@ import mock
 from opentracing.ext import tags as ext_tags
 from jaeger_client import Span, SpanContext, ConstSampler
 
+import logging
 
 def test_baggage():
     mock_tracer = mock.MagicMock()
@@ -268,3 +269,65 @@ def test_span_finish(tracer):
     # test double finish warning
     span.finish(finish_time + 10)
     assert span.end_time == finish_time
+
+def test_span_autologging(tracer):
+    tpl = collections.namedtuple(
+        'Test',
+        ['method', 'args', 'kwargs', 'expected', 'error', 'timestamp'])
+
+    expected_fields = [
+        "asctime", "created", "filename", "funcName", "levelname",
+        "lineno", "message", "msg", "module", "msecs", "name",
+        "pathname", "process", "processName", "thread", "threadName"]
+
+    def test(method, expected,
+             args=None, kwargs=None, error=False, timestamp=None):
+        if isinstance(expected, str):
+            expected = {'event': expected}
+        return tpl(
+            method=method,
+            args=args if args else [],
+            expected=expected,
+            kwargs=kwargs if kwargs else {},
+            error=error,
+            timestamp=timestamp,
+        )
+
+    def event_payload(event, payload):
+        return {'event': event, 'payload': payload}
+
+    def from_json(val):
+        return json.loads(val)
+
+    tests = [
+        test(method='info',
+             kwargs={'msg': 'test log'},
+             expected=event_payload('msg', 'data')),
+        test(method='error',
+             kwargs={'msg': 'test error'},
+             expected=event_payload('msg', 'data')),
+    ]
+
+    for test in tests:
+        name = '%s' % (test,)
+        span_logger = logging.getLogger('test')
+        span_logger.setLevel(logging.DEBUG)
+        span = tracer.start_span(operation_name='x', span_logger=span_logger)
+        span.logs = []
+        span.tags = []
+
+        if test.method == 'info':
+            span_logger.info(*test.args, **test.kwargs)
+        elif test.method == 'error':
+            span_logger.error(*test.args, **test.kwargs)
+        else:
+            raise ValueError('Unknown method %s' % test.method)
+        span.finish()
+
+        assert len(span.logs) == 1, name
+        log = span.logs[0]
+        log_fields = _fields_to_dict(log)
+        assert list(log_fields.keys()) == expected_fields
+
+        if test.timestamp:
+            assert log.timestamp == test.timestamp

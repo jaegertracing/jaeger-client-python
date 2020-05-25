@@ -23,6 +23,7 @@ import opentracing
 from opentracing.ext import tags as ext_tags
 from . import codecs, thrift
 from .constants import SAMPLED_FLAG, DEBUG_FLAG
+from .span_autologger import SpanAutologger
 
 logger = logging.getLogger('jaeger_tracing')
 
@@ -32,9 +33,9 @@ class Span(opentracing.Span):
 
     __slots__ = ['_tracer', '_context',
                  'operation_name', 'start_time', 'end_time',
-                 'logs', 'tags', 'finished', 'update_lock']
+                 'logs', 'tags', 'finished', 'update_lock', 'span_autologger']
 
-    def __init__(self, context, tracer, operation_name,
+    def __init__(self, context, tracer, operation_name, span_logger=None,
                  tags=None, start_time=None, references=None):
         super(Span, self).__init__(context=context, tracer=tracer)
         self.operation_name = operation_name
@@ -46,6 +47,12 @@ class Span(opentracing.Span):
         # we store tags and logs as Thrift objects to avoid extra allocations
         self.tags = []
         self.logs = []
+        if span_logger:
+            self.span_autologger = SpanAutologger(
+                span_logger=span_logger, span=self)
+            self.span_autologger.start()
+        else:
+            self.span_autologger = None
         if tags:
             for k, v in six.iteritems(tags):
                 self.set_tag(k, v)
@@ -71,6 +78,10 @@ class Span(opentracing.Span):
         :param finish_time: an explicit Span finish timestamp as a unix
             timestamp per time.time()
         """
+
+        if self.span_autologger:
+            self.span_autologger.finish()
+
         if not self.is_sampled():
             return
 
@@ -213,3 +224,8 @@ class Span(opentracing.Span):
         else:
             self.log(event=message)
         return self
+
+    def __exit__(self, *args, **kwargs):
+        if self.span_autologger:
+            self.span_autologger.__exit__(*args, **kwargs)
+        return super(Span, self).__exit__(*args, **kwargs)
