@@ -51,17 +51,11 @@ class SpanAutologger(StreamHandler):
                 "thread": record.thread,
                 "threadName": record.threadName,
             })
-    def __enter__(self):
+
+    def start(self):
         logger.debug("adding jaeger streamhandler to logger object to capture log")
         self.span_logger.addHandler(self)
 
-    def __exit__(self, type=None, value=None, traceback=None):
+    def finish(self):
         logger.debug("removing jaeger streamhandler from logger object")
         self.span_logger.removeHandler(self)
-        if type:
-            logger.debug("span exited with an exception, log the exception")
-            self._span.log_kv({
-                "exception": type,
-                "value": value,
-                "traceback": traceback
-            })

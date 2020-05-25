@@ -33,7 +33,7 @@ class Span(opentracing.Span):
 
     __slots__ = ['_tracer', '_context',
                  'operation_name', 'start_time', 'end_time',
-                 'logs', 'tags', 'finished', 'update_lock', 'span_logger']
+                 'logs', 'tags', 'finished', 'update_lock', 'span_autologger']
 
     def __init__(self, context, tracer, operation_name, span_logger=None,
                  tags=None, start_time=None, references=None):
@@ -48,10 +48,11 @@ class Span(opentracing.Span):
         self.tags = []
         self.logs = []
         if span_logger:
-            self.span_logger = SpanAutologger(
+            self.span_autologger = SpanAutologger(
                 span_logger=span_logger, span=self)
+            self.span_autologger.start()
         else:
-            self.span_logger = None
+            self.span_autologger = None
         if tags:
             for k, v in six.iteritems(tags):
                 self.set_tag(k, v)
@@ -77,6 +78,10 @@ class Span(opentracing.Span):
         :param finish_time: an explicit Span finish timestamp as a unix
             timestamp per time.time()
         """
+
+        if self.span_autologger:
+            self.span_autologger.finish()
+
         if not self.is_sampled():
             return
 
@@ -220,13 +225,7 @@ class Span(opentracing.Span):
             self.log(event=message)
         return self
 
-    def __enter__(self, *args, **kwargs):
-        return_obj = super(Span, self).__enter__(*args, **kwargs)
-        if self.span_logger:
-            self.span_logger.__enter__(*args, **kwargs)
-        return return_obj
-
     def __exit__(self, *args, **kwargs):
-        if self.span_logger:
-            self.span_logger.__exit__(*args, **kwargs)
+        if self.span_autologger:
+            self.span_autologger.__exit__(*args, **kwargs)
         return super(Span, self).__exit__(*args, **kwargs)
