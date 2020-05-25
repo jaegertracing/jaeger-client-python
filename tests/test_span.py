@@ -327,7 +327,7 @@ def test_span_autologging(tracer):
         assert len(span.logs) == 1, name
         log = span.logs[0]
         log_fields = _fields_to_dict(log)
-        assert list(log_fields.keys()) == expected_fields
+        assert set(log_fields.keys()) == set(expected_fields)
 
         if test.timestamp:
             assert log.timestamp == test.timestamp
