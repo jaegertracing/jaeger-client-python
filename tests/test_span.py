@@ -24,6 +24,7 @@ from jaeger_client import Span, SpanContext, ConstSampler
 
 import logging
 
+
 def test_baggage():
     mock_tracer = mock.MagicMock()
     mock_tracer.max_tag_value_length = 100
@@ -270,15 +271,16 @@ def test_span_finish(tracer):
     span.finish(finish_time + 10)
     assert span.end_time == finish_time
 
+
 def test_span_autologging(tracer):
     tpl = collections.namedtuple(
         'Test',
         ['method', 'args', 'kwargs', 'expected', 'error', 'timestamp'])
 
     expected_fields = [
-        "asctime", "created", "filename", "funcName", "levelname",
-        "lineno", "message", "msg", "module", "msecs", "name",
-        "pathname", "process", "processName", "thread", "threadName"]
+        'asctime', 'created', 'filename', 'funcName', 'levelname',
+        'lineno', 'message', 'msg', 'module', 'msecs', 'name',
+        'pathname', 'process', 'processName', 'thread', 'threadName']
 
     def test(method, expected,
              args=None, kwargs=None, error=False, timestamp=None):
