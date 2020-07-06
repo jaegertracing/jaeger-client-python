@@ -75,7 +75,7 @@ if __name__ == "__main__":
 
 ### Other Instrumentation
 
-The [opentracing-contrib](https://github.com/opentracing-contrib) project has a few modules that provide explicit instrumentation support for popular frameworks like Django and Flask.
+The [OpenTracing Registry](https://opentracing.io/registry/) has many modules that provide explicit instrumentation support for popular frameworks like Django and Flask.
 
 At Uber we are mostly using the [opentracing_instrumentation](https://github.com/uber-common/opentracing-python-instrumentation) module that provides:
   * explicit instrumentation for HTTP servers, and
