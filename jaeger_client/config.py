@@ -356,7 +356,7 @@ class Config(object):
 
         with Config._initialized_lock:
             if Config._initialized:
-                logger.warn('Jaeger tracer already initialized, skipping')
+                logger.warning('Jaeger tracer already initialized, skipping')
                 return
             Config._initialized = True
 
