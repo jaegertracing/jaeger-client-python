@@ -47,7 +47,7 @@ if __name__ == "__main__":
         span.log_kv({'event': 'test message', 'life': 42})
 
         with tracer.start_span('ChildSpan', child_of=span) as child_span:
-            span.log_kv({'event': 'down below'})
+            child_span.log_kv({'event': 'down below'})
 
     time.sleep(2)   # yield to IOLoop to flush the spans - https://github.com/jaegertracing/jaeger-client-python/issues/50
     tracer.close()  # flush any buffered spans
