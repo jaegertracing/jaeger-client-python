@@ -14,6 +14,11 @@
 
 from __future__ import absolute_import
 
+import os
+import random
+import re
+import time
+
 from opentracing import (
     InvalidCarrierException,
     SpanContextCorruptedException,
@@ -29,6 +34,8 @@ from .constants import SAMPLED_FLAG, DEBUG_FLAG
 
 import six
 from six.moves import urllib_parse
+
+from .trace_state import TraceState
 
 
 class Codec(object):
@@ -319,3 +326,99 @@ class B3Codec(Codec):
         return SpanContext(trace_id=trace_id, span_id=span_id,
                            parent_id=parent_id, flags=flags,
                            baggage=None)
+
+
+W3CTraceFormat = 'w3c-trace-format'
+
+
+class W3CTraceCodec(Codec):
+    _TRACEPARENT_HEADER_NAME = "traceparent"
+    _TRACESTATE_HEADER_NAME = "tracestate"
+    _TRACEPARENT_HEADER_FORMAT = (
+            "^[ \t]*([0-9a-f]{2})-([0-9a-f]{32})-([0-9a-f]{16})-([0-9a-f]{2})"
+            + "(-.*)?[ \t]*$"
+    )
+    _TRACEPARENT_HEADER_FORMAT_RE = re.compile(_TRACEPARENT_HEADER_FORMAT)
+
+    # Set the standards for W3C Tracing standard
+    _w3c_trace_id_bits = 128
+    _w3c_span_id_bits = 64
+
+    @staticmethod
+    def get_hexadecimal_trace_id(trace_id):
+        return "{:032x}".format(trace_id)
+
+    @staticmethod
+    def get_hexadecimal_span_id(span_id):
+        return "{:016x}".format(span_id)
+
+    @staticmethod
+    def get_hexadecimal_trace_flags(trace_flags):
+        return "{:02x}".format(trace_flags)
+
+    @staticmethod
+    def get_int_from_hexadecimal(value):
+        return int("0x{}".format(value), 16)
+
+    @staticmethod
+    def _random_id(bitsize):
+        return random.Random(time.time() * (os.getpid() or 1)).getrandbits(bitsize)
+
+    def inject(self, span_context, carrier):
+        if not isinstance(carrier, dict):
+            raise InvalidCarrierException('carrier not a collection')
+        # generate the traceparent, currently the only version is 00
+        trace_flags = 0
+        if span_context.flags & SAMPLED_FLAG == SAMPLED_FLAG:
+            trace_flags = 1  # Currently the only supported flag
+
+        trace_id = self.get_hexadecimal_trace_id(span_context.trace_id)
+        span_id = self.get_hexadecimal_span_id(span_context.span_id)
+        trace_flags = self.get_hexadecimal_trace_flags(trace_flags)
+        carrier[self._TRACEPARENT_HEADER_NAME] = "00-{}-{}-{}".format(
+            trace_id, span_id, trace_flags).lower()
+        trace_state = getattr(span_context, "trace_state", TraceState())
+        trace_state.add(span_context.operation_name, span_id)
+        carrier[self._TRACESTATE_HEADER_NAME] = trace_state.get_formatted_header()
+
+    def extract(self, carrier):
+        if not isinstance(carrier, dict):
+            raise InvalidCarrierException('carrier not a dictionary')
+        trace_id, span_id, parent_id, flags, trace_state = None, None, None, None, None
+        complete = 0
+        for key, value in six.iteritems(carrier):
+            if complete >= 2:
+                break
+            uc_key = key.lower()
+            if uc_key == self._TRACEPARENT_HEADER_NAME.lower():
+                complete += 1
+                match = re.search(self._TRACEPARENT_HEADER_FORMAT_RE, value)
+                if match:
+                    version = match.group(1)
+                    trace_id = match.group(2)
+                    parent_id = match.group(3)
+                    flags = match.group(4)
+                    if version != "00" or trace_id == "0" * 32 or parent_id == "0" * 16:
+                        trace_id, parent_id = None, None
+                    else:
+                        trace_id = self.get_int_from_hexadecimal(trace_id)
+                        parent_id = self.get_int_from_hexadecimal(parent_id)
+                        flags = self.get_int_from_hexadecimal(flags)
+
+            elif uc_key == self._TRACESTATE_HEADER_NAME.lower():
+                complete += 1
+                trace_state = TraceState()
+                trace_state.parse_from_header(value)
+
+        if not trace_id or not parent_id:
+            # reset all IDs and create a new trace
+            parent_id, flags, trace_state = None, None, None
+            trace_id = self._random_id(self._w3c_trace_id_bits)
+
+        # W3C Standards does not pass 3 ids, only 2, the parent and the trace.
+        # Since we need a span id for pretty much everything, we will just
+        # generate one here. This will be the parent in the next injection.
+        span_id = self._random_id(self._w3c_span_id_bits)
+
+        return SpanContext(trace_id=trace_id, span_id=span_id, parent_id=parent_id,
+                           flags=flags, trace_state=trace_state)

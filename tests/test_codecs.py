@@ -23,7 +23,7 @@ import mock
 import pytest
 from jaeger_client import Span, SpanContext, Tracer, ConstSampler
 from jaeger_client.codecs import (
-    Codec, TextCodec, BinaryCodec, ZipkinCodec, ZipkinSpanFormat, B3Codec,
+    Codec, TextCodec, BinaryCodec, ZipkinCodec, ZipkinSpanFormat, B3Codec, W3CTraceCodec,
     span_context_from_string,
     span_context_to_string,
 )
@@ -383,6 +383,18 @@ class TestCodecs(unittest.TestCase):
             codec.inject({}, {})
         with self.assertRaises(InvalidCarrierException):
             codec.extract({})
+
+    def test_W3C_codec(self):
+        codec = W3CTraceCodec()
+        ctx = SpanContext(trace_id=256, span_id=123, parent_id=None, flags=0)
+        span = Span(context=ctx, operation_name='w3c', tracer=None, start_time=1)
+        carrier = {}
+        codec.inject(span_context=span, carrier=carrier)
+        extracted = codec.extract(carrier)
+        assert extracted.trace_id == 256
+        assert extracted.parent_id == 123
+        assert extracted.flags == 0
+        assert extracted.span_id is not None
 
 
 def test_default_baggage_without_trace_id(tracer):
