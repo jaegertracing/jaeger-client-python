@@ -192,6 +192,46 @@ The B3 codec assumes it will receive lowercase HTTP headers, as this seems
 to be the standard in the popular frameworks like Flask and Django.
 Please make sure your framework does the same.
 
+## W3C Compatibility
+
+To use this library with other
+[W3C Trace Context](https://www.w3.org/TR/trace-context/)
+compatible libraries, you can provide the configuration property
+`propagation: 'w3c'` and the `traceparent` and `tracestate` HTTP
+headers will be supported. It should be noted that the W3C standard
+does not currently contain any support for baggage, so any baggage
+used in the operation will be left behind when calling the next system.
+
+The standard also only contains 2 ids, the current trace id and the
+parent id. Therefore, the span id of the current becomes the parent id
+in the next, and a new span id will be generated during extraction
+for the current span context.
+
+Here are a couple of pseudo examples to illustrate this:
+
+An injection showing the dropping of the parent id when creating
+the traceparent
+
+```
+inject(SpanContext(trace_id, parent_id, span_id)) => traceparent="trace_id-span_id"
+```
+
+An extraction showing the passed in span id becomes the
+current parent id with the generation of the new span id.
+
+```
+extract({traceparent: "trace_id-span_id"}) => SpanContext(trace_id, parent_id=span_id, span_id=generate_span_id())
+```
+
+The `tracestate` is set and passed according to the standard, where
+the latest trace is always at the left most position overriding any
+previous states. This is implemented using a class surrounding (but
+not extending) an OrderedDict. It should be noted that while the
+handling class can accept an encoder at initalization for the state
+values, there is currently no mechanism to pass this into the class
+and therefore the plain hexadecimal value that is also provided in
+the `traceparent` will always be used.
+
 ## License
 
 [Apache 2.0 License](./LICENSE).
