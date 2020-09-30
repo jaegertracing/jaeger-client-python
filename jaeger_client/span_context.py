@@ -24,16 +24,9 @@ class SpanContext(opentracing.SpanContext):
                  '_baggage', '_debug_id', 'operation_name', '_trace_state']
 
     """Implements opentracing.SpanContext"""
-    def __init__(self,
-                 trace_id,
-                 span_id,
-                 parent_id,
-                 flags,
-                 baggage=None,
-                 debug_id=None,
-                 operation_name=None,
-                 trace_state=None,
-    ):
+    def __init__(self, trace_id, span_id, parent_id, flags,
+                 baggage=None, debug_id=None, operation_name=None,
+                 trace_state=None):
         self.trace_id = trace_id
         self.span_id = span_id
         self.parent_id = parent_id or None

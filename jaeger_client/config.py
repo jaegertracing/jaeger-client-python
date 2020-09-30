@@ -315,7 +315,7 @@ class Config(object):
         if propagation == 'b3':
             # replace the codec with a B3 enabled instance
             return {Format.HTTP_HEADERS: B3Codec()}
-        if propagation == "w3c":
+        if propagation == 'w3c':
             return {Format.HTTP_HEADERS: W3CTraceCodec()}
         return {}
 

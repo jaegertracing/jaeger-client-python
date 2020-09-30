@@ -20,14 +20,10 @@ from six.moves import urllib_parse
 
 
 class TraceState(object):
-    __slots__ = ["_trace_state", "_encoder"]
+    __slots__ = ['_trace_state', '_encoder']
 
-    def __init__(self,
-                 operation_name=None,
-                 trace_id=None,
-                 header_values=None,
-                 encoder=None
-        ):
+    def __init__(self, operation_name=None, trace_id=None,
+                 header_values=None, encoder=None):
         self._trace_state = OrderedDict()
         self._encoder = encoder
         if header_values:
@@ -58,15 +54,8 @@ class TraceState(object):
         if self._encoder and skip_encode is False:
             value = self._encoder(value)
 
-        if six.PY2:
-            key = unicode(key)
-            value = unicode(value)
-        else:
-            key = str(key)
-            value = str(value)
-
-        key = six.ensure_str(key)
-        value = six.ensure_str(value)
+        key = six.ensure_str(str(key))
+        value = six.ensure_str(str(value))
 
         if sys.version_info >= (3, 2, 0):
             self._trace_state[key] = value
@@ -85,22 +74,25 @@ class TraceState(object):
                 link[1] = first
                 root[1] = first[0] = link
             else:
-                root[1] = first[0] = self._trace_state._OrderedDict__map[key] = [root, first, key]  # no_qa
+                root[1] = first[0] = self._trace_state._OrderedDict__map[key] = [root, first, key]
                 dict.__setitem__(self._trace_state, key, value)
 
     def get_formatted_header(self, url_parse=True):
         traces = []
         if not self._trace_state:
-            return ""
-        for key, value in six.iteritems(self._trace_state):
-            traces.append("{}={}".format(key, value))
+            return ''
+        for key, value in six.iteritems(
+                self._trace_state
+        ):
+            traces.append('{}={}'.format(key, value))
 
         header_traces = ','.join(traces)
         if url_parse is True:
             if six.PY2:
-                header_traces = urllib_parse.quote(header_traces.encode('utf-8'))
+                header_traces = urllib_parse.quote(
+                    header_traces.encode('utf-8'))
             else:
-                header_traces = urllib_parse.quote(header_traces)
+                header_traces = urllib_parse.quote(
+                    header_traces)
 
         return header_traces
-

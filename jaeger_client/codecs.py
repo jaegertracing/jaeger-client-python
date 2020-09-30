@@ -332,11 +332,10 @@ W3CTraceFormat = 'w3c-trace-format'
 
 
 class W3CTraceCodec(Codec):
-    _TRACEPARENT_HEADER_NAME = "traceparent"
-    _TRACESTATE_HEADER_NAME = "tracestate"
+    _TRACEPARENT_HEADER_NAME = 'traceparent'
+    _TRACESTATE_HEADER_NAME = 'tracestate'
     _TRACEPARENT_HEADER_FORMAT = (
-            "^[ \t]*([0-9a-f]{2})-([0-9a-f]{32})-([0-9a-f]{16})-([0-9a-f]{2})"
-            + "(-.*)?[ \t]*$"
+        '^[ \t]*([0-9a-f]{2})-([0-9a-f]{32})-([0-9a-f]{16})-([0-9a-f]{2})(-.*)?[ \t]*$'
     )
     _TRACEPARENT_HEADER_FORMAT_RE = re.compile(_TRACEPARENT_HEADER_FORMAT)
 
@@ -346,19 +345,19 @@ class W3CTraceCodec(Codec):
 
     @staticmethod
     def get_hexadecimal_trace_id(trace_id):
-        return "{:032x}".format(trace_id)
+        return '{:032x}'.format(trace_id)
 
     @staticmethod
     def get_hexadecimal_span_id(span_id):
-        return "{:016x}".format(span_id)
+        return '{:016x}'.format(span_id)
 
     @staticmethod
     def get_hexadecimal_trace_flags(trace_flags):
-        return "{:02x}".format(trace_flags)
+        return '{:02x}'.format(trace_flags)
 
     @staticmethod
     def get_int_from_hexadecimal(value):
-        return int("0x{}".format(value), 16)
+        return int('0x{}'.format(value), 16)
 
     @staticmethod
     def _random_id(bitsize):
@@ -375,9 +374,9 @@ class W3CTraceCodec(Codec):
         trace_id = self.get_hexadecimal_trace_id(span_context.trace_id)
         span_id = self.get_hexadecimal_span_id(span_context.span_id)
         trace_flags = self.get_hexadecimal_trace_flags(trace_flags)
-        carrier[self._TRACEPARENT_HEADER_NAME] = "00-{}-{}-{}".format(
+        carrier[self._TRACEPARENT_HEADER_NAME] = '00-{}-{}-{}'.format(
             trace_id, span_id, trace_flags).lower()
-        trace_state = getattr(span_context, "trace_state", TraceState())
+        trace_state = getattr(span_context, 'trace_state', TraceState())
         trace_state.add(span_context.operation_name, span_id)
         carrier[self._TRACESTATE_HEADER_NAME] = trace_state.get_formatted_header()
 
@@ -398,7 +397,7 @@ class W3CTraceCodec(Codec):
                     trace_id = match.group(2)
                     parent_id = match.group(3)
                     flags = match.group(4)
-                    if version != "00" or trace_id == "0" * 32 or parent_id == "0" * 16:
+                    if version != '00' or trace_id == '0' * 32 or parent_id == '0' * 16:
                         trace_id, parent_id = None, None
                     else:
                         trace_id = self.get_int_from_hexadecimal(trace_id)

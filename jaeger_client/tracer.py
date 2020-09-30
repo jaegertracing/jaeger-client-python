@@ -28,7 +28,10 @@ from opentracing.ext import tags as ext_tags
 from opentracing.scope_managers import ThreadLocalScopeManager
 
 from . import constants
-from .codecs import TextCodec, ZipkinCodec, ZipkinSpanFormat, BinaryCodec, W3CTraceCodec, W3CTraceFormat
+from .codecs import (
+    TextCodec, ZipkinCodec, ZipkinSpanFormat,
+    BinaryCodec, W3CTraceCodec, W3CTraceFormat
+)
 from .span import Span, SAMPLED_FLAG, DEBUG_FLAG
 from .span_context import SpanContext
 from .metrics import Metrics, LegacyMetricsFactory
