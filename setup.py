@@ -40,6 +40,7 @@ setup(
         'threadloop>=1,<2',
         'thrift',
         'tornado>=4.3',
+        'six>=1.15.0',
         'opentracing>=2.1,<3.0',
     ],
     # Uncomment below if need to test with unreleased version of opentracing
