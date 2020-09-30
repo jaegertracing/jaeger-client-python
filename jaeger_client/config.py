@@ -49,7 +49,7 @@ from .constants import (
 )
 from .metrics import LegacyMetricsFactory, MetricsFactory, Metrics
 from .utils import get_boolean, ErrorReporter
-from .codecs import B3Codec
+from .codecs import B3Codec, W3CTraceCodec
 
 DEFAULT_REPORTING_HOST = 'localhost'
 DEFAULT_REPORTING_PORT = 6831
@@ -315,6 +315,8 @@ class Config(object):
         if propagation == 'b3':
             # replace the codec with a B3 enabled instance
             return {Format.HTTP_HEADERS: B3Codec()}
+        if propagation == "w3c":
+            return {Format.HTTP_HEADERS: W3CTraceCodec()}
         return {}
 
     def throttler_group(self):

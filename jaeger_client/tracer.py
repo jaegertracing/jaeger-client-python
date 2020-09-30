@@ -28,7 +28,7 @@ from opentracing.ext import tags as ext_tags
 from opentracing.scope_managers import ThreadLocalScopeManager
 
 from . import constants
-from .codecs import TextCodec, ZipkinCodec, ZipkinSpanFormat, BinaryCodec
+from .codecs import TextCodec, ZipkinCodec, ZipkinSpanFormat, BinaryCodec, W3CTraceCodec, W3CTraceFormat
 from .span import Span, SAMPLED_FLAG, DEBUG_FLAG
 from .span_context import SpanContext
 from .metrics import Metrics, LegacyMetricsFactory
@@ -82,6 +82,7 @@ class Tracer(opentracing.Tracer):
             ),
             Format.BINARY: BinaryCodec(),
             ZipkinSpanFormat: ZipkinCodec(),
+            W3CTraceFormat: W3CTraceCodec(),
         }
         if extra_codecs:
             self.codecs.update(extra_codecs)
@@ -205,7 +206,7 @@ class Tracer(opentracing.Tracer):
 
         span_ctx = SpanContext(trace_id=trace_id, span_id=span_id,
                                parent_id=parent_id, flags=flags,
-                               baggage=baggage)
+                               baggage=baggage, operation_name=operation_name)
         span = Span(context=span_ctx, tracer=self,
                     operation_name=operation_name,
                     tags=tags, start_time=start_time, references=valid_references)

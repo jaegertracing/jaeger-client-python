@@ -16,19 +16,35 @@ from __future__ import absolute_import
 
 import opentracing
 
+from jaeger_client.trace_state import TraceState
+
 
 class SpanContext(opentracing.SpanContext):
     __slots__ = ['trace_id', 'span_id', 'parent_id', 'flags',
-                 '_baggage', '_debug_id']
+                 '_baggage', '_debug_id', 'operation_name', '_trace_state']
 
     """Implements opentracing.SpanContext"""
-    def __init__(self, trace_id, span_id, parent_id, flags, baggage=None, debug_id=None):
+    def __init__(self,
+                 trace_id,
+                 span_id,
+                 parent_id,
+                 flags,
+                 baggage=None,
+                 debug_id=None,
+                 operation_name=None,
+                 trace_state=None,
+    ):
         self.trace_id = trace_id
         self.span_id = span_id
         self.parent_id = parent_id or None
         self.flags = flags
         self._baggage = baggage or opentracing.SpanContext.EMPTY_BAGGAGE
         self._debug_id = debug_id
+        self.operation_name = operation_name
+        if isinstance(trace_state, TraceState):
+            self._trace_state = trace_state
+        else:
+            self._trace_state = TraceState(operation_name, span_id)
 
     @property
     def baggage(self):
