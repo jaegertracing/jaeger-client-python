@@ -57,10 +57,7 @@ class TraceState(object):
         key = six.ensure_str(str(key))
         value = six.ensure_str(str(value))
 
-        if sys.version_info >= (3, 2, 0):
-            self._trace_state[key] = value
-            self._trace_state.move_to_end(key, last=False)
-        else:
+        if sys.version_info[0:3] < (3, 2, 0):
             # Not so graceful in older versions
             root = self._trace_state._OrderedDict__root  # noqa
             first = root[1]
@@ -74,8 +71,13 @@ class TraceState(object):
                 link[1] = first
                 root[1] = first[0] = link
             else:
-                root[1] = first[0] = self._trace_state._OrderedDict__map[key] = [root, first, key]
-                dict.__setitem__(self._trace_state, key, value)
+                self._trace_state._OrderedDict__map[key] = [root, first, key]  # noqa
+                first[0] = self._trace_state._OrderedDict__map[key]  # noqa
+                root[1] = first[0]
+                dict.__setitem__(self._trace_state, key, value)  # noqa
+        else:
+            self._trace_state[key] = value
+            self._trace_state.move_to_end(key, last=False)
 
     def get_formatted_header(self, url_parse=True):
         traces = []

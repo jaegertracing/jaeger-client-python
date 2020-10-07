@@ -28,6 +28,7 @@ from jaeger_client.codecs import (
     span_context_to_string,
 )
 from jaeger_client.config import Config
+from jaeger_client.constants import SAMPLED_FLAG
 from jaeger_client.reporter import InMemoryReporter
 from jaeger_client import constants
 from opentracing import Format
@@ -386,15 +387,31 @@ class TestCodecs(unittest.TestCase):
 
     def test_W3C_codec(self):
         codec = W3CTraceCodec()
-        ctx = SpanContext(trace_id=256, span_id=123, parent_id=None, flags=0)
+        ctx = SpanContext(trace_id=256, span_id=123, parent_id=None, flags=SAMPLED_FLAG)
         span = Span(context=ctx, operation_name='w3c', tracer=None, start_time=1)
-        carrier = {}
+        carrier = {'CONTENT_TYPE': 'application/json'}
         codec.inject(span_context=span, carrier=carrier)
         extracted = codec.extract(carrier)
         assert extracted.trace_id == 256
         assert extracted.parent_id == 123
-        assert extracted.flags == 0
+        assert extracted.flags == SAMPLED_FLAG
         assert extracted.span_id is not None
+
+    def test_W3C_codec_fail(self):
+        codec = W3CTraceCodec()
+        with self.assertRaises(InvalidCarrierException):
+            codec.inject({}, None)
+        with self.assertRaises(InvalidCarrierException):
+            codec.extract(0)
+
+    def test_W3C_codec_invalid(self):
+        codec = W3CTraceCodec()
+        header_name = codec._TRACEPARENT_HEADER_NAME
+        extracted = codec.extract(
+            {header_name: '00-{}-{}-00'.format('0' * 32, '0' * 16)}
+        )
+        assert extracted.trace_id != 0
+        assert extracted.parent_id != 0
 
 
 def test_default_baggage_without_trace_id(tracer):

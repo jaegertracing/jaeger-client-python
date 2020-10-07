@@ -118,6 +118,9 @@ class ConfigTests(unittest.TestCase):
         c = Config({'propagation': 'b3'}, service_name='x')
         assert len(c.propagation) == 1
 
+        c = Config({'propagation': 'w3c'}, service_name='x')
+        assert len(c.propagation) == 1
+
     def test_throttler(self):
         c = Config({
             'throttler': {}
