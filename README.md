@@ -223,7 +223,7 @@ current parent id with the generation of the new span id.
 extract( {"traceparent": "trace_id-span_id"} ) => SpanContext( trace_id, parent_id=span_id, span_id=generate_span_id() )
 ```
 
-This example shows how it works over several calls.
+This example shows how this works over several calls.
 
 ```
 trace_id = init_trace_id()
