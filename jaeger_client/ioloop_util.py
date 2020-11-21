@@ -14,9 +14,20 @@
 
 from __future__ import absolute_import
 
+import asyncio
 import sys
 from tornado import gen
 from tornado.concurrent import Future
+
+
+def _threadsafe_call(loop, callback, *args):
+    """
+    Call a potentially thread-unsafe function in a given asyncio event loop safely.
+    """
+    if loop is not asyncio.get_running_loop():
+        loop.call_soon_threadsafe(callback, *args)
+    else:
+        callback(*args)
 
 
 def submit(fn, io_loop, *args, **kwargs):
@@ -50,10 +61,11 @@ def submit(fn, io_loop, *args, **kwargs):
         :param tornado_future:
         """
         exception = tornado_future.exception()
+        target_loop = future.get_loop()
         if not exception:
-            future.set_result(tornado_future.result())
+            _threadsafe_call(target_loop, future.set_result, tornado_future.result())
         else:
-            future.set_exception(exception)
+            _threadsafe_call(target_loop, future.set_exception, exception)
 
     io_loop.add_callback(execute)
 
