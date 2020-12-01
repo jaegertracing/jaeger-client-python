@@ -215,13 +215,13 @@ class Reporter(NullReporter):
         Ensure that all spans from the queue are submitted.
         Returns Future that will be completed once the queue is empty.
         """
-        with self.stop_lock:
-            self.stopped = True
-
         return ioloop_util.submit(self._flush, io_loop=self.io_loop)
 
     @tornado.gen.coroutine
     def _flush(self):
+        # stopping here ensures we don't lose spans from pending _report_span_from_ioloop callbacks
+        with self.stop_lock:
+            self.stopped = True
         yield self.queue.put(self.stop)
         yield self.queue.join()
 
