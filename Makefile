@@ -18,7 +18,6 @@ PY_PATH = $(PYTHONPATH):$(PWD)
 
 .PHONY: bootstrap
 bootstrap:
-	[ "$$VIRTUAL_ENV" != "" ]
 	rm -rf *.egg-info || true
 	pip install -U 'pip>=9.0'
 	pip install 'setuptools>=20.8.1'
