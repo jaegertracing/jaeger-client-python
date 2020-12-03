@@ -8,6 +8,8 @@ on:
 
 jobs:
   ci-tests:
+    env:
+      VIRTUAL_ENV: github
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -61,4 +63,3 @@ jobs:
       uses: codecov/codecov-action@v1
       with:
         verbose: true
-      if: matrix.version.python == '2.7' && matrix.version.tornado == '>=5,<6'
