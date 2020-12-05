@@ -163,9 +163,17 @@ class ConfigTests(unittest.TestCase):
 
         assert opentracing.global_tracer() == tracer
 
+    def test_initialize_tracer_twice(self):
+        c = Config({}, service_name='x')
+        tracer = c.initialize_tracer()
+        tracer = c.initialize_tracer()
+
+        assert tracer is None
+
     def test_default_local_agent_reporting_port(self):
         c = Config({}, service_name='x')
         assert c.local_agent_reporting_port == 6831
+        assert c.local_agent_enabled is True
 
     def test_generate_128bit_trace_id(self):
         c = Config({}, service_name='x')
