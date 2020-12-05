@@ -1,29 +1,30 @@
 #!/bin/bash
 
-set -e
+set -euxf -o pipefail
 
 make crossdock
 
-export REPO=jaegertracing/xdock-py
-export BRANCH=$(if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then echo $TRAVIS_BRANCH; else echo $TRAVIS_PULL_REQUEST_BRANCH; fi)
-export TAG=`if [ "$BRANCH" == "master" ]; then echo "latest"; else echo "${BRANCH///}"; fi`
-export TORNADO=$TORNADO
-echo "TRAVIS_BRANCH=$TRAVIS_BRANCH, REPO=$REPO, PR=$PR, BRANCH=$BRANCH, TAG=$TAG, TORNADO=$TORNADO"
+REPO=jaegertracing/xdock-py
+BRANCH=${BRANCH:?'missing BRANCH env var'}
+TORNADO=${TORNADO:?'missing TORNADO env var'}
+TAG=$([ "$BRANCH" == "master" ] && echo "latest" || echo "$BRANCH")
+COMMIT=${GITHUB_SHA::8}
+DOCKERHUB_LOGIN=${DOCKERHUB_LOGIN:-false}
 
-# Only push the docker container to Docker Hub for master branch
-if [[ "$BRANCH" == "master" && "$TRAVIS_SECURE_ENV_VARS" == "true" ]]; then
+echo "REPO=$REPO, BRANCH=$BRANCH, TAG=$TAG, TORNADO=$TORNADO, COMMIT=$COMMIT"
+
+# Only push the docker container to dockerhub for master branch and when dockerhub login is done
+if [[ "$BRANCH" == "master" && "$DOCKERHUB_LOGIN" == "true" ]]; then
   echo 'upload to Docker Hub'
 else 
   echo 'skip docker upload for PR'
   exit 0
 fi
 
-docker login -u $DOCKER_USER -p $DOCKER_PASS
-
-set -x
-
-docker build --build-arg tornado=$TORNADO -f crossdock/Dockerfile -t $REPO:$COMMIT .
+docker build -f crossdock/Dockerfile \
+	--build-arg tornado=$TORNADO \
+	--tag $REPO:$COMMIT .
 
 docker tag $REPO:$COMMIT $REPO:$TAG
-docker tag $REPO:$COMMIT $REPO:travis-$TRAVIS_BUILD_NUMBER
+docker tag $REPO:$COMMIT $REPO:gh-$GITHUB_RUN_NUMBER
 docker push $REPO
