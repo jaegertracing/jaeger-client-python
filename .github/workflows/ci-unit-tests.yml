@@ -1,4 +1,4 @@
-name: CI Tests
+name: Unit Tests
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ master ]
 
 jobs:
-  ci-tests:
+  unit-tests:
     env:
       VIRTUAL_ENV: github
     runs-on: ubuntu-latest
