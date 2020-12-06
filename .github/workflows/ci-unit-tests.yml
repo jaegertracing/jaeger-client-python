@@ -36,7 +36,7 @@ jobs:
           tornado: ">=5,<6"
         - python: "3.7"
           tornado: ">=6"
-    name: ci-tests (py ${{ matrix.version.python }} tornado ${{ matrix.version.tornado }})
+    name: unit-tests (py ${{ matrix.version.python }} tornado ${{ matrix.version.tornado }})
     steps:
     - uses: actions/checkout@v2
       with:
