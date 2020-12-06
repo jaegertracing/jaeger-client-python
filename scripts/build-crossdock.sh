@@ -21,10 +21,8 @@ else
   exit 0
 fi
 
-docker build -f crossdock/Dockerfile \
-	--build-arg tornado=$TORNADO \
-	--tag $REPO:$COMMIT .
-
+# This image is already built in "make crossdock" step
+# not specifying a tag means "latest" tag implicitly
+docker tag $REPO $REPO:$COMMIT
 docker tag $REPO:$COMMIT $REPO:$TAG
-docker tag $REPO:$COMMIT $REPO:gh-$GITHUB_RUN_NUMBER
 docker push $REPO
