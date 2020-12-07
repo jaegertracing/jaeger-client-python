@@ -1,0 +1,65 @@
+name: Unit Tests
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  unit-tests:
+    env:
+      VIRTUAL_ENV: github
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        version:
+        - python: "2.7"
+          tornado: ">=4,<5"
+        - python: "2.7"
+          tornado: ">=5,<6"
+        - python: "3.5"
+          tornado: ">=4,<5"
+        - python: "3.5"
+          tornado: ">=5,<6"
+        - python: "3.5"
+          tornado: ">=6"
+        - python: "3.6"
+          tornado: ">=4,<5"
+        - python: "3.6"
+          tornado: ">=5,<6"
+        - python: "3.6"
+          tornado: ">=6"
+        - python: "3.7"
+          tornado: ">=4,<5"
+        - python: "3.7"
+          tornado: ">=5,<6"
+        - python: "3.7"
+          tornado: ">=6"
+    name: unit-tests (py ${{ matrix.version.python }} tornado ${{ matrix.version.tornado }})
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+
+    - uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.version.python }}
+
+    - name: Export TORNADO variable
+      run: |
+        echo "TORNADO=${{ matrix.version.tornado }}" >> $GITHUB_ENV
+
+    - name: Install pycurl dependencies
+      run: sudo apt-get install libgnutls28-dev libcurl4-openssl-dev libssl-dev
+
+    - name: Install dependencies
+      run: make bootstrap
+
+    - name: Run tests
+      run: make test_ci
+
+    - name: Upload coverage to codecov
+      uses: codecov/codecov-action@v1
+      with:
+        verbose: true

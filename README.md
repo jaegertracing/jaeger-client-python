@@ -196,8 +196,8 @@ Please make sure your framework does the same.
 
 [Apache 2.0 License](./LICENSE).
 
-[ci-img]: https://travis-ci.org/jaegertracing/jaeger-client-python.svg?branch=master
-[ci]: https://travis-ci.org/jaegertracing/jaeger-client-python
+[ci-img]: https://github.com/jaegertracing/jaeger-client-python/workflows/Unit%20Tests/badge.svg?branch=master
+[ci]: https://github.com/jaegertracing/jaeger-client-python/actions?query=branch%3Amaster
 [cov-img]: https://codecov.io/gh/jaegertracing/jaeger-client-python/branch/master/graph/badge.svg
 [cov]: https://codecov.io/gh/jaegertracing/jaeger-client-python
 [pypi-img]: https://badge.fury.io/py/jaeger-client.svg
