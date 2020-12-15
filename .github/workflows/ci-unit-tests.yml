@@ -36,6 +36,10 @@ jobs:
           tornado: ">=5,<6"
         - python: "3.7"
           tornado: ">=6"
+        - python: "3.8"
+          tornado: ">=6"
+        - python: "3.9"
+          tornado: ">=6"
     name: unit-tests (py ${{ matrix.version.python }} tornado ${{ matrix.version.tornado }})
     steps:
     - uses: actions/checkout@v2
