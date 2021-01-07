@@ -3,10 +3,11 @@
 History
 -------
 
-4.3.1 (unreleased)
+4.4.0 (2021-01-07)
 ------------------
 
-- Nothing changed yet.
+- Ensure Tracer.close() properly flushes finished but unsent spans (#294) -- obataku
+- Use logger.warning() instead of deprecated warn() (#285) -- Tim Saylor
 
 
 4.3.0 (2020-01-14)
