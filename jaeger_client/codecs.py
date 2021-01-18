@@ -296,7 +296,7 @@ class B3Codec(Codec):
             carrier[self.sampled_header] = '1'
 
     def extract(self, carrier):
-        if not isinstance(carrier, dict):
+        if not hasattr(carrier, 'items'):
             raise InvalidCarrierException('carrier not a dictionary')
         trace_id = span_id = parent_id = None
         flags = 0x00
