@@ -384,6 +384,31 @@ class TestCodecs(unittest.TestCase):
         with self.assertRaises(InvalidCarrierException):
             codec.extract({})
 
+        tracer = Tracer(
+            service_name='test',
+            reporter=InMemoryReporter(),
+            sampler=ConstSampler(True),
+        )
+        baggage = {'baggage_1': u'data',
+                   u'baggage_2': 'foobar',
+                   'baggage_3': '\x00\x01\x09\xff',
+                   u'baggage_4': u'\U0001F47E'}
+
+        span_context = SpanContext(trace_id=260817200211625699950706086749966912306, span_id=567890,
+                                   parent_id=1234567890, flags=1,
+                                   baggage=baggage)
+
+        carrier = bytearray()
+        tracer.inject(span_context, Format.BINARY, carrier)
+        assert len(carrier) != 0
+
+        extracted_span_context = tracer.extract(Format.BINARY, carrier)
+        assert extracted_span_context.trace_id == span_context.trace_id
+        assert extracted_span_context.span_id == span_context.span_id
+        assert extracted_span_context.parent_id == span_context.parent_id
+        assert extracted_span_context.flags == span_context.flags
+        assert extracted_span_context.baggage == span_context.baggage
+
 
 def test_default_baggage_without_trace_id(tracer):
     _test_baggage_without_trace_id(

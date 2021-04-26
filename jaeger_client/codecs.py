@@ -14,6 +14,8 @@
 
 from __future__ import absolute_import
 
+import struct
+
 from opentracing import (
     InvalidCarrierException,
     SpanContextCorruptedException,
@@ -138,19 +140,74 @@ class TextCodec(Codec):
 
 class BinaryCodec(Codec):
     """
-    BinaryCodec is a no-op.
-
+    Implements inject/extract of SpanContext to/from binary that compatible with golang implementation
+    https://github.com/jaegertracing/jaeger-client-go/blob/master/propagation.go#L177-L290
+    Supports propagation of trace_id, span_id, flags and baggage
     """
     def inject(self, span_context, carrier):
         if not isinstance(carrier, bytearray):
             raise InvalidCarrierException('carrier not a bytearray')
-        pass  # TODO binary encoding not implemented
+        # check if we have 128 bit trace_id, break it into two 64 units
+        max_int64 = 0xFFFFFFFFFFFFFFFF
+        if span_context.trace_id > max_int64:
+            high = (span_context.trace_id >> 64) & max_int64
+            low = span_context.trace_id & max_int64
+        else:
+            high = 0
+            low = span_context.trace_id
+        carrier += struct.pack('>QQQQBI', high, low, span_context.span_id or 0,
+                               span_context.parent_id or 0, span_context.flags, len(span_context.baggage))
+
+        for k, v in span_context.baggage.items():
+            carrier += self._pack_baggage_item(k, v)
 
     def extract(self, carrier):
         if not isinstance(carrier, bytearray):
             raise InvalidCarrierException('carrier not a bytearray')
-        # TODO binary encoding not implemented
-        return None
+        baggage = {}
+        high_trace_id, low_trace_id, span_id, parent_id, flags, baggage_count = struct.unpack('>QQQQBI', carrier[:37])
+        # if high_trace_id isn't 0, then we are dealing with 128bit trace id integer, therefore unpack into 1 number
+        if high_trace_id:
+            trace_id = (high_trace_id << 64) | low_trace_id
+        else:
+            trace_id = low_trace_id
+
+        if baggage_count != 0:
+            baggage_data = carrier[37:]
+            for _ in range(baggage_count):
+                key, value, bytes_read = self._unpack_baggage_item(baggage_data)
+                baggage[key] = value
+                baggage_data = baggage_data[bytes_read:]
+
+        return SpanContext(trace_id=trace_id, span_id=span_id,
+                           parent_id=parent_id, flags=flags, baggage=baggage)
+
+    def _pack_baggage_item(self, key, value):
+        baggage = bytearray()
+        if not isinstance(key, bytes):
+            key = key.encode('utf-8')
+        baggage += struct.pack('>I', len(key))
+        baggage += key
+
+        if not isinstance(value, bytes):
+            value = value.encode('utf-8')
+        baggage += struct.pack('>I', len(value))
+        baggage += value
+        return baggage
+
+    def _unpack_baggage_item(self, baggage):
+        bytes_read = 0
+        key, b_read = self._read_kv(baggage)
+        bytes_read += b_read
+        value, b_read = self._read_kv(baggage[bytes_read:])
+        bytes_read += b_read
+        return key, value, bytes_read
+
+    def _read_kv(self, data):
+        data_len = struct.unpack('>i', data[:4])[0]
+        data_value = struct.unpack('>' + 'c' * data_len, data[4:4 + data_len])
+        bytes_read = 4 + data_len
+        return b"".join(data_value).decode("utf-8"), bytes_read
 
 
 def span_context_to_string(trace_id, span_id, parent_id, flags):
