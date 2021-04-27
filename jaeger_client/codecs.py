@@ -140,7 +140,8 @@ class TextCodec(Codec):
 
 class BinaryCodec(Codec):
     """
-    Implements inject/extract of SpanContext to/from binary that compatible with golang implementation
+    Implements inject/extract of SpanContext to/from binary that compatible with golang
+    implementation
     https://github.com/jaegertracing/jaeger-client-go/blob/master/propagation.go#L177-L290
     Supports propagation of trace_id, span_id, flags and baggage
     """
@@ -156,7 +157,8 @@ class BinaryCodec(Codec):
             high = 0
             low = span_context.trace_id
         carrier += struct.pack('>QQQQBI', high, low, span_context.span_id or 0,
-                               span_context.parent_id or 0, span_context.flags, len(span_context.baggage))
+                               span_context.parent_id or 0, span_context.flags,
+                               len(span_context.baggage))
 
         for k, v in span_context.baggage.items():
             carrier += self._pack_baggage_item(k, v)
@@ -165,8 +167,10 @@ class BinaryCodec(Codec):
         if not isinstance(carrier, bytearray):
             raise InvalidCarrierException('carrier not a bytearray')
         baggage = {}
-        high_trace_id, low_trace_id, span_id, parent_id, flags, baggage_count = struct.unpack('>QQQQBI', carrier[:37])
-        # if high_trace_id isn't 0, then we are dealing with 128bit trace id integer, therefore unpack into 1 number
+        high_trace_id, low_trace_id, span_id, parent_id, flags, baggage_count = \
+            struct.unpack('>QQQQBI', carrier[:37])
+        # if high_trace_id isn't 0, then we are dealing with 128bit trace id integer,
+        # therefore unpack into 1 number
         if high_trace_id:
             trace_id = (high_trace_id << 64) | low_trace_id
         else:
@@ -207,7 +211,7 @@ class BinaryCodec(Codec):
         data_len = struct.unpack('>i', data[:4])[0]
         data_value = struct.unpack('>' + 'c' * data_len, data[4:4 + data_len])
         bytes_read = 4 + data_len
-        return b"".join(data_value).decode("utf-8"), bytes_read
+        return b''.join(data_value).decode('utf-8'), bytes_read
 
 
 def span_context_to_string(trace_id, span_id, parent_id, flags):
