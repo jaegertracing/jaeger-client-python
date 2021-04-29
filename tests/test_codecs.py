@@ -444,17 +444,14 @@ class TestCodecs(unittest.TestCase):
                  'baggage_count': 0,
                  'baggage': {}},
             b'a]\x85\xe0\xe0\x06\xd5[6k\x9d\x86\xaa\xbc\\\x8f#c\x06\x80jV\xdf\x826k\x9d\x86\xaa\xbc'
-            b'\\\x8f\x01\x00\x00\x00\x03\x00\x00\x00\x07key_one\x00\x00\x00\tvalue_one\x00\x00\x00'
-            b'\tkey_three\x00\x00\x00\x0bvalue_three\x00\x00\x00\x07key_two\x00\x00\x00\tvalue_two':
+            b'\\\x8f\x01\x00\x00\x00\x01\x00\x00\x00\x07key_one\x00\x00\x00\tvalue_one':
                 {'trace_id_high': 7015910995390813531,
                  'trace_id_low': 3921401102271798415,
                  'span_id': 2549888962631491458,
                  'parent_id': 3921401102271798415,
                  'flags': 1,
-                 'baggage_count': 3,
-                 'baggage': {'key_one': 'value_one',
-                             'key_two': 'value_two',
-                             'key_three': 'value_three'}
+                 'baggage_count': 1,
+                 'baggage': {'key_one': 'value_one'}
                  },
         }
 
