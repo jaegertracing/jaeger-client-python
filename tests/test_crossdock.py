@@ -24,9 +24,16 @@ from tornado.httpclient import HTTPRequest
 from jaeger_client import Tracer, ConstSampler
 from jaeger_client.reporter import InMemoryReporter
 from crossdock.server.endtoend import EndToEndHandler, _determine_host_port, _parse_host_port
-from crossdock.server import server
-from opentracing.scope_managers.tornado import TornadoScopeManager
-scope_manager = TornadoScopeManager
+try:
+    import tornado.stack_context  # does not exist in Tornado 6+
+    # if successful, import the rest
+    from crossdock.server import server
+    from opentracing.scope_managers.tornado import TornadoScopeManager
+    scope_manager = TornadoScopeManager
+    SKIP_TESTS=False
+except:
+    scope_manager = None
+    SKIP_TESTS=True
 
 tchannel_port = '9999'
 
@@ -64,6 +71,7 @@ for s2 in ['HTTP', 'TCHANNEL']:
 # noinspection PyShadowingNames
 @pytest.mark.parametrize('s2_transport,s3_transport,sampled', PERMUTATIONS)
 @pytest.mark.gen_test
+@pytest.mark.skipif(SKIP_TESTS, reason='crossdock tests only work with Tornado<6')
 def test_trace_propagation(
         s2_transport, s3_transport, sampled, tracer,
         base_url, http_port, http_client):
@@ -126,6 +134,7 @@ def test_trace_propagation(
 
 # noinspection PyShadowingNames
 @pytest.mark.gen_test
+@pytest.mark.skipif(SKIP_TESTS, reason='crossdock tests only work with Tornado<6')
 def test_endtoend_handler(tracer):
     payload = dict()
     payload['operation'] = 'Zoidberg'
