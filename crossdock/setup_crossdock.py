@@ -34,6 +34,6 @@ setup(
         ]
     },
     install_requires=[
-        # all dependencies are included in tchannel already
+        'tchannel==2.1.0'
     ],
 )
