@@ -24,16 +24,19 @@ from tornado.httpclient import HTTPRequest
 from jaeger_client import Tracer, ConstSampler
 from jaeger_client.reporter import InMemoryReporter
 from crossdock.server.endtoend import EndToEndHandler, _determine_host_port, _parse_host_port
+
 try:
-    import tornado.stack_context  # does not exist in Tornado 6+
-    # if successful, import the rest
+    # The crossdock tests only work with Tornado 4.x
+    import tornado
+    assert tornado.version_info[0] == 4
+
     from crossdock.server import server
     from opentracing.scope_managers.tornado import TornadoScopeManager
     scope_manager = TornadoScopeManager
-    SKIP_TESTS=False
-except:
+    SKIP_TESTS = False
+except BaseException:
     scope_manager = None
-    SKIP_TESTS=True
+    SKIP_TESTS = True
 
 tchannel_port = '9999'
 
