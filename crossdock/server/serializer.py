@@ -107,7 +107,7 @@ def traced_service_object_to_json(obj):
 
 
 def set_traced_service_object_values(obj, values, downstream_func):
-    for k in values.iterkeys():
+    for k in values.keys():
         if hasattr(obj, k):
             if k == 'downstream':
                 if values[k] is not None:

@@ -121,7 +121,7 @@ class EndToEndHandler(object):
         tracer = self.tracers[sampler_type]
         for _ in range(req.get('count', 0)):
             span = tracer.start_span(req['operation'])
-            for k, v in req.get('tags', {}).iteritems():
+            for k, v in req.get('tags', {}).items():
                 span.set_tag(k, v)
             span.finish()
         response_writer.finish()

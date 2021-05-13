@@ -65,14 +65,15 @@ class TextCodec(Codec):
         if baggage:
             for key, value in six.iteritems(baggage):
                 encoded_key = key
+                if isinstance(key, six.binary_type):
+                    encoded_key = str(key, 'utf-8')
                 if self.url_encoding:
                     encoded_value = urllib_parse.quote(value)
-
                 else:
                     if isinstance(value, six.binary_type):
                         encoded_value = str(value, 'utf-8')
-                if isinstance(key, six.binary_type):
-                    encoded_key = str(key, 'utf-8')
+                    else:
+                        encoded_value = value
                 # Leave the below print(), you will thank me next time you debug unicode strings
                 # print('adding baggage', key, '=>', value, 'as', encoded_key, '=>', encoded_value)
                 header_key = '%s%s' % (self.baggage_prefix, encoded_key)
