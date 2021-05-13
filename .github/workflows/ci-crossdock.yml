@@ -17,6 +17,10 @@ jobs:
       with:
         submodules: true
 
+    - uses: actions/setup-python@v2
+      with:
+        python-version: 3.6
+
     - uses: docker/login-action@v1
       id: dockerhub-login
       with:
