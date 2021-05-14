@@ -384,6 +384,97 @@ class TestCodecs(unittest.TestCase):
         with self.assertRaises(InvalidCarrierException):
             codec.extract({})
 
+        tracer = Tracer(
+            service_name='test',
+            reporter=InMemoryReporter(),
+            sampler=ConstSampler(True),
+        )
+        baggage = {'baggage_1': u'data',
+                   u'baggage_2': 'foobar',
+                   'baggage_3': '\x00\x01\x09\xff',
+                   u'baggage_4': u'\U0001F47E'}
+
+        span_context = SpanContext(trace_id=260817200211625699950706086749966912306, span_id=567890,
+                                   parent_id=1234567890, flags=1,
+                                   baggage=baggage)
+
+        carrier = bytearray()
+        tracer.inject(span_context, Format.BINARY, carrier)
+        assert len(carrier) != 0
+
+        extracted_span_context = tracer.extract(Format.BINARY, carrier)
+        assert extracted_span_context.trace_id == span_context.trace_id
+        assert extracted_span_context.span_id == span_context.span_id
+        assert extracted_span_context.parent_id == span_context.parent_id
+        assert extracted_span_context.flags == span_context.flags
+        assert extracted_span_context.baggage == span_context.baggage
+
+    def test_binary_codec_extract_compatibility_with_golang_client(self):
+        tracer = Tracer(
+            service_name='test',
+            reporter=InMemoryReporter(),
+            sampler=ConstSampler(True),
+        )
+        tests = {
+            b'\x00\x00\x00\x00\x00\x00\x00\x00u\x18\xa9\x13\xa0\xd2\xaf4u\x18\xa9\x13\xa0\xd2\xaf4'
+            b'\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00':
+                {'trace_id_high': 0,
+                 'trace_id_low': 8437679803646258996,
+                 'span_id': 8437679803646258996,
+                 'parent_id': None,
+                 'flags': 1,
+                 'baggage_count': 0,
+                 'baggage': {}},
+            b'K2\x88\x8b\x8f\xb5\x96\xe9+\xc6\xe6\xf5\x9d\xed\x8a\xd0+\xc6\xe6\xf5\x9d\xed\x8a\xd0'
+            b'\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00':
+                {'trace_id_high': 5418543434673002217,
+                 'trace_id_low': 3154462531610577616,
+                 'span_id': 3154462531610577616,
+                 'parent_id': None,
+                 'flags': 1,
+                 'baggage_count': 0,
+                 'baggage': {}},
+            b'd\xb7^Y\x1afI\x0bi\xe4lc`\x1e\xbep[\x0fw\xc8\x87\xfd\xb2Ti\xe4lc`\x1e\xbep\x01\x00'
+            b'\x00\x00\x00':
+                {'trace_id_high': 7257373061318854923,
+                 'trace_id_low': 7630342842742652528,
+                 'span_id': 6561594885260816980,
+                 'parent_id': 7630342842742652528,
+                 'flags': 1,
+                 'baggage_count': 0,
+                 'baggage': {}},
+            b'a]\x85\xe0\xe0\x06\xd5[6k\x9d\x86\xaa\xbc\\\x8f#c\x06\x80jV\xdf\x826k\x9d\x86\xaa\xbc'
+            b'\\\x8f\x01\x00\x00\x00\x01\x00\x00\x00\x07key_one\x00\x00\x00\tvalue_one':
+                {'trace_id_high': 7015910995390813531,
+                 'trace_id_low': 3921401102271798415,
+                 'span_id': 2549888962631491458,
+                 'parent_id': 3921401102271798415,
+                 'flags': 1,
+                 'baggage_count': 1,
+                 'baggage': {'key_one': 'value_one'}
+                 },
+        }
+
+        for span_context_serialized, expected in tests.items():
+            span_context = tracer.extract(Format.BINARY, bytearray(span_context_serialized))
+            # because python supports 128bit number as one number and go splits it in two 64 bit
+            # numbers, we need to split python number to compare it properly to go implementation
+            max_int64 = 0xFFFFFFFFFFFFFFFF
+            trace_id_high = (span_context.trace_id >> 64) & max_int64
+            trace_id_low = span_context.trace_id & max_int64
+
+            assert trace_id_high == expected['trace_id_high']
+            assert trace_id_low == expected['trace_id_low']
+            assert span_context.span_id == expected['span_id']
+            assert span_context.parent_id == expected['parent_id']
+            assert span_context.flags == expected['flags']
+            assert len(span_context.baggage) == expected['baggage_count']
+            assert span_context.baggage == expected['baggage']
+
+            carrier = bytearray()
+            tracer.inject(span_context, Format.BINARY, carrier)
+            assert carrier == bytearray(span_context_serialized)
+
 
 def test_default_baggage_without_trace_id(tracer):
     _test_baggage_without_trace_id(
