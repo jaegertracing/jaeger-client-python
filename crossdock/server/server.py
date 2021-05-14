@@ -145,7 +145,7 @@ class Server(object):
 
     @tornado.gen.coroutine
     def start_trace(self, request, response_writer):
-        start_trace_req = serializer.start_trace_request_from_json(request.body.decode('utf-8'))
+        start_trace_req = serializer.start_trace_request_from_json(request.body)
         logging.info('HTTP start_trace request: %s', start_trace_req)
 
         def update_span(span):
@@ -160,7 +160,7 @@ class Server(object):
 
     @tornado.gen.coroutine
     def join_trace(self, request, response_writer):
-        join_trace_request = serializer.join_trace_request_from_json(request.body.decode('utf-8'))
+        join_trace_request = serializer.join_trace_request_from_json(request.body)
         logging.info('HTTP join_trace request: %s', join_trace_request)
 
         response = yield self.prepare_response(self.get_span(request, None),

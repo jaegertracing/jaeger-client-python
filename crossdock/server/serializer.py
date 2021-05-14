@@ -27,12 +27,16 @@ def set_downstream_object_values(downstream_object, json_obj):
 
 
 def join_trace_request_from_json(json_request):
+    if isinstance(json_request, (bytes, bytearray)):
+        json_request = json_request.decode('utf-8')
     request = JoinTraceRequest()
     set_downstream_object_values(request, json.loads(json_request))
     return request
 
 
 def start_trace_request_from_json(json_request):
+    if isinstance(json_request, (bytes, bytearray)):
+        json_request = json_request.decode('utf-8')
     request = StartTraceRequest()
     set_downstream_object_values(request, json.loads(json_request))
     return request
