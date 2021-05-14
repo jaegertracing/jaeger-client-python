@@ -27,12 +27,16 @@ def set_downstream_object_values(downstream_object, json_obj):
 
 
 def join_trace_request_from_json(json_request):
+    if isinstance(json_request, (bytes, bytearray)):
+        json_request = json_request.decode('utf-8')
     request = JoinTraceRequest()
     set_downstream_object_values(request, json.loads(json_request))
     return request
 
 
 def start_trace_request_from_json(json_request):
+    if isinstance(json_request, (bytes, bytearray)):
+        json_request = json_request.decode('utf-8')
     request = StartTraceRequest()
     set_downstream_object_values(request, json.loads(json_request))
     return request
@@ -75,6 +79,8 @@ def traceresponse_from_struct(json_obj):
 
 def traceresponse_from_json(json_str):
     try:
+        if isinstance(json_str, (bytes, bytearray)):
+            json_str = json_str.decode('utf-8')
         return traceresponse_from_struct(json.loads(json_str))
     except:  # noqa: E722
         logging.exception('Failed to parse JSON')
@@ -107,7 +113,7 @@ def traced_service_object_to_json(obj):
 
 
 def set_traced_service_object_values(obj, values, downstream_func):
-    for k in values.iterkeys():
+    for k in values.keys():
         if hasattr(obj, k):
             if k == 'downstream':
                 if values[k] is not None:

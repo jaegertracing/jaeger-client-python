@@ -119,7 +119,7 @@ class TestCodecs(unittest.TestCase):
             ctx._baggage = {
                 'bender': 'Countess de la Roca',
                 'fry': u'Leela',
-                b'key1': bytes(chr(75)) if six.PY2 else bytes([75]),
+                b'key1': bytes([75]),
                 u'key2': 'cafe',
                 u'key3': u'\U0001F47E',
             }
@@ -617,12 +617,8 @@ def test_debug_id():
 
 
 def test_baggage_as_unicode_strings_with_httplib(httpserver):
-    if six.PY2:
-        import urllib2
-        urllib_under_test = urllib2
-    else:
-        import urllib.request
-        urllib_under_test = urllib.request
+    import urllib.request
+    urllib_under_test = urllib.request
 
     # httpserver is provided by pytest-localserver
     httpserver.serve_content(content='Hello', code=200, headers=None)
@@ -639,7 +635,7 @@ def test_baggage_as_unicode_strings_with_httplib(httpserver):
         (b'key1', b'value'),
         (u'key2', b'value'),
         ('key3', u'value'),
-        (b'key4', bytes(chr(255)) if six.PY2 else bytes([255])),
+        (b'key4', bytes([255])),
         (u'key5', u'\U0001F47E')
     ]
     for b in baggage:

@@ -34,11 +34,12 @@ ImportError: pycurl: libcurl link-time ssl backend (openssl) is different from c
 It can be fixed with:
 
 ```
+OPENSSL=/usr/local/opt/openssl
 pip uninstall pycurl
-export LDFLAGS="-L/usr/local/opt/openssl/lib"
-export CPPFLAGS="-I/usr/local/opt/openssl/include"
+export LDFLAGS="-L$OPENSSL/lib"
+export CPPFLAGS="-I$OPENSSL/include"
 export PYCURL_SSL_LIBRARY=openssl
-pip install --no-cache-dir --compile --ignore-installed --install-option="--with-openssl" --install-option="--openssl-dir=/usr/local/opt/openssl" pycurl
+pip install --no-cache-dir --compile --ignore-installed --install-option="--with-openssl" --install-option="--openssl-dir=$OPENSSL" pycurl
 ```
 
 ## Making A Change

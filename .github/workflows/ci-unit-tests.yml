@@ -14,10 +14,6 @@ jobs:
     strategy:
       matrix:
         version:
-        - python: "2.7"
-          tornado: ">=4,<5"
-        - python: "2.7"
-          tornado: ">=5,<6"
         - python: "3.5"
           tornado: ">=4,<5"
         - python: "3.5"

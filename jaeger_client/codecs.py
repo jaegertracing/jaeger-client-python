@@ -67,24 +67,15 @@ class TextCodec(Codec):
         if baggage:
             for key, value in six.iteritems(baggage):
                 encoded_key = key
+                if isinstance(key, six.binary_type):
+                    encoded_key = str(key, 'utf-8')
                 if self.url_encoding:
-                    if six.PY2 and isinstance(value, six.text_type):
-                        encoded_value = urllib_parse.quote(value.encode('utf-8'))
-                    else:
-                        encoded_value = urllib_parse.quote(value)
-                    # we assume that self.url_encoding means we are injecting
-                    # into HTTP headers. httplib does not like unicode strings
-                    # so we convert the key to utf-8. The URL-encoded value is
-                    # already a plain string.
-                    if six.PY2 and isinstance(key, six.text_type):
-                        encoded_key = key.encode('utf-8')
+                    encoded_value = urllib_parse.quote(value)
                 else:
-                    if six.PY3 and isinstance(value, six.binary_type):
+                    if isinstance(value, six.binary_type):
                         encoded_value = str(value, 'utf-8')
                     else:
                         encoded_value = value
-                if six.PY3 and isinstance(key, six.binary_type):
-                    encoded_key = str(key, 'utf-8')
                 # Leave the below print(), you will thank me next time you debug unicode strings
                 # print('adding baggage', key, '=>', value, 'as', encoded_key, '=>', encoded_value)
                 header_key = '%s%s' % (self.baggage_prefix, encoded_key)
