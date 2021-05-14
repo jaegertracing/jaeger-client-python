@@ -1,4 +1,4 @@
-FROM python:2.7
+FROM python:3.9
 
 ARG tornado
 ENV APPDIR /usr/src/app/
@@ -20,7 +20,7 @@ COPY crossdock/setup_crossdock.py ${APPDIR}
 RUN python setup_crossdock.py install
 
 # TODO Remove this after the tchannel-python crossdock is no longer a package
-RUN rm -rf /usr/local/lib/python2.7/site-packages/crossdock
+RUN rm -rf /usr/local/lib/python3.9/site-packages/crossdock
 
 CMD ["crossdock"]
 EXPOSE 8080-8082

@@ -32,7 +32,6 @@ setup(
         'Intended Audience :: Developers',
         'License :: OSI Approved :: Apache Software License',
         'Natural Language :: English',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
     ],
@@ -48,9 +47,6 @@ setup(
     # ],
     test_suite='tests',
     extras_require={
-        ':python_version<"3"': [
-            'futures',
-        ],
         'tests': [
             'mock==1.0.1',
             'pycurl>=7.43,<8',
@@ -66,7 +62,7 @@ setup(
             'flake8',
             'flake8-quotes',
             'codecov',
-            'tchannel>=0.27;python_version=="2.7"',  # This is only used in python 2
+            'tchannel==2.1.0',
             'opentracing_instrumentation>=3,<4',
             'prometheus_client==0.3.1',
         ]

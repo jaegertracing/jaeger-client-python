@@ -116,12 +116,14 @@ class EndToEndHandler(object):
 
     @tornado.gen.coroutine
     def generate_traces(self, request, response_writer):
+        if isinstance(request.body, (bytes, bytearray)):
+            request.body = request.body.decode('utf-8')
         req = json.loads(request.body)
         sampler_type = req.get('type', 'remote')
         tracer = self.tracers[sampler_type]
         for _ in range(req.get('count', 0)):
             span = tracer.start_span(req['operation'])
-            for k, v in req.get('tags', {}).iteritems():
+            for k, v in req.get('tags', {}).items():
                 span.set_tag(k, v)
             span.finish()
         response_writer.finish()
