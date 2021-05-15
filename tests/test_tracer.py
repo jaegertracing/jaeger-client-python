@@ -56,7 +56,7 @@ def test_start_trace(tracer):
 
         span.finish()
         assert span.end_time is not None, 'Must have end_time defined'
-        tracer.reporter.assert_called_once()
+        tracer.reporter.report_span.assert_called_once()
 
     tracer.close()
 
@@ -84,7 +84,7 @@ def test_start_child(tracer, mode):
     assert span.parent_id == root.span_id, 'Must inherit parent id'
     span.finish()
     assert span.end_time is not None, 'Must have end_time set'
-    tracer.reporter.assert_called_once()
+    tracer.reporter.report_span.assert_called_once()
     tracer.close()
 
 
@@ -113,7 +113,7 @@ def test_child_span(tracer):
     child.log_event('kiss-my-shiny-metal-...')
     child.finish()
     span.finish()
-    tracer.reporter.report_span.assert_called_once()
+    tracer.reporter.report_span.assert_called()
     assert len(span.logs) == 0, 'Parent span is Local, must not have events'
     assert len(child.logs) == 1, 'Child must have one events'
 
@@ -138,19 +138,21 @@ def test_follows_from(tracer):
     span.finish()
     span1.finish()
     follow_span.finish()
-    tracer.reporter.report_span.assert_called_once()
+    tracer.reporter.report_span.assert_called()
     assert len(follow_span.references) == 2
     assert follow_span.context.parent_id == span.context.span_id
     for reference in follow_span.references:
         assert reference.referenced_context is not None
 
+    tracer.reporter = mock.MagicMock()
     span = tracer.start_span('test')
     follow_span = tracer.start_span(references=follows_from(span.context))
     span.finish()
     follow_span.finish()
-    tracer.reporter.report_span.assert_called_once()
+    tracer.reporter.report_span.assert_called()
     assert isinstance(follow_span.references, list)
 
+    tracer.reporter = mock.MagicMock()
     span = tracer.start_span('test')
     parent_span = tracer.start_span('test-parent')
     child_span = tracer.start_span('test-child', child_of=parent_span,
@@ -158,7 +160,7 @@ def test_follows_from(tracer):
     span.finish()
     parent_span.finish()
     child_span.finish()
-    tracer.reporter.report_span.assert_called_once()
+    tracer.reporter.report_span.assert_called()
     assert child_span.context.parent_id == parent_span.context.span_id
     assert len(child_span.references) == 1
     tracer.close()
