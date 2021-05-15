@@ -48,16 +48,14 @@ setup(
     test_suite='tests',
     extras_require={
         'tests': [
-            'mock==1.0.1',
-            'pycurl>=7.43,<8',
-            # pinned to avoid RemovedInPytest4Warning
-            'pytest>=3.7.0,<3.8.0',
-            'pytest-cov==2.5.1',
-            'coverage<4.4',  # can remove after https://bitbucket.org/ned/coveragepy/issues/581/44b1-44-breaking-in-ci
-            'pytest-timeout==1.3.1',
+            'mock',
+            'pycurl',
+            'pytest',
+            'pytest-cov',
+            'coverage',
+            'pytest-timeout',
             'pytest-tornado',
-            # pin <3.2 as otherwise it requires pytest>=3.8
-            'pytest-benchmark[histogram]>=3.0.0rc1,<3.2',
+            'pytest-benchmark[histogram]',
             'pytest-localserver',
             'flake8',
             'flake8-quotes',
