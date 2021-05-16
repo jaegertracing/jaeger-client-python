@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from __future__ import print_function
-from six.moves import range
 
 import logging
 import time

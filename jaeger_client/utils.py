@@ -16,7 +16,6 @@ import socket
 import struct
 
 import time
-from six.moves import range
 
 
 class ErrorReporter(object):

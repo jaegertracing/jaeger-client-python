@@ -29,8 +29,7 @@ from .constants import (
 from .span_context import SpanContext
 from .constants import SAMPLED_FLAG, DEBUG_FLAG
 
-import six
-from six.moves import urllib_parse
+import urllib.parse
 
 
 class Codec(object):
@@ -65,14 +64,14 @@ class TextCodec(Codec):
             parent_id=span_context.parent_id, flags=span_context.flags)
         baggage = span_context.baggage
         if baggage:
-            for key, value in six.iteritems(baggage):
+            for key, value in baggage.items():
                 encoded_key = key
-                if isinstance(key, six.binary_type):
+                if isinstance(key, (bytes,)):
                     encoded_key = str(key, 'utf-8')
                 if self.url_encoding:
-                    encoded_value = urllib_parse.quote(value)
+                    encoded_value = urllib.parse.quote(value)
                 else:
-                    if isinstance(value, six.binary_type):
+                    if isinstance(key, (bytes,)):
                         encoded_value = str(value, 'utf-8')
                     else:
                         encoded_value = value
@@ -87,16 +86,16 @@ class TextCodec(Codec):
         trace_id, span_id, parent_id, flags = None, None, None, None
         baggage = None
         debug_id = None
-        for key, value in six.iteritems(carrier):
+        for key, value in carrier.items():
             uc_key = key.lower()
             if uc_key == self.trace_id_header:
                 if self.url_encoding:
-                    value = urllib_parse.unquote(value)
+                    value = urllib.parse.unquote(value)
                 trace_id, span_id, parent_id, flags = \
                     span_context_from_string(value)
             elif uc_key.startswith(self.baggage_prefix):
                 if self.url_encoding:
-                    value = urllib_parse.unquote(value)
+                    value = urllib.parse.unquote(value)
                 attr_key = key[self.prefix_length:]
                 if baggage is None:
                     baggage = {attr_key.lower(): value}
@@ -104,11 +103,11 @@ class TextCodec(Codec):
                     baggage[attr_key.lower()] = value
             elif uc_key == self.debug_id_header:
                 if self.url_encoding:
-                    value = urllib_parse.unquote(value)
+                    value = urllib.parse.unquote(value)
                 debug_id = value
             elif uc_key == self.baggage_header:
                 if self.url_encoding:
-                    value = urllib_parse.unquote(value)
+                    value = urllib.parse.unquote(value)
                 baggage = self._parse_baggage_header(value, baggage)
         if not trace_id or not span_id:
             # reset all IDs
@@ -235,7 +234,7 @@ def span_context_from_string(value):
             raise SpanContextCorruptedException(
                 'trace context must be a string or array of 1: "%s"' % value)
         value = value[0]
-    if not isinstance(value, six.string_types):
+    if not isinstance(value, (str,)):
         raise SpanContextCorruptedException(
             'trace context not a string "%s"' % value)
     parts = value.split(':')
@@ -307,7 +306,7 @@ class ZipkinCodec(Codec):
 
 
 def header_to_hex(header):
-    if not isinstance(header, (str, six.text_type)):
+    if not isinstance(header, (str,)):
         raise SpanContextCorruptedException(
             'malformed trace context "%s", expected hex string' % header)
 
@@ -352,7 +351,7 @@ class B3Codec(Codec):
             raise InvalidCarrierException('carrier not a dictionary')
         trace_id = span_id = parent_id = None
         flags = 0x00
-        for header_key, header_value in six.iteritems(carrier):
+        for header_key, header_value in carrier.items():
             if header_value is None:
                 continue
             lower_key = header_key.lower()

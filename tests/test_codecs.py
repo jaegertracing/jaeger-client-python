@@ -17,7 +17,6 @@ from __future__ import absolute_import
 import unittest
 from collections import namedtuple
 from itertools import product
-import six
 
 import mock
 import pytest
@@ -137,7 +136,7 @@ class TestCodecs(unittest.TestCase):
                     'trace-attr-key2': 'cafe',
                     'trace-attr-key3': '%F0%9F%91%BE',
                 }, 'with url_encoding = %s' % url_encoding
-                for key, val in six.iteritems(carrier):
+                for key, val in carrier.items():
                     assert isinstance(key, str)
                     assert isinstance(val, str), '%s' % type(val)
             else:
@@ -522,7 +521,7 @@ def _test_baggage_without_trace_id(tracer, trace_id_header, baggage_header_prefi
         span = tracer.start_span('test', child_of=span_context)
         assert span.context.baggage == match
         # also check baggage through API
-        for k, v in six.iteritems(match):
+        for k, v in match.items():
             assert span.get_baggage_item(k) == v
 
 

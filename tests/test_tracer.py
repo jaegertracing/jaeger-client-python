@@ -14,7 +14,6 @@
 
 import mock
 import random
-import six
 import socket
 
 import pytest
@@ -276,7 +275,7 @@ def test_tracer_tags_on_root_span(span_type, expected_tags):
                 'child', child_of=span.context,
                 tags={ext_tags.SPAN_KIND: ext_tags.SPAN_KIND_RPC_SERVER}
             )
-        for key, value in six.iteritems(expected_tags):
+        for key, value in expected_tags.items():
             found_tag = find_tag(span, key, type(value).__name__)
             if value is None:
                 assert found_tag is None, 'test (%s)' % span_type

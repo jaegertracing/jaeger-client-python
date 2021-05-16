@@ -17,7 +17,6 @@ from __future__ import absolute_import, division
 import json
 import logging
 import random
-import six
 
 from threading import Lock
 from tornado.ioloop import PeriodicCallback
@@ -316,7 +315,7 @@ class AdaptiveSampler(Sampler):
                 ProbabilisticSampler(self.default_sampling_probability)
 
     def close(self):
-        for _, sampler in six.iteritems(self.samplers):
+        for _, sampler in self.samplers.items():
             sampler.close()
 
     def __str__(self):

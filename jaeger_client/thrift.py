@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import traceback
-import six
 from opentracing.tracer import ReferenceType
 from .constants import MAX_TRACEBACK_LENGTH
 
@@ -24,9 +23,6 @@ _max_signed_port = (1 << 15) - 1
 _max_unsigned_port = (1 << 16)
 _max_signed_id = (1 << 63) - 1
 _max_unsigned_id = (1 << 64)
-
-if six.PY3:
-    long = int
 
 
 def _id_to_low(big_id):
@@ -147,12 +143,12 @@ def _make_bool_tag(key, value):
 
 def timestamp_micros(ts):
     """
-    Convert a float Unix timestamp from time.time() into a long value
+    Convert a float Unix timestamp from time.time() into a int value
     in microseconds, as required by Zipkin protocol.
     :param ts:
     :return:
     """
-    return long(ts * 1000000)
+    return int(ts * 1000000)
 
 
 def make_tags(tags, max_length, max_traceback_length):
@@ -160,7 +156,7 @@ def make_tags(tags, max_length, max_traceback_length):
     return [
         make_tag(key=k, value=v, max_length=max_length,
                  max_traceback_length=max_traceback_length)
-        for k, v in six.iteritems(tags or {})
+        for k, v in (tags or {}).items()
     ]
 
 
