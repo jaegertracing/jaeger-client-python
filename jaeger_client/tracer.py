@@ -21,7 +21,6 @@ import os
 import random
 import sys
 import time
-import six
 import opentracing
 from opentracing import Format, UnsupportedFormatException
 from opentracing.ext import tags as ext_tags
@@ -183,7 +182,7 @@ class Tracer(opentracing.Tracer):
                 if sampled:
                     flags = SAMPLED_FLAG
                     tags = tags or {}
-                    for k, v in six.iteritems(sampler_tags):
+                    for k, v in sampler_tags.items():
                         tags[k] = v
             elif parent.debug_id and self.is_debug_allowed(operation_name):
                 flags = SAMPLED_FLAG | DEBUG_FLAG

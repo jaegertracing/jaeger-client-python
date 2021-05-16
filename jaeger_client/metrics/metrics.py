@@ -15,8 +15,6 @@
 from __future__ import absolute_import
 from __future__ import division
 
-import six
-
 
 class MetricsFactory(object):
     """Generates new metrics."""
@@ -90,7 +88,7 @@ class LegacyMetricsFactory(MetricsFactory):
         if not tags:
             return name
         key = name
-        for k in sorted(six.iterkeys(tags)):
+        for k in sorted(tags.keys()):
             key = key + '.' + str(k) + '_' + str(tags[k])
         return key
 
