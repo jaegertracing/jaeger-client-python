@@ -3,10 +3,13 @@
 History
 -------
 
-4.4.1 (unreleased)
+4.5.0 (2021-05-16)
 ------------------
 
-- Nothing changed yet.
+- Remove six usage (#310) -- @cedy
+- Unpin test dependencies (#308) -- @yurishkuro
+- Implement Binary codec (#304) -- @cedy
+- Remove Python2 support from code and CI (#307) -- @cedy
 
 
 4.4.0 (2021-01-07)
