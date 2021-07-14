@@ -76,6 +76,7 @@ shell:
 
 # Generate jaeger thrifts
 THRIFT_GEN_DIR=jaeger_client/thrift_gen
+THRIFT_PACKAGE_PREFIX=jaeger_client.thrift_gen
 THRIFT_VER=0.9.3
 THRIFT_IMG=thrift:$(THRIFT_VER)
 THRIFT_PY_ARGS=new_style,tornado
@@ -100,7 +101,7 @@ thrift: idl-submodule thrift-image
 	set -e; \
 	for f in $$(find ${THRIFT_GEN_DIR} -iname '*.py'); do \
 	  echo fixing $$f; \
-	  awk -f thrift-gen-fix.awk $$f > tmp; \
+	  awk -f thrift-gen-fix.awk package_prefix=${THRIFT_PACKAGE_PREFIX} $$f > tmp; \
 	  mv tmp $$f; \
 	done
 

@@ -153,7 +153,7 @@ class emitZipkinBatch_args(object):
 
   thrift_spec = (
     None, # 0
-    (1, TType.LIST, 'spans', (TType.STRUCT,(zipkincore.ttypes.Span, zipkincore.ttypes.Span.thrift_spec)), None, ), # 1
+    (1, TType.LIST, 'spans', (TType.STRUCT,(jaeger_client.thrift_gen.zipkincore.ttypes.Span, jaeger_client.thrift_gen.zipkincore.ttypes.Span.thrift_spec)), None, ), # 1
   )
 
   def __init__(self, spans=None,):
@@ -173,7 +173,7 @@ class emitZipkinBatch_args(object):
           self.spans = []
           (_etype3, _size0) = iprot.readListBegin()
           for _i4 in xrange(_size0):
-            _elem5 = zipkincore.ttypes.Span()
+            _elem5 = jaeger_client.thrift_gen.zipkincore.ttypes.Span()
             _elem5.read(iprot)
             self.spans.append(_elem5)
           iprot.readListEnd()
@@ -227,7 +227,7 @@ class emitBatch_args(object):
 
   thrift_spec = (
     None, # 0
-    (1, TType.STRUCT, 'batch', (jaeger.ttypes.Batch, jaeger.ttypes.Batch.thrift_spec), None, ), # 1
+    (1, TType.STRUCT, 'batch', (jaeger_client.thrift_gen.jaeger.ttypes.Batch, jaeger_client.thrift_gen.jaeger.ttypes.Batch.thrift_spec), None, ), # 1
   )
 
   def __init__(self, batch=None,):
@@ -244,7 +244,7 @@ class emitBatch_args(object):
         break
       if fid == 1:
         if ftype == TType.STRUCT:
-          self.batch = jaeger.ttypes.Batch()
+          self.batch = jaeger_client.thrift_gen.jaeger.ttypes.Batch()
           self.batch.read(iprot)
         else:
           iprot.skip(ftype)
