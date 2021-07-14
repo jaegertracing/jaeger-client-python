@@ -9,8 +9,8 @@ import six
 from six.moves import xrange
 
 from thrift.Thrift import TType, TMessageType, TException, TApplicationException
-import jaeger.ttypes
-import zipkincore.ttypes
+import jaeger_client.thrift_gen.jaeger.ttypes
+import jaeger_client.thrift_gen.zipkincore.ttypes
 
 
 from thrift.transport import TTransport
