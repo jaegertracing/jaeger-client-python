@@ -3,10 +3,11 @@
 History
 -------
 
-4.5.1 (unreleased)
+4.6.0 (2021-07-16)
 ------------------
 
-- Nothing changed yet.
+- Specify minimal required python version (#314) -- ethframe
+- Add package prefix to imports in generated code (#313) -- ethframe
 
 
 4.5.0 (2021-05-16)
