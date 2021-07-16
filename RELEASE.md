@@ -11,12 +11,13 @@ Declaring formal releases requires peer review.
 Before new release, add a summary of changes since last version to (CHANGELOG.rst)[./CHANGELOG.rst].
 
 ```
-pip install zest.releaser[recommended]
+pip install twine zest.releaser[recommended]
 prerelease
 release
 git push upstream master --follow-tags
+# remove prev distros, or else twine would try to upload them
+rm -rf dist
 python setup.py sdist
-pip install twine
 twine upload --repository pypi --verbose dist/*
 postrelease
 git push
