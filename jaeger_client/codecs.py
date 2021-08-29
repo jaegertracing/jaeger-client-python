@@ -336,7 +336,7 @@ class B3Codec(Codec):
 
     def __init__(self, generate_128bit_trace_id=False):
         self.generate_128bit_trace_id = generate_128bit_trace_id
-      
+
     def inject(self, span_context, carrier):
         if not isinstance(carrier, dict):
             raise InvalidCarrierException('carrier not a dictionary')
