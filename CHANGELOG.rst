@@ -3,10 +3,10 @@
 History
 -------
 
-4.6.1 (unreleased)
+4.6.1 (2021-08-29)
 ------------------
 
-- Nothing changed yet.
+- Fix B3Codec's trace_id zero-padding for 32bit IDs (#322) -- mizhexiaoxiao
 
 
 4.6.0 (2021-07-16)

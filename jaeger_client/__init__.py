@@ -14,7 +14,7 @@
 
 from __future__ import absolute_import
 
-__version__ = '4.6.1.dev0'
+__version__ = '4.6.1'
 
 from .tracer import Tracer  # noqa
 from .config import Config  # noqa
