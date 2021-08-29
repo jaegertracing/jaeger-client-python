@@ -376,6 +376,17 @@ class TestCodecs(unittest.TestCase):
         assert extracted.parent_id == ctx.parent_id
         assert extracted.flags == ctx.flags
 
+    def test_128bit_trace_id_with_zero_padding(self):
+        codec = B3Codec(generate_128bit_trace_id=True)
+
+        carrier_1 = {'X-B3-SpanId': '39fe73de0012a0e5', 'X-B3-ParentSpanId': '3dbf8a511e159b05',
+                     'X-B3-TraceId': '023f352eaefd8b887a06732f5312e2de', 'X-B3-Flags': '0'}
+        span_context = codec.extract(carrier_1)
+
+        carrier_2 = {}
+        codec.inject(span_context=span_context, carrier=carrier_2)
+        assert carrier_1['X-B3-TraceId'] == carrier_2['X-B3-TraceId']
+
     def test_binary_codec(self):
         codec = BinaryCodec()
         with self.assertRaises(InvalidCarrierException):

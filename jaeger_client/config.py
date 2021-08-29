@@ -314,7 +314,9 @@ class Config(object):
         propagation = self.config.get('propagation')
         if propagation == 'b3':
             # replace the codec with a B3 enabled instance
-            return {Format.HTTP_HEADERS: B3Codec()}
+            return {Format.HTTP_HEADERS: B3Codec(
+                generate_128bit_trace_id=self.generate_128bit_trace_id
+            )}
         return {}
 
     def throttler_group(self):

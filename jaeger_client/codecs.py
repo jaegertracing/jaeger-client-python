@@ -334,10 +334,16 @@ class B3Codec(Codec):
     flags_header = 'X-B3-Flags'
     _flags_header_lc = flags_header.lower()
 
+    def __init__(self, generate_128bit_trace_id=False):
+        self.generate_128bit_trace_id = generate_128bit_trace_id
+
     def inject(self, span_context, carrier):
         if not isinstance(carrier, dict):
             raise InvalidCarrierException('carrier not a dictionary')
-        carrier[self.trace_header] = format(span_context.trace_id, 'x').zfill(16)
+        if self.generate_128bit_trace_id:
+            carrier[self.trace_header] = format(span_context.trace_id, 'x').zfill(32)
+        else:
+            carrier[self.trace_header] = format(span_context.trace_id, 'x').zfill(16)
         carrier[self.span_header] = format(span_context.span_id, 'x').zfill(16)
         if span_context.parent_id is not None:
             carrier[self.parent_span_header] = format(span_context.parent_id, 'x').zfill(16)
