@@ -86,7 +86,7 @@ class ConfigTests(unittest.TestCase):
 
     def test_object_sampler_sampler(self):
         sampler = TestSampler()
-        c = Config({'sampler': sampler})
+        c = Config({'sampler': sampler}, service_name='x')
         assert c.sampler is sampler
 
     def test_agent_reporting_host(self):
