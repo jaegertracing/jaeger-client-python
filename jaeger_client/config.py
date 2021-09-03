@@ -219,11 +219,11 @@ class Config(object):
 
     @property
     def sampler(self):
-        sampler_param = self.config.get('sampler', {})
-        if isinstance(sampler_param, Sampler):
-            return sampler_param
-        sampler_type = sampler_param.get('type', None)
-        sampler_param = sampler_param.get('param', None)
+        sampler_config = self.config.get('sampler', {})
+        if isinstance(sampler_config, Sampler):
+            return sampler_config
+        sampler_type = sampler_config.get('type', None)
+        sampler_param = sampler_config.get('param', None)
         if not sampler_type:
             return None
         elif sampler_type == SAMPLER_TYPE_CONST:
