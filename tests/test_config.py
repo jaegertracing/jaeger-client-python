@@ -13,14 +13,18 @@
 # limitations under the License.
 
 from __future__ import absolute_import
+
 import os
 import unittest
+
 import opentracing.tracer
+
 from jaeger_client import Config, ConstSampler, ProbabilisticSampler, RateLimitingSampler
+from jaeger_client import constants
 from jaeger_client.config import DEFAULT_THROTTLER_PORT
 from jaeger_client.metrics import MetricsFactory
 from jaeger_client.reporter import NullReporter
-from jaeger_client import constants
+from tests.test_utils import TestSampler
 
 
 class ConfigTests(unittest.TestCase):
@@ -79,6 +83,11 @@ class ConfigTests(unittest.TestCase):
         c = Config({'sampler': {'type': 'bad-sampler'}}, service_name='x')
         with self.assertRaises(ValueError):
             c.sampler.is_sampled(0)
+
+    def test_object_sampler_sampler(self):
+        sampler = TestSampler()
+        c = Config({'sampler': sampler}, service_name='x')
+        assert c.sampler is sampler
 
     def test_agent_reporting_host(self):
         c = Config({}, service_name='x')

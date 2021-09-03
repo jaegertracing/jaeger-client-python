@@ -33,7 +33,7 @@ from .sampler import (
     ProbabilisticSampler,
     RateLimitingSampler,
     RemoteControlledSampler,
-)
+    Sampler)
 from .constants import (
     DEFAULT_SAMPLING_INTERVAL,
     DEFAULT_FLUSH_INTERVAL,
@@ -220,6 +220,8 @@ class Config(object):
     @property
     def sampler(self):
         sampler_config = self.config.get('sampler', {})
+        if isinstance(sampler_config, Sampler):
+            return sampler_config
         sampler_type = sampler_config.get('type', None)
         sampler_param = sampler_config.get('param', None)
         if not sampler_type:

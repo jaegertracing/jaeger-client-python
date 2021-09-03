@@ -18,6 +18,7 @@ import mock
 import unittest
 
 from jaeger_client import utils
+from jaeger_client.sampler import Sampler
 
 
 class ConfigTests(unittest.TestCase):
@@ -43,10 +44,10 @@ class ConfigTests(unittest.TestCase):
     def test_get_None_boolean(self):
         self.check_boolean(None, 'qwer', False)
 
-#    def test_error_reporter_doesnt_send_metrics_if_not_configured(self):
-#        er = utils.ErrorReporter(False)
-#        er.error('foo', 1)
-#        assert not mock_metrics.count.called
+    #    def test_error_reporter_doesnt_send_metrics_if_not_configured(self):
+    #        er = utils.ErrorReporter(False)
+    #        er.error('foo', 1)
+    #        assert not mock_metrics.count.called
 
     def test_error_reporter_sends_metrics_if_configured(self):
         mock_metrics = mock.MagicMock()
@@ -81,3 +82,7 @@ def test_local_ip_does_not_blow_up():
 def test_get_local_ip_by_socket_does_not_blow_up():
     import jaeger_client.utils
     jaeger_client.utils.get_local_ip_by_socket()
+
+
+class TestSampler(Sampler):
+    pass
