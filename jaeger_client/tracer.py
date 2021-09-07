@@ -22,16 +22,23 @@ import random
 import sys
 import time
 import opentracing
+from typing import Any, Dict, Optional, List, Union
+
 from opentracing import Format, UnsupportedFormatException
 from opentracing.ext import tags as ext_tags
-from opentracing.scope_managers import ThreadLocalScopeManager
+from opentracing.scope_managers import ThreadLocalScopeManager, ScopeManager
+from opentracing.tracer import Reference
+
+from tornado.concurrent import Future
 
 from . import constants
-from .codecs import TextCodec, ZipkinCodec, ZipkinSpanFormat, BinaryCodec
+from .codecs import TextCodec, ZipkinCodec, ZipkinSpanFormat, BinaryCodec, Codec
 from .span import Span, SAMPLED_FLAG, DEBUG_FLAG
 from .span_context import SpanContext
-from .metrics import Metrics, LegacyMetricsFactory
+from .metrics import Metrics, LegacyMetricsFactory, MetricsFactory
 from .utils import local_ip
+from .sampler import Sampler
+from .reporter import BaseReporter
 
 logger = logging.getLogger('jaeger_tracing')
 
@@ -41,19 +48,24 @@ class Tracer(opentracing.Tracer):
     N.B. metrics has been deprecated, use metrics_factory instead.
     """
     def __init__(
-        self, service_name, reporter, sampler, metrics=None,
-        metrics_factory=None,
-        trace_id_header=constants.TRACE_ID_HEADER,
-        generate_128bit_trace_id=False,
-        baggage_header_prefix=constants.BAGGAGE_HEADER_PREFIX,
-        debug_id_header=constants.DEBUG_ID_HEADER_KEY,
-        one_span_per_rpc=False, extra_codecs=None,
-        tags=None,
-        max_tag_value_length=constants.MAX_TAG_VALUE_LENGTH,
-        max_traceback_length=constants.MAX_TRACEBACK_LENGTH,
-        throttler=None,
-        scope_manager=None,
-    ):
+        self,
+        service_name: str,
+        reporter: BaseReporter,
+        sampler: Sampler,
+        metrics: Optional[Metrics] = None,
+        metrics_factory: Optional[MetricsFactory] = None,
+        trace_id_header: str = constants.TRACE_ID_HEADER,
+        generate_128bit_trace_id: bool = False,
+        baggage_header_prefix: str = constants.BAGGAGE_HEADER_PREFIX,
+        debug_id_header: str = constants.DEBUG_ID_HEADER_KEY,
+        one_span_per_rpc: bool = False,
+        extra_codecs: Optional[Dict[str, Codec]] = None,
+        tags: Optional[Dict[str, Any]] = None,
+        max_tag_value_length: int = constants.MAX_TAG_VALUE_LENGTH,
+        max_traceback_length: int = constants.MAX_TRACEBACK_LENGTH,
+        throttler: Optional[Any] = None,
+        scope_manager: Optional[ScopeManager] = None,
+    ) -> None:
         self.service_name = service_name
         self.reporter = reporter
         self.sampler = sampler
@@ -84,7 +96,7 @@ class Tracer(opentracing.Tracer):
         }
         if extra_codecs:
             self.codecs.update(extra_codecs)
-        self.tags = {
+        self.tags: dict = {
             constants.JAEGER_VERSION_TAG_KEY: constants.JAEGER_CLIENT_VERSION,
         }
         if tags:
@@ -117,13 +129,13 @@ class Tracer(opentracing.Tracer):
         )
 
     def start_span(self,
-                   operation_name=None,
-                   child_of=None,
-                   references=None,
-                   tags=None,
-                   start_time=None,
-                   ignore_active_span=False,
-                   ):
+                   operation_name: Optional[str] = None,
+                   child_of: Union[None, Span, SpanContext] = None,
+                   references: Union[List[Reference], None, Reference] = None,
+                   tags: Union[dict, None] = None,
+                   start_time: Optional[float] = None,
+                   ignore_active_span: bool = False,
+                   ) -> Span:
         """
         Start and return a new Span representing a unit of work.
 
@@ -167,8 +179,7 @@ class Tracer(opentracing.Tracer):
         if valid_references and (parent is None or not parent.has_trace):
             parent = valid_references[0].referenced_context
 
-        rpc_server = tags and \
-            tags.get(ext_tags.SPAN_KIND) == ext_tags.SPAN_KIND_RPC_SERVER
+        rpc_server = bool(tags and tags.get(ext_tags.SPAN_KIND) == ext_tags.SPAN_KIND_RPC_SERVER)
 
         if parent is None or not parent.has_trace:
             trace_id = self._random_id(self.max_trace_id_bits)
@@ -214,13 +225,13 @@ class Tracer(opentracing.Tracer):
         return span
 
     def start_active_span(self,
-                          operation_name=None,
-                          child_of=None,
-                          references=None,
-                          tags=None,
-                          start_time=None,
-                          ignore_active_span=False,
-                          finish_on_close=True,
+                          operation_name: Optional[str] = None,
+                          child_of: Union[None, Span, SpanContext] = None,
+                          references: Union[None, Reference, List[Reference]] = None,
+                          tags: Optional[dict] = None,
+                          start_time: Optional[float] = None,
+                          ignore_active_span: bool = False,
+                          finish_on_close: bool = True,
                           ):
         """
         Returns a newly started and activated :class:`Scope`
@@ -253,7 +264,7 @@ class Tracer(opentracing.Tracer):
         )
         return self.scope_manager.activate(span, finish_on_close)
 
-    def inject(self, span_context, format, carrier):
+    def inject(self, span_context: Union[Span, SpanContext], format: str, carrier: dict) -> None:
         codec = self.codecs.get(format, None)
         if codec is None:
             raise UnsupportedFormatException(format)
@@ -265,13 +276,13 @@ class Tracer(opentracing.Tracer):
                 'Expecting Jaeger SpanContext, not %s', type(span_context))
         codec.inject(span_context=span_context, carrier=carrier)
 
-    def extract(self, format, carrier):
+    def extract(self, format: str, carrier: dict) -> SpanContext:
         codec = self.codecs.get(format, None)
         if codec is None:
             raise UnsupportedFormatException(format)
         return codec.extract(carrier)
 
-    def close(self):
+    def close(self) -> Future:
         """
         Perform a clean shutdown of the tracer, flushing any traces that
         may be buffered in memory.
@@ -282,7 +293,7 @@ class Tracer(opentracing.Tracer):
         self.sampler.close()
         return self.reporter.close()
 
-    def _emit_span_metrics(self, span, join=False):
+    def _emit_span_metrics(self, span: Span, join: Optional[bool] = False) -> Span:
         if span.is_sampled():
             self.metrics.spans_started_sampled(1)
         else:
@@ -300,20 +311,20 @@ class Tracer(opentracing.Tracer):
                     self.metrics.traces_started_not_sampled(1)
         return span
 
-    def report_span(self, span):
+    def report_span(self, span: Span) -> None:
         self.reporter.report_span(span)
         self.metrics.spans_finished(1)
 
-    def random_id(self):
+    def random_id(self) -> int:
         """
         DEPRECATED: use _random_id() instead
         """
         return self.random.getrandbits(constants.MAX_ID_BITS)
 
-    def _random_id(self, bitsize):
+    def _random_id(self, bitsize: int) -> int:
         return self.random.getrandbits(bitsize)
 
-    def is_debug_allowed(self, *args, **kwargs):
+    def is_debug_allowed(self, *args: Any, **kwargs: Any) -> bool:
         if not self.throttler:
             return True
         return self.throttler.is_allowed(*args, **kwargs)
@@ -322,7 +333,7 @@ class Tracer(opentracing.Tracer):
 class TracerMetrics(object):
     """Tracer specific metrics."""
 
-    def __init__(self, metrics_factory):
+    def __init__(self, metrics_factory: MetricsFactory) -> None:
         self.traces_started_sampled = \
             metrics_factory.create_counter(name='jaeger:traces',
                                            tags={'state': 'started', 'sampled': 'y'})
