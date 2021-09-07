@@ -29,7 +29,7 @@ default_logger = logging.getLogger('jaeger_tracing')
 
 
 class Throttler(object):
-    def set_client_id(self, client_id: int):
+    def set_client_id(self, client_id: int) -> None:
         """
         Called by tracer to set client ID of throttler.
         """
