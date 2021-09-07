@@ -22,7 +22,7 @@ import random
 import sys
 import time
 import opentracing
-from typing import Any, Dict, Optional, List, Union
+from typing import Any, Dict, Optional, List, Union, cast
 
 from opentracing import Format, UnsupportedFormatException
 from opentracing.ext import tags as ext_tags
@@ -179,8 +179,9 @@ class Tracer(opentracing.Tracer):
         if valid_references and (parent is None or not parent.has_trace):
             parent = valid_references[0].referenced_context
 
-        rpc_server = tags and \
-            tags.get(ext_tags.SPAN_KIND) == ext_tags.SPAN_KIND_RPC_SERVER
+        rpc_server = cast(
+            bool, tags and tags.get(ext_tags.SPAN_KIND) == ext_tags.SPAN_KIND_RPC_SERVER
+        )
 
         if parent is None or not parent.has_trace:
             trace_id = self._random_id(self.max_trace_id_bits)
@@ -221,7 +222,7 @@ class Tracer(opentracing.Tracer):
                     operation_name=operation_name,
                     tags=tags, start_time=start_time, references=valid_references)
 
-        self._emit_span_metrics(span=span, join=bool(rpc_server))
+        self._emit_span_metrics(span=span, join=rpc_server)
 
         return span
 
