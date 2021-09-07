@@ -16,6 +16,7 @@ import socket
 import struct
 
 import time
+from typing import Optional
 
 
 class ErrorReporter(object):
@@ -46,7 +47,7 @@ class ErrorReporter(object):
         self._last_error_reported_at = current_time
 
 
-def get_boolean(string, default):
+def get_boolean(string: str, default: bool) -> bool:
     string = str(string).lower()
     if string in ['false', '0', 'none']:
         return False
@@ -56,8 +57,10 @@ def get_boolean(string, default):
         return default
 
 
-def local_ip():
+def local_ip() -> Optional[str]:
     """Get the local network IP of this machine"""
+    ip: Optional[str]
+
     try:
         ip = socket.gethostbyname(socket.gethostname())
     except IOError:
@@ -69,7 +72,7 @@ def local_ip():
     return ip
 
 
-def get_local_ip_by_socket():
+def get_local_ip_by_socket() -> Optional[str]:
     # Explanation : https://stackoverflow.com/questions/166506
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -83,7 +86,7 @@ def get_local_ip_by_socket():
     return ip
 
 
-def get_local_ip_by_interfaces():
+def get_local_ip_by_interfaces() -> Optional[str]:
     ip = None
     # Check eth0, eth1, eth2, en0, ...
     interfaces = [
@@ -99,7 +102,7 @@ def get_local_ip_by_interfaces():
     return ip
 
 
-def interface_ip(interface):
+def interface_ip(interface: bytes) -> Optional[str]:
     try:
         import fcntl
         """Determine the IP assigned to us by the given network interface."""
