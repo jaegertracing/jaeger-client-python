@@ -38,6 +38,7 @@ from .span_context import SpanContext
 from .metrics import Metrics, LegacyMetricsFactory, MetricsFactory
 from .utils import local_ip
 from .sampler import Sampler
+from .reporter import BaseReporter
 
 logger = logging.getLogger('jaeger_tracing')
 
@@ -49,7 +50,7 @@ class Tracer(opentracing.Tracer):
     def __init__(
         self,
         service_name: str,
-        reporter: Any,
+        reporter: BaseReporter,
         sampler: Sampler,
         metrics: Optional[Metrics] = None,
         metrics_factory: Optional[MetricsFactory] = None,
