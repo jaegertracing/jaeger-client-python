@@ -25,7 +25,7 @@ def test_prometheus_metrics_counter():
     counter2 = metrics.create_counter(name='jaeger:test_counter',
                                       tags={'result': 'ok'})
     counter2(1)
-    after = REGISTRY.get_sample_value('test_jaeger:test_counter',
+    after = REGISTRY.get_sample_value('test_jaeger:test_counter_total',
                                       {'result': 'ok'})
     assert 2 == after
 
@@ -34,7 +34,7 @@ def test_prometheus_metrics_counter_without_tags():
     metrics = PrometheusMetricsFactory()
     counter = metrics.create_counter(name='jaeger:test_counter_no_tags')
     counter(1)
-    after = REGISTRY.get_sample_value('jaeger:test_counter_no_tags')
+    after = REGISTRY.get_sample_value('jaeger:test_counter_no_tags_total')
     assert 1 == after
 
 
@@ -65,7 +65,7 @@ def test_prometheus_metrics_metric_with_service_name_label():
     counter = metrics.create_counter(name='jaeger:test_counter_with_service_name_label',
                                      tags={'x': 'y'})
     counter(1)
-    counter_after = REGISTRY.get_sample_value('jaeger:test_counter_with_service_name_label',
+    counter_after = REGISTRY.get_sample_value('jaeger:test_counter_with_service_name_label_total',
                                               {'service': 'test', 'x': 'y'})
     assert 1 == counter_after
     assert 1 == gauge_after
@@ -78,6 +78,8 @@ def test_prometheus_metrics_metric_without_service_name_label():
     gauge_after = REGISTRY.get_sample_value('jaeger:test_gauge_without_service_name_label')
     counter = metrics.create_counter(name='jaeger:test_counter_without_service_name_label')
     counter(1)
-    counter_after = REGISTRY.get_sample_value('jaeger:test_counter_without_service_name_label')
+    counter_after = REGISTRY.get_sample_value(
+        'jaeger:test_counter_without_service_name_label_total'
+    )
     assert 1 == counter_after
     assert 1 == gauge_after
