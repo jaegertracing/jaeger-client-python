@@ -39,6 +39,7 @@ from .metrics import Metrics, LegacyMetricsFactory, MetricsFactory
 from .utils import local_ip
 from .sampler import Sampler
 from .reporter import BaseReporter
+from .throttler import Throttler
 
 logger = logging.getLogger('jaeger_tracing')
 
@@ -63,7 +64,7 @@ class Tracer(opentracing.Tracer):
         tags: Optional[Dict[str, Any]] = None,
         max_tag_value_length: int = constants.MAX_TAG_VALUE_LENGTH,
         max_traceback_length: int = constants.MAX_TRACEBACK_LENGTH,
-        throttler: Optional[Any] = None,
+        throttler: Optional[Throttler] = None,
         scope_manager: Optional[ScopeManager] = None,
     ) -> None:
         self.service_name = service_name
@@ -115,7 +116,7 @@ class Tracer(opentracing.Tracer):
         self.throttler = throttler
         if self.throttler:
             client_id = random.randint(0, sys.maxsize)
-            self.throttler._set_client_id(client_id)
+            self.throttler.set_client_id(client_id)
             self.tags[constants.CLIENT_UUID_TAG_KEY] = client_id
 
         self.reporter.set_process(

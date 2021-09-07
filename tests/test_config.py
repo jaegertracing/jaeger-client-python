@@ -24,7 +24,7 @@ from jaeger_client import constants
 from jaeger_client.config import DEFAULT_THROTTLER_PORT
 from jaeger_client.metrics import MetricsFactory
 from jaeger_client.reporter import NullReporter
-from tests.test_utils import TestSampler
+from tests.test_utils import MockSampler
 
 
 class ConfigTests(unittest.TestCase):
@@ -85,7 +85,7 @@ class ConfigTests(unittest.TestCase):
             c.sampler.is_sampled(0)
 
     def test_object_sampler_sampler(self):
-        sampler = TestSampler()
+        sampler = MockSampler()
         c = Config({'sampler': sampler}, service_name='x')
         assert c.sampler is sampler
 

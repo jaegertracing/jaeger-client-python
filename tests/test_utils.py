@@ -84,5 +84,6 @@ def test_get_local_ip_by_socket_does_not_blow_up():
     jaeger_client.utils.get_local_ip_by_socket()
 
 
-class TestSampler(Sampler):
-    pass
+class MockSampler(Sampler):
+    def __init__(self):
+        pass

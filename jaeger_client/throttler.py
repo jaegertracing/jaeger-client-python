@@ -28,7 +28,21 @@ MINIMUM_CREDITS = 1.0
 default_logger = logging.getLogger('jaeger_tracing')
 
 
-class RemoteThrottler(object):
+class Throttler(object):
+    def set_client_id(self, client_id: int):
+        """
+        Called by tracer to set client ID of throttler.
+        """
+        pass
+
+    def is_allowed(self, operation: str) -> bool:
+        raise NotImplementedError()
+
+    def close(self) -> None:
+        pass
+
+
+class RemoteThrottler(Throttler):
     """
     RemoteThrottler controls the flow of spans emitted from client to prevent
     flooding. RemoteThrottler requests credits from the throttling service
@@ -78,10 +92,7 @@ class RemoteThrottler(object):
             self.credits[operation] = value - MINIMUM_CREDITS
             return True
 
-    def _set_client_id(self, client_id):
-        """
-        Method for tracer to set client ID of throttler.
-        """
+    def set_client_id(self, client_id):
         with self.lock:
             if self.client_id is None:
                 self.client_id = client_id
