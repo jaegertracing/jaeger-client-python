@@ -22,7 +22,7 @@ import random
 import sys
 import time
 import opentracing
-from typing import Any, Optional, List, Union
+from typing import Any, Dict, Optional, List, Union
 
 from opentracing import Format, UnsupportedFormatException
 from opentracing.ext import tags as ext_tags
@@ -32,7 +32,7 @@ from opentracing.tracer import Reference
 from tornado.concurrent import Future
 
 from . import constants
-from .codecs import TextCodec, ZipkinCodec, ZipkinSpanFormat, BinaryCodec
+from .codecs import TextCodec, ZipkinCodec, ZipkinSpanFormat, BinaryCodec, Codec
 from .span import Span, SAMPLED_FLAG, DEBUG_FLAG
 from .span_context import SpanContext
 from .metrics import Metrics, LegacyMetricsFactory, MetricsFactory
@@ -58,8 +58,8 @@ class Tracer(opentracing.Tracer):
         baggage_header_prefix: str = constants.BAGGAGE_HEADER_PREFIX,
         debug_id_header: str = constants.DEBUG_ID_HEADER_KEY,
         one_span_per_rpc: bool = False,
-        extra_codecs: Optional[dict] = None,
-        tags: Optional[dict] = None,
+        extra_codecs: Optional[Dict[str, Codec]] = None,
+        tags: Optional[Dict[str, Any]] = None,
         max_tag_value_length: int = constants.MAX_TAG_VALUE_LENGTH,
         max_traceback_length: int = constants.MAX_TRACEBACK_LENGTH,
         throttler: Optional[Any] = None,
