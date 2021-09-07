@@ -61,10 +61,12 @@ setup(
             'pytest-localserver',
             'flake8',
             'flake8-quotes',
+            'flake8-typing-imports',
             'codecov',
             'tchannel==2.1.0',
             'opentracing_instrumentation>=3,<4',
             'prometheus_client==0.3.1',
+            'mypy',
         ]
     },
 )
