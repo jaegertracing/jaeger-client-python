@@ -50,7 +50,7 @@ def app():
 
 
 # noinspection PyShadowingNames
-@pytest.yield_fixture
+@pytest.fixture
 def tracer():
     tracer = Tracer(
         service_name='test-tracer',

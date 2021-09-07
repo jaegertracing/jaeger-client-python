@@ -96,7 +96,7 @@ class FakeMetricsFactory(LegacyMetricsFactory):
 
 
 class ReporterTest(AsyncTestCase):
-    @pytest.yield_fixture
+    @pytest.fixture
     def thread_loop(self):
         yield
 
