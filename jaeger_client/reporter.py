@@ -34,10 +34,10 @@ from jaeger_client.thrift_gen.agent import Agent
 default_logger = logging.getLogger('jaeger_tracing')
 
 
-class NullReporter(object):
-    """Ignores all spans."""
+class BaseReporter(object):
+    """Abstract class."""
     def report_span(self, span):
-        pass
+        raise NotImplementedError()
 
     def set_process(self, service_name, tags, max_length):
         pass
@@ -48,7 +48,13 @@ class NullReporter(object):
         return fut
 
 
-class InMemoryReporter(NullReporter):
+class NullReporter(BaseReporter):
+    """Ignores all spans."""
+    def report_span(self, span):
+        pass
+
+
+class InMemoryReporter(BaseReporter):
     """Stores spans in memory and returns them via get_spans()."""
     def __init__(self):
         super(InMemoryReporter, self).__init__()
@@ -64,7 +70,7 @@ class InMemoryReporter(NullReporter):
             return self.spans[:]
 
 
-class LoggingReporter(NullReporter):
+class LoggingReporter(BaseReporter):
     """Logs all spans."""
     def __init__(self, logger=None):
         self.logger = logger if logger else default_logger
@@ -73,7 +79,7 @@ class LoggingReporter(NullReporter):
         self.logger.info('Reporting span %s', span)
 
 
-class Reporter(NullReporter):
+class Reporter(BaseReporter):
     """Receives completed spans from Tracer and submits them out of process."""
     def __init__(self, channel, queue_capacity=100, batch_size=10,
                  flush_interval=DEFAULT_FLUSH_INTERVAL, io_loop=None,
@@ -240,7 +246,7 @@ class ReporterMetrics(object):
             metrics_factory.create_gauge(name='jaeger:reporter_queue_length')
 
 
-class CompositeReporter(NullReporter):
+class CompositeReporter(BaseReporter):
     """Delegates reporting to one or more underlying reporters."""
     def __init__(self, *reporters):
         self.reporters = reporters
