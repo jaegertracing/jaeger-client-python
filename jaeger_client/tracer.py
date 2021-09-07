@@ -51,7 +51,7 @@ class Tracer(opentracing.Tracer):
         service_name: str,
         reporter: Any,
         sampler: Sampler,
-        metrics: Optional[Any] = None,
+        metrics: Optional[Metrics] = None,
         metrics_factory: Optional[MetricsFactory] = None,
         trace_id_header: str = constants.TRACE_ID_HEADER,
         generate_128bit_trace_id: bool = False,
