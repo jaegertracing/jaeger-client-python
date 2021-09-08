@@ -45,7 +45,7 @@ class BaseReporter(object):
         pass
 
     def close(self) -> Future:
-        fut = Future()
+        fut: Future = Future()
         fut.set_result(True)
         return fut
 
@@ -129,7 +129,7 @@ class Reporter(BaseReporter):
         if self.io_loop is None:
             self.logger.error('Jaeger Reporter has no IOLoop')
         else:
-            self.queue = tornado.queues.Queue(maxsize=queue_capacity)
+            self.queue: tornado.queues.Queue = tornado.queues.Queue(maxsize=queue_capacity)
             self.stop = object()
             self.stopped = False
             self.stop_lock = Lock()
@@ -269,11 +269,11 @@ class CompositeReporter(BaseReporter):
         for reporter in self.reporters:
             reporter.report_span(span)
 
-    def close(self) -> None:
+    def close(self) -> Future:
         from threading import Lock
         lock = Lock()
         count = [0]
-        future = Future()
+        future: Future = Future()
 
         def on_close(_):
             with lock:
