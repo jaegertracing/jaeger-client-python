@@ -14,6 +14,7 @@
 
 from __future__ import absolute_import
 import logging
+from typing import Optional
 
 from thrift.transport.TTransport import TTransportBase
 import socket
@@ -26,30 +27,31 @@ class TUDPTransport(TTransportBase, object):
     TUDPTransport implements just enough of the tornado transport interface
     to work for blindly sending UDP packets.
     """
-    def __init__(self, host, port, blocking=False):
+    def __init__(self, host: str, port: int, blocking: bool = False) -> None:
         self.transport_host = host
         self.transport_port = port
-        self.transport_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        if blocking:
-            blocking = 1
-        else:
-            blocking = 0
+        self.transport_sock: Optional[socket.socket] = (
+            socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        )
         self.transport_sock.setblocking(blocking)
 
-    def write(self, buf):
+    def write(self, buf: bytes) -> int:
         """Raw write to the UDP socket."""
+        if not self.transport_sock:
+            raise ValueError('Socket is already closed')
         return self.transport_sock.sendto(
             buf,
             (self.transport_host, self.transport_port)
         )
 
-    def isOpen(self):
+    def isOpen(self) -> bool:
         """
         isOpen for UDP is always true (there is no connection) as long
         as we have a sock
         """
         return self.transport_sock is not None
 
-    def close(self):
-        self.transport_sock.close()
-        self.transport_sock = None
+    def close(self) -> None:
+        if self.transport_sock:
+            self.transport_sock.close()
+            self.transport_sock = None

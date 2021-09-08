@@ -22,7 +22,7 @@ import random
 import sys
 import time
 import opentracing
-from typing import Any, Dict, Optional, List, Union
+from typing import TYPE_CHECKING, Any, Dict, Optional, List, Union
 
 from opentracing import Format, UnsupportedFormatException
 from opentracing.ext import tags as ext_tags
@@ -37,9 +37,11 @@ from .span import Span, SAMPLED_FLAG, DEBUG_FLAG
 from .span_context import SpanContext
 from .metrics import Metrics, LegacyMetricsFactory, MetricsFactory
 from .utils import local_ip
-from .sampler import Sampler
-from .reporter import BaseReporter
-from .throttler import Throttler
+
+if TYPE_CHECKING:
+    from .throttler import Throttler
+    from .reporter import BaseReporter
+    from .sampler import Sampler
 
 logger = logging.getLogger('jaeger_tracing')
 
@@ -51,8 +53,8 @@ class Tracer(opentracing.Tracer):
     def __init__(
         self,
         service_name: str,
-        reporter: BaseReporter,
-        sampler: Sampler,
+        reporter: 'BaseReporter',
+        sampler: 'Sampler',
         metrics: Optional[Metrics] = None,
         metrics_factory: Optional[MetricsFactory] = None,
         trace_id_header: str = constants.TRACE_ID_HEADER,
@@ -64,7 +66,7 @@ class Tracer(opentracing.Tracer):
         tags: Optional[Dict[str, Any]] = None,
         max_tag_value_length: int = constants.MAX_TAG_VALUE_LENGTH,
         max_traceback_length: int = constants.MAX_TRACEBACK_LENGTH,
-        throttler: Optional[Throttler] = None,
+        throttler: Optional['Throttler'] = None,
         scope_manager: Optional[ScopeManager] = None,
     ) -> None:
         self.service_name = service_name
@@ -203,15 +205,15 @@ class Tracer(opentracing.Tracer):
             if parent and parent.baggage:
                 baggage = dict(parent.baggage)  # TODO do we need to clone?
         else:
-            trace_id = parent.trace_id
+            trace_id = parent.trace_id  # type:ignore
             if rpc_server and self.one_span_per_rpc:
                 # Zipkin-style one-span-per-RPC
-                span_id = parent.span_id
+                span_id = parent.span_id  # type:ignore
                 parent_id = parent.parent_id
             else:
                 span_id = self._random_id(constants._max_id_bits)
                 parent_id = parent.span_id
-            flags = parent.flags
+            flags = parent.flags  # type:ignore
             baggage = dict(parent.baggage)  # TODO do we need to clone?
 
         span_ctx = SpanContext(trace_id=trace_id, span_id=span_id,
