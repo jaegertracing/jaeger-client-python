@@ -13,20 +13,11 @@
 # limitations under the License.
 
 import traceback
-from typing import Any, List, Tuple, Optional, TYPE_CHECKING
-from types import TracebackType
-
-from opentracing.tracer import ReferenceType, Reference
-
+from opentracing.tracer import ReferenceType
 from .constants import MAX_TRACEBACK_LENGTH
+
 import jaeger_client.thrift_gen.jaeger.ttypes as ttypes
 import jaeger_client.thrift_gen.sampling.SamplingManager as sampling_manager
-
-if TYPE_CHECKING:
-    from .span import Span
-    from .sampler import Sampler
-    from .thrift_gen.sampling.ttypes import SamplingStrategyResponse
-
 
 _max_signed_port = (1 << 15) - 1
 _max_unsigned_port = (1 << 16)
@@ -34,27 +25,25 @@ _max_signed_id = (1 << 63) - 1
 _max_unsigned_id = (1 << 64)
 
 
-def _id_to_low(big_id: Optional[int]) -> Optional[int]:
+def _id_to_low(big_id):
     """
     :param big_id: id in integer
     :return: Returns the right most 64 bits of big_id
     """
     if big_id is not None:
         return big_id & (_max_unsigned_id - 1)
-    return None
 
 
-def _id_to_high(big_id: Optional[int]) -> Optional[int]:
+def _id_to_high(big_id):
     """
     :param big_id: id in integer
     :return: Returns the left most 64 bits of big_id
     """
     if big_id is not None:
         return (big_id >> 64) & (_max_unsigned_id - 1)
-    return None
 
 
-def id_to_int(big_id: Optional[int]) -> Optional[int]:
+def id_to_int(big_id):
     if big_id is None:
         return None
     # thrift defines ID fields as i64, which is signed,
@@ -64,15 +53,15 @@ def id_to_int(big_id: Optional[int]) -> Optional[int]:
     return big_id
 
 
-def _to_string(s: str) -> str:
+def _to_string(s):
     try:
         return str(s)
     except Exception as e:
         return str(e)
 
 
-def make_tag(key: str, value: Any, max_length: int, max_traceback_length: int) -> ttypes.Tag:
-    if type(value).__name__ == 'bool':  # isinstance doesn't work on booleans
+def make_tag(key, value, max_length, max_traceback_length):
+    if type(value).__name__ == 'bool':  # isinstance doesnt work on booleans
         return _make_bool_tag(
             key=key,
             value=value
@@ -101,19 +90,19 @@ def make_tag(key: str, value: Any, max_length: int, max_traceback_length: int) -
         )
 
 
-def _make_traceback_tag(key: str, value: TracebackType, max_length: int) -> ttypes.Tag:
+def _make_traceback_tag(key, value, max_length):
     key = _to_string(key)
-    traceback_string = ''.join(traceback.format_tb(value))
-    if len(traceback_string) > max_length:
-        traceback_string = traceback_string[:max_length]
+    value = ''.join(traceback.format_tb(value))
+    if len(value) > max_length:
+        value = value[:max_length]
     return ttypes.Tag(
         key=key,
-        vStr=traceback_string,
+        vStr=value,
         vType=ttypes.TagType.STRING,
     )
 
 
-def _make_string_tag(key: str, value: str, max_length: int) -> ttypes.Tag:
+def _make_string_tag(key, value, max_length):
     key = _to_string(key)
     value = _to_string(value)
     if len(value) > max_length:
@@ -125,7 +114,7 @@ def _make_string_tag(key: str, value: str, max_length: int) -> ttypes.Tag:
     )
 
 
-def _make_long_tag(key: str, value: int) -> ttypes.Tag:
+def _make_long_tag(key, value):
     key = _to_string(key)
     return ttypes.Tag(
         key=key,
@@ -134,7 +123,7 @@ def _make_long_tag(key: str, value: int) -> ttypes.Tag:
     )
 
 
-def _make_double_tag(key: str, value: float) -> ttypes.Tag:
+def _make_double_tag(key, value):
     key = _to_string(key)
     return ttypes.Tag(
         key=key,
@@ -143,7 +132,7 @@ def _make_double_tag(key: str, value: float) -> ttypes.Tag:
     )
 
 
-def _make_bool_tag(key: str, value: bool) -> ttypes.Tag:
+def _make_bool_tag(key, value):
     key = _to_string(key)
     return ttypes.Tag(
         key=key,
@@ -152,7 +141,7 @@ def _make_bool_tag(key: str, value: bool) -> ttypes.Tag:
     )
 
 
-def timestamp_micros(ts: float) -> int:
+def timestamp_micros(ts):
     """
     Convert a float Unix timestamp from time.time() into a int value
     in microseconds, as required by Zipkin protocol.
@@ -162,7 +151,7 @@ def timestamp_micros(ts: float) -> int:
     return int(ts * 1000000)
 
 
-def make_tags(tags: dict, max_length: int, max_traceback_length: int) -> List[ttypes.Tag]:
+def make_tags(tags, max_length, max_traceback_length):
     # TODO extend to support non-string tag values
     return [
         make_tag(key=k, value=v, max_length=max_length,
@@ -171,9 +160,7 @@ def make_tags(tags: dict, max_length: int, max_traceback_length: int) -> List[tt
     ]
 
 
-def make_log(
-    timestamp: float, fields: dict, max_length: int, max_traceback_length: int
-) -> ttypes.Log:
+def make_log(timestamp, fields, max_length, max_traceback_length):
     return ttypes.Log(
         timestamp=timestamp_micros(ts=timestamp),
         fields=make_tags(tags=fields, max_length=max_length,
@@ -181,7 +168,7 @@ def make_log(
     )
 
 
-def make_process(service_name: str, tags: dict, max_length: int) -> ttypes.Process:
+def make_process(service_name, tags, max_length):
     return ttypes.Process(
         serviceName=service_name,
         tags=make_tags(tags=tags, max_length=max_length,
@@ -189,13 +176,13 @@ def make_process(service_name: str, tags: dict, max_length: int) -> ttypes.Proce
     )
 
 
-def make_ref_type(span_ref_type: str) -> int:
+def make_ref_type(span_ref_type):
     if span_ref_type == ReferenceType.FOLLOWS_FROM:
         return ttypes.SpanRefType.FOLLOWS_FROM
     return ttypes.SpanRefType.CHILD_OF
 
 
-def make_references(references: Optional[List[Reference]]) -> Optional[List[ttypes.SpanRef]]:
+def make_references(references):
     if not references:
         return None
     list_of_span_refs = list()
@@ -209,7 +196,7 @@ def make_references(references: Optional[List[Reference]]) -> Optional[List[ttyp
     return list_of_span_refs
 
 
-def make_jaeger_batch(spans: List['Span'], process: ttypes.Process) -> ttypes.Batch:
+def make_jaeger_batch(spans, process):
     batch = ttypes.Batch(
         spans=[],
         process=process,
@@ -233,9 +220,7 @@ def make_jaeger_batch(spans: List['Span'], process: ttypes.Process) -> ttypes.Ba
     return batch
 
 
-def parse_sampling_strategy(
-    response: 'SamplingStrategyResponse'
-) -> Tuple[Optional['Sampler'], Optional[str]]:
+def parse_sampling_strategy(response):
     """
     Parse SamplingStrategyResponse and converts to a Sampler.
 
