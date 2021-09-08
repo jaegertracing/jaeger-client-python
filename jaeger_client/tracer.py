@@ -203,15 +203,15 @@ class Tracer(opentracing.Tracer):
             if parent and parent.baggage:
                 baggage = dict(parent.baggage)  # TODO do we need to clone?
         else:
-            trace_id = parent.trace_id  # type:ignore
+            trace_id = parent.trace_id
             if rpc_server and self.one_span_per_rpc:
                 # Zipkin-style one-span-per-RPC
-                span_id = parent.span_id  # type:ignore
+                span_id = parent.span_id
                 parent_id = parent.parent_id
             else:
                 span_id = self._random_id(constants._max_id_bits)
                 parent_id = parent.span_id
-            flags = parent.flags  # type:ignore
+            flags = parent.flags
             baggage = dict(parent.baggage)  # TODO do we need to clone?
 
         span_ctx = SpanContext(trace_id=trace_id, span_id=span_id,

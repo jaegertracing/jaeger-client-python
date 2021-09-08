@@ -15,7 +15,6 @@
 from __future__ import absolute_import
 
 import opentracing
-from typing import Optional
 
 
 class SpanContext(opentracing.SpanContext):
@@ -23,14 +22,7 @@ class SpanContext(opentracing.SpanContext):
                  '_baggage', '_debug_id']
 
     """Implements opentracing.SpanContext"""
-    def __init__(
-        self, trace_id: Optional[int],
-        span_id: Optional[int],
-        parent_id: Optional[int],
-        flags: Optional[int],
-        baggage: Optional[dict] = None,
-        debug_id: Optional[str] = None
-    ) -> None:
+    def __init__(self, trace_id, span_id, parent_id, flags, baggage=None, debug_id=None):
         self.trace_id = trace_id
         self.span_id = span_id
         self.parent_id = parent_id or None
@@ -39,10 +31,10 @@ class SpanContext(opentracing.SpanContext):
         self._debug_id = debug_id
 
     @property
-    def baggage(self) -> dict:
+    def baggage(self):
         return self._baggage or opentracing.SpanContext.EMPTY_BAGGAGE
 
-    def with_baggage_item(self, key: str, value: Optional[str]) -> 'SpanContext':
+    def with_baggage_item(self, key, value):
         baggage = dict(self._baggage)
         if value is not None:
             baggage[key] = value
@@ -57,20 +49,20 @@ class SpanContext(opentracing.SpanContext):
         )
 
     @property
-    def has_trace(self) -> bool:
-        return self.flags is not None and self.trace_id and self.span_id  # type: ignore
+    def has_trace(self):
+        return self.trace_id and self.span_id and self.flags is not None
 
     @property
-    def is_debug_id_container_only(self) -> bool:
+    def is_debug_id_container_only(self):
         """Deprecated, not used by Jaeger."""
         return not self.trace_id and self._debug_id is not None
 
     @property
-    def debug_id(self) -> Optional[str]:
+    def debug_id(self):
         return self._debug_id
 
     @staticmethod
-    def with_debug_id(debug_id: str) -> 'SpanContext':
+    def with_debug_id(debug_id):
         """Deprecated, not used by Jaeger."""
         ctx = SpanContext(
             trace_id=None, span_id=None, parent_id=None, flags=None
