@@ -37,9 +37,9 @@ from .span import Span, SAMPLED_FLAG, DEBUG_FLAG
 from .span_context import SpanContext
 from .metrics import Metrics, LegacyMetricsFactory, MetricsFactory
 from .utils import local_ip
-from .throttler import Throttler
 from .reporter import BaseReporter
 from .sampler import Sampler
+from .throttler import Throttler
 
 logger = logging.getLogger('jaeger_tracing')
 
@@ -64,7 +64,7 @@ class Tracer(opentracing.Tracer):
         tags: Optional[Dict[str, Any]] = None,
         max_tag_value_length: int = constants.MAX_TAG_VALUE_LENGTH,
         max_traceback_length: int = constants.MAX_TRACEBACK_LENGTH,
-        throttler: Optional['Throttler'] = None,
+        throttler: Optional[Throttler] = None,
         scope_manager: Optional[ScopeManager] = None,
     ) -> None:
         self.service_name = service_name
