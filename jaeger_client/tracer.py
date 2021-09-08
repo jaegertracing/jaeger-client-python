@@ -51,8 +51,8 @@ class Tracer(opentracing.Tracer):
     def __init__(
         self,
         service_name: str,
-        reporter: 'BaseReporter',
-        sampler: 'Sampler',
+        reporter: BaseReporter,
+        sampler: Sampler,
         metrics: Optional[Metrics] = None,
         metrics_factory: Optional[MetricsFactory] = None,
         trace_id_header: str = constants.TRACE_ID_HEADER,
