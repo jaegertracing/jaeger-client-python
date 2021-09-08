@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
 
 # This is because thrift for python doesn't have 'package_prefix'.
 # The thrift compiled libraries refer to each other relative to their subdir.
