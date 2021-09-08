@@ -17,13 +17,16 @@ from __future__ import absolute_import
 import logging
 import os
 import threading
+from typing import Any, Optional, Dict
 
 import opentracing
 from opentracing.propagation import Format
+from opentracing.scope_manager import ScopeManager
 from . import Tracer
 from .local_agent_net import LocalAgentSender
-from .throttler import RemoteThrottler
+from .throttler import RemoteThrottler, Throttler
 from .reporter import (
+    BaseReporter,
     Reporter,
     CompositeReporter,
     LoggingReporter,
@@ -84,8 +87,15 @@ class Config(object):
     _initialized = False
     _initialized_lock = threading.Lock()
 
-    def __init__(self, config, metrics=None, service_name=None, metrics_factory=None,
-                 validate=False, scope_manager=None):
+    def __init__(
+        self,
+        config: dict,
+        metrics: Optional[Metrics] = None,
+        service_name: Optional[str] = None,
+        metrics_factory: Optional[MetricsFactory] = None,
+        validate: bool = False,
+        scope_manager: Optional[ScopeManager] = None
+    ) -> None:
         """
         :param metrics: an instance of Metrics class, or None. This parameter
             has been deprecated, please use metrics_factory instead.
@@ -138,42 +148,43 @@ class Config(object):
                              format(','.join(unexpected_config_keys)))
 
     @property
-    def service_name(self):
+    def service_name(self) -> str:
         return self._service_name
 
     @property
-    def metrics(self):
-        return self._metrics
+    def metrics(self) -> None:
+        """Deprecated."""
+        return None
 
     @property
-    def error_reporter(self):
+    def error_reporter(self) -> ErrorReporter:
         return self._error_reporter
 
     @property
-    def enabled(self):
+    def enabled(self) -> bool:
         return get_boolean(self.config.get('enabled', True), True)
 
     @property
-    def reporter_batch_size(self):
+    def reporter_batch_size(self) -> int:
         return int(self.config.get('reporter_batch_size', 10))
 
     @property
-    def reporter_queue_size(self):
+    def reporter_queue_size(self) -> int:
         return int(self.config.get('reporter_queue_size', 100))
 
     @property
-    def logging(self):
+    def logging(self) -> bool:
         return get_boolean(self.config.get('logging', False), False)
 
     @property
-    def trace_id_header(self):
+    def trace_id_header(self) -> str:
         """
         :return: Returns the name of the HTTP header used to encode trace ID
         """
         return self.config.get('trace_id_header', TRACE_ID_HEADER)
 
     @property
-    def generate_128bit_trace_id(self):
+    def generate_128bit_trace_id(self) -> bool:
         """
         :return: Returns boolean value to indicate if 128bit trace_id
         generation is enabled
@@ -183,7 +194,7 @@ class Config(object):
         return os.getenv('JAEGER_TRACEID_128BIT') == 'true'
 
     @property
-    def baggage_header_prefix(self):
+    def baggage_header_prefix(self) -> str:
         """
         :return: Returns the prefix for HTTP headers used to record baggage
         items
@@ -191,7 +202,7 @@ class Config(object):
         return self.config.get('baggage_header_prefix', BAGGAGE_HEADER_PREFIX)
 
     @property
-    def debug_id_header(self):
+    def debug_id_header(self) -> str:
         """
         :return: Returns the name of HTTP header or a TextMap carrier key
         which, if found in the carrier, forces the trace to be sampled as
@@ -202,7 +213,7 @@ class Config(object):
         return self.config.get('debug_id_header', DEBUG_ID_HEADER_KEY)
 
     @property
-    def max_tag_value_length(self):
+    def max_tag_value_length(self) -> int:
         """
         :return: Returns max allowed tag value length. Longer values will
         be truncated.
@@ -210,7 +221,7 @@ class Config(object):
         return self.config.get('max_tag_value_length', MAX_TAG_VALUE_LENGTH)
 
     @property
-    def max_traceback_length(self):
+    def max_traceback_length(self) -> int:
         """
         :return: Returns max allowed traceback length when logging an error.
         Longer values will be truncated.
@@ -218,7 +229,7 @@ class Config(object):
         return self.config.get('max_traceback_length', MAX_TRACEBACK_LENGTH)
 
     @property
-    def sampler(self):
+    def sampler(self) -> Optional[Sampler]:
         sampler_config = self.config.get('sampler', {})
         if isinstance(sampler_config, Sampler):
             return sampler_config
@@ -237,68 +248,68 @@ class Config(object):
         raise ValueError('Unknown sampler type %s' % sampler_type)
 
     @property
-    def sampling_refresh_interval(self):
+    def sampling_refresh_interval(self) -> int:
         return self.config.get('sampling_refresh_interval',
                                DEFAULT_SAMPLING_INTERVAL)
 
     @property
-    def reporter_flush_interval(self):
+    def reporter_flush_interval(self) -> int:
         return self.config.get('reporter_flush_interval',
                                DEFAULT_FLUSH_INTERVAL)
 
-    def local_agent_group(self):
+    def local_agent_group(self) -> Optional[dict]:
         return self.config.get('local_agent', None)
 
     @property
-    def local_agent_enabled(self):
+    def local_agent_enabled(self) -> bool:
         # noinspection PyBroadException
         try:
-            return get_boolean(self.local_agent_group().get('enabled',
+            return get_boolean(self.local_agent_group().get('enabled',  # type:ignore
                                LOCAL_AGENT_DEFAULT_ENABLED),
                                LOCAL_AGENT_DEFAULT_ENABLED)
         except:  # noqa: E722
             return LOCAL_AGENT_DEFAULT_ENABLED
 
     @property
-    def local_agent_sampling_port(self):
+    def local_agent_sampling_port(self) -> int:
         # noinspection PyBroadException
         try:
-            return int(self.local_agent_group()['sampling_port'])
+            return int(self.local_agent_group()['sampling_port'])  # type:ignore
         except:  # noqa: E722
             return DEFAULT_SAMPLING_PORT
 
     @property
-    def local_agent_reporting_port(self):
+    def local_agent_reporting_port(self) -> int:
         # noinspection PyBroadException
         try:
-            return int(self.local_agent_group()['reporting_port'])
+            return int(self.local_agent_group()['reporting_port'])  # type:ignore
         except:  # noqa: E722
             pass
 
         try:
-            return int(os.getenv('JAEGER_AGENT_PORT'))
+            return int(os.getenv('JAEGER_AGENT_PORT'))  # type:ignore
         except:  # noqa: E722
             return DEFAULT_REPORTING_PORT
 
     @property
-    def local_agent_reporting_host(self):
+    def local_agent_reporting_host(self) -> str:
         # noinspection PyBroadException
         try:
-            return self.local_agent_group()['reporting_host']
+            return self.local_agent_group()['reporting_host']  # type:ignore
         except:  # noqa: E722
             pass
 
-        if os.getenv('JAEGER_AGENT_HOST') is not None:
-            return os.getenv('JAEGER_AGENT_HOST')
+        if 'JAEGER_AGENT_HOST' in os.environ:
+            return os.environ['JAEGER_AGENT_HOST']
         else:
             return DEFAULT_REPORTING_HOST
 
     @property
-    def max_operations(self):
+    def max_operations(self) -> Optional[Any]:
         return self.config.get('max_operations', None)
 
     @property
-    def tags(self):
+    def tags(self) -> Dict[str, Any]:
         """
         :return: Returns tags from config and `JAEGER_TAGS` environment variable
         to use as process-wide tracer tags
@@ -312,7 +323,7 @@ class Config(object):
         return tags
 
     @property
-    def propagation(self):
+    def propagation(self) -> Dict[str, Any]:
         propagation = self.config.get('propagation')
         if propagation == 'b3':
             # replace the codec with a B3 enabled instance
@@ -321,11 +332,11 @@ class Config(object):
             )}
         return {}
 
-    def throttler_group(self):
+    def throttler_group(self) -> Optional[Any]:
         return self.config.get('throttler', None)
 
     @property
-    def throttler_port(self):
+    def throttler_port(self) -> Optional[int]:
         throttler_config = self.throttler_group()
         if throttler_config is None:
             return None
@@ -336,7 +347,7 @@ class Config(object):
             return DEFAULT_THROTTLER_PORT
 
     @property
-    def throttler_refresh_interval(self):
+    def throttler_refresh_interval(self) -> Optional[int]:
         throttler_config = self.throttler_group()
         if throttler_config is None:
             return None
@@ -347,11 +358,11 @@ class Config(object):
             return DEFAULT_THROTTLER_REFRESH_INTERVAL
 
     @staticmethod
-    def initialized():
+    def initialized() -> bool:
         with Config._initialized_lock:
             return Config._initialized
 
-    def initialize_tracer(self, io_loop=None):
+    def initialize_tracer(self, io_loop: Optional[Any] = None) -> Optional[Tracer]:
         """
         Initialize Jaeger Tracer based on the passed `jaeger_client.Config`.
         Save it to `opentracing.tracer` global variable.
@@ -361,7 +372,7 @@ class Config(object):
         with Config._initialized_lock:
             if Config._initialized:
                 logger.warning('Jaeger tracer already initialized, skipping')
-                return
+                return None
             Config._initialized = True
 
         tracer = self.new_tracer(io_loop)
@@ -369,7 +380,7 @@ class Config(object):
         self._initialize_global_tracer(tracer=tracer)
         return tracer
 
-    def new_tracer(self, io_loop=None):
+    def new_tracer(self, io_loop: Optional[Any] = None) -> Tracer:
         """
         Create a new Jaeger Tracer based on the passed `jaeger_client.Config`.
         Does not set `opentracing.tracer` global variable.
@@ -387,7 +398,7 @@ class Config(object):
                 max_operations=self.max_operations)
         logger.info('Using sampler %s', sampler)
 
-        reporter = Reporter(
+        reporter: BaseReporter = Reporter(
             channel=channel,
             queue_capacity=self.reporter_queue_size,
             batch_size=self.reporter_batch_size,
@@ -399,6 +410,7 @@ class Config(object):
         if self.logging:
             reporter = CompositeReporter(reporter, LoggingReporter(logger))
 
+        throttler: Optional[Throttler]
         if not self.throttler_group() is None:
             throttler = RemoteThrottler(
                 channel,
@@ -416,7 +428,9 @@ class Config(object):
             throttler=throttler,
         )
 
-    def create_tracer(self, reporter, sampler, throttler=None):
+    def create_tracer(
+        self, reporter: BaseReporter, sampler: Sampler, throttler: Optional[Throttler] = None
+    ) -> Tracer:
         return Tracer(
             service_name=self.service_name,
             reporter=reporter,
