@@ -17,10 +17,9 @@ import struct
 from logging import Logger
 
 import time
-from typing import TYPE_CHECKING, Optional, Any
+from typing import Optional, Any
 
-if TYPE_CHECKING:
-    from .metrics import Metrics
+from .metrics import Metrics
 
 
 class ErrorReporter(object):

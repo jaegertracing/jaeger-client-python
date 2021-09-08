@@ -22,7 +22,7 @@ import random
 import sys
 import time
 import opentracing
-from typing import TYPE_CHECKING, Any, Dict, Optional, List, Union
+from typing import Any, Dict, Optional, List, Union
 
 from opentracing import Format, UnsupportedFormatException
 from opentracing.ext import tags as ext_tags
@@ -37,11 +37,9 @@ from .span import Span, SAMPLED_FLAG, DEBUG_FLAG
 from .span_context import SpanContext
 from .metrics import Metrics, LegacyMetricsFactory, MetricsFactory
 from .utils import local_ip
-
-if TYPE_CHECKING:
-    from .throttler import Throttler
-    from .reporter import BaseReporter
-    from .sampler import Sampler
+from .throttler import Throttler
+from .reporter import BaseReporter
+from .sampler import Sampler
 
 logger = logging.getLogger('jaeger_tracing')
 
