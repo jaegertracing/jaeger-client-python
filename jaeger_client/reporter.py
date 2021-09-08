@@ -16,6 +16,7 @@ from __future__ import absolute_import
 
 import logging
 import threading
+from typing import List, Dict, Optional, Any
 
 import tornado.gen
 import tornado.ioloop
@@ -25,8 +26,9 @@ from tornado.concurrent import Future
 from .constants import DEFAULT_FLUSH_INTERVAL
 from . import thrift
 from . import ioloop_util
-from .metrics import Metrics, LegacyMetricsFactory
+from .metrics import Metrics, LegacyMetricsFactory, MetricsFactory
 from .utils import ErrorReporter
+from .span import Span
 
 from thrift.protocol import TCompactProtocol
 from jaeger_client.thrift_gen.agent import Agent
@@ -36,55 +38,63 @@ default_logger = logging.getLogger('jaeger_tracing')
 
 class BaseReporter(object):
     """Abstract class."""
-    def report_span(self, span):
+    def report_span(self, span: Span) -> None:
         raise NotImplementedError()
 
-    def set_process(self, service_name, tags, max_length):
+    def set_process(self, service_name: str, tags: Any, max_length: int) -> None:
         pass
 
-    def close(self):
-        fut = Future()
+    def close(self) -> Future:
+        fut: Future = Future()
         fut.set_result(True)
         return fut
 
 
 class NullReporter(BaseReporter):
     """Ignores all spans."""
-    def report_span(self, span):
+    def report_span(self, span: Span) -> None:
         pass
 
 
 class InMemoryReporter(BaseReporter):
     """Stores spans in memory and returns them via get_spans()."""
-    def __init__(self):
+    def __init__(self) -> None:
         super(InMemoryReporter, self).__init__()
-        self.spans = []
+        self.spans: List[Span] = []
         self.lock = threading.Lock()
 
-    def report_span(self, span):
+    def report_span(self, span: Span) -> None:
         with self.lock:
             self.spans.append(span)
 
-    def get_spans(self):
+    def get_spans(self) -> List[Span]:
         with self.lock:
             return self.spans[:]
 
 
 class LoggingReporter(BaseReporter):
     """Logs all spans."""
-    def __init__(self, logger=None):
+    def __init__(self, logger: Optional[logging.Logger] = None) -> None:
         self.logger = logger if logger else default_logger
 
-    def report_span(self, span):
+    def report_span(self, span: Span) -> None:
         self.logger.info('Reporting span %s', span)
 
 
 class Reporter(BaseReporter):
     """Receives completed spans from Tracer and submits them out of process."""
-    def __init__(self, channel, queue_capacity=100, batch_size=10,
-                 flush_interval=DEFAULT_FLUSH_INTERVAL, io_loop=None,
-                 error_reporter=None, metrics=None, metrics_factory=None,
-                 **kwargs):
+    def __init__(
+        self,
+        channel: Any,
+        queue_capacity: int = 100,
+        batch_size: int = 10,
+        flush_interval: Optional[float] = DEFAULT_FLUSH_INTERVAL,
+        io_loop: Any = None,
+        error_reporter: Optional[ErrorReporter] = None,
+        metrics: Optional[Metrics] = None,
+        metrics_factory: Optional[MetricsFactory] = None,
+        **kwargs: Any
+    ) -> None:
         """
         :param channel: a communication channel to jaeger-agent
         :param queue_capacity: how many spans we can hold in memory before
@@ -119,7 +129,7 @@ class Reporter(BaseReporter):
         if self.io_loop is None:
             self.logger.error('Jaeger Reporter has no IOLoop')
         else:
-            self.queue = tornado.queues.Queue(maxsize=queue_capacity)
+            self.queue: tornado.queues.Queue = tornado.queues.Queue(maxsize=queue_capacity)
             self.stop = object()
             self.stopped = False
             self.stop_lock = Lock()
@@ -129,13 +139,13 @@ class Reporter(BaseReporter):
         self._process_lock = Lock()
         self._process = None
 
-    def set_process(self, service_name, tags, max_length):
+    def set_process(self, service_name: str, tags: Dict, max_length: int) -> None:
         with self._process_lock:
             self._process = thrift.make_process(
                 service_name=service_name, tags=tags, max_length=max_length,
             )
 
-    def report_span(self, span):
+    def report_span(self, span: Span) -> None:
         self.io_loop.add_callback(self._report_span_from_ioloop, span)
 
     def _report_span_from_ioloop(self, span):
@@ -179,7 +189,7 @@ class Reporter(BaseReporter):
         self.logger.info('Span publisher exited')
 
     # method for protocol factory
-    def getProtocol(self, transport):
+    def getProtocol(self, transport: Any) -> TCompactProtocol:
         """
         Implements Thrift ProtocolFactory interface
         :param: transport:
@@ -216,7 +226,7 @@ class Reporter(BaseReporter):
         """
         return self.agent.emitBatch(batch)
 
-    def close(self):
+    def close(self) -> Future:
         """
         Ensure that all spans from the queue are submitted.
         Returns Future that will be completed once the queue is empty.
@@ -235,7 +245,7 @@ class Reporter(BaseReporter):
 class ReporterMetrics(object):
     """Reporter specific metrics."""
 
-    def __init__(self, metrics_factory):
+    def __init__(self, metrics_factory: MetricsFactory) -> None:
         self.reporter_success = \
             metrics_factory.create_counter(name='jaeger:reporter_spans', tags={'result': 'ok'})
         self.reporter_failure = \
@@ -248,22 +258,22 @@ class ReporterMetrics(object):
 
 class CompositeReporter(BaseReporter):
     """Delegates reporting to one or more underlying reporters."""
-    def __init__(self, *reporters):
+    def __init__(self, *reporters: BaseReporter) -> None:
         self.reporters = reporters
 
-    def set_process(self, service_name, tags, max_length):
+    def set_process(self, service_name: str, tags: Any, max_length: int) -> None:
         for reporter in self.reporters:
             reporter.set_process(service_name, tags, max_length)
 
-    def report_span(self, span):
+    def report_span(self, span: Span) -> None:
         for reporter in self.reporters:
             reporter.report_span(span)
 
-    def close(self):
+    def close(self) -> Future:
         from threading import Lock
         lock = Lock()
         count = [0]
-        future = Future()
+        future: Future = Future()
 
         def on_close(_):
             with lock:

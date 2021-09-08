@@ -14,9 +14,10 @@
 
 import socket
 import struct
+from logging import Logger
 
 import time
-from typing import Optional
+from typing import Any, Optional
 
 
 class ErrorReporter(object):
@@ -27,12 +28,14 @@ class ErrorReporter(object):
     N.B. metrics will be deprecated in the future
     """
 
-    def __init__(self, metrics, logger=None, log_interval_minutes=15):
+    def __init__(
+        self, metrics: Any, logger: Optional[Logger] = None, log_interval_minutes: int = 15
+    ):
         self.logger = logger
         self.log_interval_minutes = log_interval_minutes
         self._last_error_reported_at = time.time()
 
-    def error(self, *args):
+    def error(self, *args: Any) -> None:
         if self.logger is None:
             return
 
