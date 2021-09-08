@@ -19,8 +19,6 @@ from logging import Logger
 import time
 from typing import Optional, Any
 
-from .metrics import Metrics
-
 
 class ErrorReporter(object):
     """
@@ -32,7 +30,7 @@ class ErrorReporter(object):
 
     def __init__(
         self,
-        metrics: Optional['Metrics'],
+        metrics: Optional[Any],  # not used
         logger: Optional[Logger] = None,
         log_interval_minutes: int = 15
     ) -> None:
