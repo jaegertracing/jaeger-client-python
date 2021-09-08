@@ -152,8 +152,9 @@ class Config(object):
         return self._service_name
 
     @property
-    def metrics(self) -> Optional[Metrics]:
-        return self._metrics  # type:ignore
+    def metrics(self) -> None:
+        """Deprecated."""
+        return None
 
     @property
     def error_reporter(self) -> ErrorReporter:
