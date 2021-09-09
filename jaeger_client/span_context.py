@@ -29,7 +29,7 @@ class SpanContext(opentracing.SpanContext):
         parent_id: Optional[int],
         flags: int,
         baggage: Optional[Dict[str, str]] = None,
-        debug_id: Optional[int] = None
+        debug_id: Optional[str] = None
     ) -> None:
         self.trace_id = trace_id
         self.span_id = span_id
