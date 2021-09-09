@@ -199,7 +199,7 @@ class Span(opentracing.Span):
         return self.context.parent_id
 
     @property
-    def flags(self) -> Any:
+    def flags(self) -> int:
         return self.context.flags
 
     def __repr__(self) -> str:
