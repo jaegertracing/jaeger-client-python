@@ -24,6 +24,7 @@ from .tracer import Reference
 from . import codecs, thrift
 from .constants import SAMPLED_FLAG, DEBUG_FLAG
 from .span_context import SpanContext
+import jaeger_client.thrift_gen.jaeger.ttypes as ttypes
 
 if TYPE_CHECKING:
     from .tracer import Tracer
