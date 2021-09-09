@@ -217,7 +217,7 @@ class Tracer(opentracing.Tracer):
                                parent_id=parent_id, flags=flags,
                                baggage=baggage)
         span = Span(context=span_ctx, tracer=self,
-                    operation_name=operation_name,  # type:ignore
+                    operation_name=operation_name or '',
                     tags=tags, start_time=start_time, references=valid_references)
 
         self._emit_span_metrics(span=span, join=rpc_server)
