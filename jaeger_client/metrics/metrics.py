@@ -21,7 +21,9 @@ class MetricsFactory(object):
     def _noop(self, *args):
         pass
 
-    def create_counter(self, name: str, tags: Optional[Dict[str, str]] = None) -> Callable:
+    def create_counter(
+        self, name: str, tags: Optional[Dict[str, str]] = None
+    ) -> Callable[[int], None]:
         """
         Generates a new counter from the given name and tags and returns
         a callable function used to increment the counter.
@@ -43,7 +45,9 @@ class MetricsFactory(object):
         """
         return self._noop
 
-    def create_gauge(self, name: str, tags: Optional[Dict[str, str]] = None) -> Callable:
+    def create_gauge(
+        self, name: str, tags: Optional[Dict[str, str]] = None
+    ) -> Callable[[float], None]:
         """
         Generates a new gauge from the given name and tags and returns
         a callable function used to update the gauge.
@@ -61,7 +65,9 @@ class LegacyMetricsFactory(MetricsFactory):
     def __init__(self, metrics: 'Metrics') -> None:
         self._metrics = metrics
 
-    def create_counter(self, name: str, tags: Optional[Dict[str, str]] = None) -> Callable:
+    def create_counter(
+        self, name: str, tags: Optional[Dict[str, str]] = None
+    ) -> Callable[[int], None]:
         key = self._get_key(name, tags)
 
         def increment(value: int) -> Optional[Any]:
@@ -76,7 +82,9 @@ class LegacyMetricsFactory(MetricsFactory):
             return self._metrics.timing(key, value / 1000.0)
         return record
 
-    def create_gauge(self, name: str, tags: Optional[Dict[str, str]] = None) -> Callable:
+    def create_gauge(
+        self, name: str, tags: Optional[Dict[str, str]] = None
+    ) -> Callable[[float], None]:
         key = self._get_key(name, tags)
 
         def update(value):

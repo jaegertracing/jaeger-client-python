@@ -56,14 +56,18 @@ class PrometheusMetricsFactory(MetricsFactory):
 
         return metric
 
-    def create_counter(self, name: str, tags: Optional[Dict[str, Any]] = None) -> Callable:
+    def create_counter(
+        self, name: str, tags: Optional[Dict[str, Any]] = None
+    ) -> Callable[[int], None]:
         counter = self._get_metric(Counter, name, tags)
 
         def increment(value):
             counter.inc(value)
         return increment
 
-    def create_gauge(self, name: str, tags: Optional[Dict[str, Any]] = None) -> Callable:
+    def create_gauge(
+        self, name: str, tags: Optional[Dict[str, Any]] = None
+    ) -> Callable[[float], None]:
         gauge = self._get_metric(Gauge, name, tags)
 
         def update(value):
