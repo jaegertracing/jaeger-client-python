@@ -195,7 +195,7 @@ class Span(opentracing.Span):
         return self.context.span_id
 
     @property
-    def parent_id(self) -> int:
+    def parent_id(self) -> Optional[int]:
         return self.context.parent_id
 
     @property
