@@ -66,7 +66,7 @@ class SpanContext(opentracing.SpanContext):
         return not self.trace_id and self._debug_id is not None
 
     @property
-    def debug_id(self) -> Optional[int]:
+    def debug_id(self) -> Optional[str]:
         return self._debug_id
 
     @staticmethod
