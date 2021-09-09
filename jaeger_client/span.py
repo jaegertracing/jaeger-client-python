@@ -72,7 +72,7 @@ class Span(opentracing.Span):
             self.operation_name = operation_name
         return self
 
-    def finish(self, finish_time: float = None) -> None:
+    def finish(self, finish_time: Optional[float] = None) -> None:
         """Indicate that the work represented by this span has been completed
         or terminated, and is ready to be sent to the Reporter.
 
