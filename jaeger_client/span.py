@@ -45,7 +45,7 @@ class Span(opentracing.Span):
         operation_name: str,
         tags: Optional[Dict[str, Any]] = None,
         start_time: Optional[float] = None,
-        references: Optional[Reference] = None
+        references: Optional[List[Reference]] = None
     ) -> None:
         super(Span, self).__init__(context=context, tracer=tracer)
         self.operation_name = operation_name
