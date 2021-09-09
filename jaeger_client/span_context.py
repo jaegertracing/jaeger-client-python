@@ -42,7 +42,7 @@ class SpanContext(opentracing.SpanContext):
     def baggage(self) -> Dict[str, str]:
         return self._baggage or opentracing.SpanContext.EMPTY_BAGGAGE
 
-    def with_baggage_item(self, key: str, value: Optional[Any]) -> 'SpanContext':
+    def with_baggage_item(self, key: str, value: Optional[str]) -> 'SpanContext':
         baggage = dict(self._baggage)
         if value is not None:
             baggage[key] = value
