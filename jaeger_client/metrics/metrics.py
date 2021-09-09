@@ -34,7 +34,9 @@ class MetricsFactory(object):
         """
         return self._noop
 
-    def create_timer(self, name: str, tags: Optional[Dict[str, str]] = None) -> Callable:
+    def create_timer(
+        self, name: str, tags: Optional[Dict[str, str]] = None
+    ) -> Callable[[float], None]:
         """
         Generates a new timer from the given name and tags and returns
         a callable function used to record a float duration in microseconds.
@@ -74,7 +76,9 @@ class LegacyMetricsFactory(MetricsFactory):
             return self._metrics.count(key, value)
         return increment
 
-    def create_timer(self, name: str, tags: Optional[Dict[str, str]] = None) -> Callable:
+    def create_timer(
+        self, name: str, tags: Optional[Dict[str, str]] = None
+    ) -> Callable[[float], None]:
         key = self._get_key(name, tags)
 
         def record(value):
