@@ -16,6 +16,7 @@ import json
 import logging
 import random
 from threading import Lock
+from typing import Any, Optional
 
 from tornado.ioloop import PeriodicCallback
 
@@ -56,17 +57,17 @@ class RemoteThrottler(Throttler):
         - error_reporter: ErrorReporter instance
     """
 
-    def __init__(self, channel, service_name, **kwargs):
+    def __init__(self, channel: Any, service_name: str, **kwargs: Any) -> None:
         self.channel = channel
         self.service_name = service_name
-        self.client_id = None
+        self.client_id: Optional[int] = None
         self.refresh_interval = \
             kwargs.get('refresh_interval', DEFAULT_THROTTLER_REFRESH_INTERVAL)
         self.logger = kwargs.get('logger', default_logger)
         metrics_factory = kwargs.get('metrics_factory', MetricsFactory())
         self.metrics = ThrottlerMetrics(metrics_factory)
         self.error_reporter = kwargs.get('error_reporter', ErrorReporter(Metrics()))
-        self.credits = {}
+        self.credits: dict = {}
         self.lock = Lock()
         self.running = True
         self.periodic = None
@@ -77,7 +78,7 @@ class RemoteThrottler(Throttler):
         else:
             self.channel.io_loop.add_callback(self._init_polling)
 
-    def is_allowed(self, operation):
+    def is_allowed(self, operation: str) -> bool:
         with self.lock:
             if operation not in self.credits:
                 self.credits[operation] = 0.0
@@ -91,7 +92,7 @@ class RemoteThrottler(Throttler):
             self.credits[operation] = value - MINIMUM_CREDITS
             return True
 
-    def set_client_id(self, client_id):
+    def set_client_id(self, client_id: int) -> None:
         with self.lock:
             if self.client_id is None:
                 self.client_id = client_id
@@ -184,7 +185,7 @@ class RemoteThrottler(Throttler):
                 self.credits[op] += balance
             self.logger.debug('credits = %s', self.credits)
 
-    def close(self):
+    def close(self) -> None:
         with self.lock:
             self.running = False
             if self.periodic:
@@ -196,7 +197,7 @@ class ThrottlerMetrics(object):
     Metrics specific to throttler.
     """
 
-    def __init__(self, metrics_factory):
+    def __init__(self, metrics_factory: MetricsFactory) -> None:
         self.throttled_debug_spans = \
             metrics_factory.create_counter(name='jaeger:throttled_debug_spans')
         self.throttler_update_success = \
