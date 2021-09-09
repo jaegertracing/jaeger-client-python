@@ -16,11 +16,18 @@
 import threading
 import time
 import logging
+from typing import TYPE_CHECKING, Any, Dict, Optional, List
 
 import opentracing
 from opentracing.ext import tags as ext_tags
+from .tracer import Reference
 from . import codecs, thrift
 from .constants import SAMPLED_FLAG, DEBUG_FLAG
+from .span_context import SpanContext
+import jaeger_client.thrift_gen.jaeger.ttypes as ttypes
+
+if TYPE_CHECKING:
+    from .tracer import Tracer
 
 logger = logging.getLogger('jaeger_tracing')
 
@@ -32,23 +39,30 @@ class Span(opentracing.Span):
                  'operation_name', 'start_time', 'end_time',
                  'logs', 'tags', 'finished', 'update_lock']
 
-    def __init__(self, context, tracer, operation_name,
-                 tags=None, start_time=None, references=None):
+    def __init__(
+        self,
+        context: SpanContext,
+        tracer: 'Tracer',
+        operation_name: str,
+        tags: Optional[Dict[str, Any]] = None,
+        start_time: Optional[float] = None,
+        references: Optional[List[Reference]] = None
+    ) -> None:
         super(Span, self).__init__(context=context, tracer=tracer)
         self.operation_name = operation_name
         self.start_time = start_time or time.time()
-        self.end_time = None
+        self.end_time: Optional[float] = None
         self.finished = False
         self.update_lock = threading.Lock()
         self.references = references
         # we store tags and logs as Thrift objects to avoid extra allocations
-        self.tags = []
-        self.logs = []
+        self.tags: List[ttypes.Tag] = []
+        self.logs: List[ttypes.Log] = []
         if tags:
             for k, v in tags.items():
                 self.set_tag(k, v)
 
-    def set_operation_name(self, operation_name):
+    def set_operation_name(self, operation_name: str) -> 'Span':
         """
         Set or change the operation name.
 
@@ -59,7 +73,7 @@ class Span(opentracing.Span):
             self.operation_name = operation_name
         return self
 
-    def finish(self, finish_time=None):
+    def finish(self, finish_time: Optional[float] = None) -> None:
         """Indicate that the work represented by this span has been completed
         or terminated, and is ready to be sent to the Reporter.
 
@@ -81,7 +95,7 @@ class Span(opentracing.Span):
 
         self.tracer.report_span(self)
 
-    def set_tag(self, key, value):
+    def set_tag(self, key: str, value: Any) -> 'Span':
         """
         :param key:
         :param value:
@@ -120,7 +134,7 @@ class Span(opentracing.Span):
             return True
         return False
 
-    def log_kv(self, key_values, timestamp=None):
+    def log_kv(self, key_values: Dict[str, Any], timestamp: Optional[float] = None) -> 'Span':
         if self.is_sampled():
             timestamp = timestamp if timestamp else time.time()
             # TODO handle exception logging, 'python.exception.type' etc.
@@ -134,7 +148,7 @@ class Span(opentracing.Span):
                 self.logs.append(log)
         return self
 
-    def set_baggage_item(self, key, value):
+    def set_baggage_item(self, key: str, value: Optional[str]) -> 'Span':
         prev_value = self.get_baggage_item(key=key)
         new_context = self.context.with_baggage_item(key=key, value=value)
         with self.update_lock:
@@ -151,45 +165,45 @@ class Span(opentracing.Span):
             self.log_kv(key_values=logs)
         return self
 
-    def get_baggage_item(self, key):
+    def get_baggage_item(self, key: str) -> Optional[str]:
         return self.context.baggage.get(key)
 
-    def is_sampled(self):
+    def is_sampled(self) -> bool:
         return self.context.flags & SAMPLED_FLAG == SAMPLED_FLAG
 
-    def is_debug(self):
+    def is_debug(self) -> bool:
         return self.context.flags & DEBUG_FLAG == DEBUG_FLAG
 
-    def is_rpc(self):
+    def is_rpc(self) -> bool:
         for tag in self.tags:
             if tag.key == ext_tags.SPAN_KIND:
                 return tag.vStr == ext_tags.SPAN_KIND_RPC_CLIENT or \
                     tag.vStr == ext_tags.SPAN_KIND_RPC_SERVER
         return False
 
-    def is_rpc_client(self):
+    def is_rpc_client(self) -> bool:
         for tag in self.tags:
             if tag.key == ext_tags.SPAN_KIND:
                 return tag.vStr == ext_tags.SPAN_KIND_RPC_CLIENT
         return False
 
     @property
-    def trace_id(self):
+    def trace_id(self) -> int:
         return self.context.trace_id
 
     @property
-    def span_id(self):
+    def span_id(self) -> int:
         return self.context.span_id
 
     @property
-    def parent_id(self):
+    def parent_id(self) -> Optional[int]:
         return self.context.parent_id
 
     @property
-    def flags(self):
+    def flags(self) -> int:
         return self.context.flags
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         c = codecs.span_context_to_string(
             trace_id=self.context.trace_id, span_id=self.context.span_id,
             parent_id=self.context.parent_id, flags=self.context.flags)

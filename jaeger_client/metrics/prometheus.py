@@ -15,14 +15,15 @@
 from jaeger_client.metrics import MetricsFactory
 from collections import defaultdict
 from prometheus_client import Counter, Gauge
+from typing import Any, Optional, Dict, Callable, DefaultDict
 
 
 class PrometheusMetricsFactory(MetricsFactory):
     """
     Provides metrics backed by Prometheus
     """
-    def __init__(self, namespace='', service_name_label=None):
-        self._cache = defaultdict(object)
+    def __init__(self, namespace: str = '', service_name_label: Optional[str] = None) -> None:
+        self._cache: DefaultDict = defaultdict(object)
         self._namespace = namespace
         self._service_name_label = service_name_label
 
@@ -55,14 +56,18 @@ class PrometheusMetricsFactory(MetricsFactory):
 
         return metric
 
-    def create_counter(self, name, tags=None):
+    def create_counter(
+        self, name: str, tags: Optional[Dict[str, Any]] = None
+    ) -> Callable[[int], None]:
         counter = self._get_metric(Counter, name, tags)
 
         def increment(value):
             counter.inc(value)
         return increment
 
-    def create_gauge(self, name, tags=None):
+    def create_gauge(
+        self, name: str, tags: Optional[Dict[str, Any]] = None
+    ) -> Callable[[float], None]:
         gauge = self._get_metric(Gauge, name, tags)
 
         def update(value):
