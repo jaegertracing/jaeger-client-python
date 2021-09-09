@@ -39,7 +39,7 @@ class SpanContext(opentracing.SpanContext):
         self._debug_id = debug_id
 
     @property
-    def baggage(self) -> Dict[str, Any]:
+    def baggage(self) -> Dict[str, str]:
         return self._baggage or opentracing.SpanContext.EMPTY_BAGGAGE
 
     def with_baggage_item(self, key: str, value: Optional[Any]) -> 'SpanContext':
