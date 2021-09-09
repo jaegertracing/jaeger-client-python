@@ -16,7 +16,7 @@
 import threading
 import time
 import logging
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, List
 
 import opentracing
 from opentracing.ext import tags as ext_tags

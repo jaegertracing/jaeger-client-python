@@ -14,7 +14,7 @@
 
 
 import opentracing
-from typing import Dict, Any, Optional
+from typing import Dict, Optional
 
 
 class SpanContext(opentracing.SpanContext):
