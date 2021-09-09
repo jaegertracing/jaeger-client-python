@@ -164,7 +164,7 @@ class Span(opentracing.Span):
             self.log_kv(key_values=logs)
         return self
 
-    def get_baggage_item(self, key: str) -> Optional[Any]:
+    def get_baggage_item(self, key: str) -> Optional[str]:
         return self.context.baggage.get(key)
 
     def is_sampled(self) -> bool:
