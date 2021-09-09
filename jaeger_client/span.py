@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 
 import opentracing
 from opentracing.ext import tags as ext_tags
+from .tracer import Reference
 from . import codecs, thrift
 from .constants import SAMPLED_FLAG, DEBUG_FLAG
 from .span_context import SpanContext
@@ -44,7 +45,7 @@ class Span(opentracing.Span):
         operation_name: str,
         tags: Optional[Dict[str, Any]] = None,
         start_time: Optional[float] = None,
-        references: Optional[Any] = None
+        references: Optional[Reference] = None
     ) -> None:
         super(Span, self).__init__(context=context, tracer=tracer)
         self.operation_name = operation_name
