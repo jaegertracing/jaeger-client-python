@@ -57,7 +57,7 @@ class Span(opentracing.Span):
         self.references = references
         # we store tags and logs as Thrift objects to avoid extra allocations
         self.tags: List[ttypes.Tag] = []
-        self.logs: list = []
+        self.logs: List[ttypes.Log] = []
         if tags:
             for k, v in tags.items():
                 self.set_tag(k, v)
