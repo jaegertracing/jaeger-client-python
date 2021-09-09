@@ -147,7 +147,7 @@ class Span(opentracing.Span):
                 self.logs.append(log)
         return self
 
-    def set_baggage_item(self, key: str, value: Optional[Any]) -> 'Span':
+    def set_baggage_item(self, key: str, value: Optional[str]) -> 'Span':
         prev_value = self.get_baggage_item(key=key)
         new_context = self.context.with_baggage_item(key=key, value=value)
         with self.update_lock:
