@@ -3,10 +3,13 @@
 History
 -------
 
-4.6.2 (unreleased)
+4.7.0 (2021-09-10)
 ------------------
 
-- Nothing changed yet.
+- Add type hints to public APIs (#319) -- kasium
+- Update prometheus_client to 0.11.0 (#327) -- kasium
+- Update python versions to 3.7+ (#325) -- kasium
+- Allow manually configured Sampler in Jaeger Config (#324) -- CARRIERE Etienne
 
 
 4.6.1 (2021-08-29)
