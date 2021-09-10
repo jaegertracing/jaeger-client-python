@@ -8,3 +8,4 @@ recursive-include config *.json
 recursive-include config *.yaml
 recursive-include docs *.rst
 recursive-include tests *.py
+recursive-include jaeger_client *.typed
