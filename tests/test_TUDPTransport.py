@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import socket
 import unittest
+from unittest import mock
+
+import pytest
 
 from jaeger_client.TUDPTransport import TUDPTransport
 
@@ -44,3 +48,33 @@ class TUDPTransportTests(unittest.TestCase):
         with self.assertRaises(Exception):
             # Something bad should happen if we send on a closed socket..
             self.t.write(b'hello')
+
+
+def test_created_socket_default_family():
+    transport = TUDPTransport('unknown-host', 12345)
+    sock = transport._create_socket()
+    assert sock.family == TUDPTransport.DEFAULT_SOCKET_FAMILY
+
+
+@pytest.mark.parametrize('addrinfo,expected_family', (
+    (
+        (
+            socket.AddressFamily.AF_INET6, socket.SocketKind.SOCK_DGRAM,
+            17, '', ('aced:a11:7e57', 12345, 0, 0)
+        ),
+        socket.AF_INET6
+    ),
+    (
+        (
+            socket.AddressFamily.AF_INET, socket.SocketKind.SOCK_DGRAM,
+            17, '', ('127.0.0.1', 12345)
+        ),
+        socket.AF_INET
+    )
+
+))
+def test_created_socket_specified_family(addrinfo, expected_family):
+    with mock.patch('socket.getaddrinfo', return_value=[addrinfo]):
+        transport = TUDPTransport('ipv6-host', 12345)
+        sock = transport._create_socket()
+        assert sock.family == expected_family
