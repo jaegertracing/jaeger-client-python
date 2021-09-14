@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-__version__ = '4.7.1.dev0'
+__version__ = '4.8.0'
 
 from .tracer import Tracer  # noqa
 from .config import Config  # noqa

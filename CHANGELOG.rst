@@ -3,10 +3,10 @@
 History
 -------
 
-4.7.1 (unreleased)
+4.8.0 (2021-09-14)
 ------------------
 
-- Nothing changed yet.
+- Add ipv6 support (#339) -- Alexander Vasin
 
 
 4.7.0 (2021-09-10)
