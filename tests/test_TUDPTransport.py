@@ -70,11 +70,15 @@ def test_created_socket_default_family():
             17, '', ('127.0.0.1', 12345)
         ),
         socket.AF_INET
+    ),
+    (
+        None,
+        TUDPTransport.DEFAULT_SOCKET_FAMILY
     )
-
 ))
 def test_created_socket_specified_family(addrinfo, expected_family):
-    with mock.patch('socket.getaddrinfo', return_value=[addrinfo]):
+    return_value = [addrinfo] if addrinfo else []
+    with mock.patch('socket.getaddrinfo', return_value=return_value):
         transport = TUDPTransport('ipv6-host', 12345)
         sock = transport._create_socket()
         assert sock.family == expected_family
