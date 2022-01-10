@@ -1,6 +1,8 @@
 [![Build Status][ci-img]][ci] [![Coverage Status][cov-img]][cov] [![PyPI Version][pypi-img]][pypi] [![Python Version][pythonversion-img]][pythonversion] [![FOSSA Status][fossa-img]][fossa]
 
-# 🛑 This library is DEPRECATED! No new pull requests are accepted except for security fixes.
+# 🛑 This library is DEPRECATED! 
+
+No new pull requests are accepted except for security fixes.
 
 We urge all users to migrate to [OpenTelemetry](https://opentelemetry.io/). Please refer to the [notice in the documentation](https://www.jaegertracing.io/docs/latest/client-libraries/#deprecating-jaeger-clients) for details.
 
