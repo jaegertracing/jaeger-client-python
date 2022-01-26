@@ -65,7 +65,7 @@ setup(
             'codecov',
             'tchannel==2.1.0',
             'opentracing_instrumentation>=3,<4',
-            'prometheus_client==0.12.0',
+            'prometheus_client==0.13.0',
             'mypy',
         ]
     },
